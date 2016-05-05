@@ -108,6 +108,15 @@ class FidArray(Base):
         except AttributeError:
             print('{} does not exist.'.format(id))
 
+    def get_fids(self):
+        fids = [self.__dict__[id] for id in sorted(self.__dict__) if type(self.__dict__[id]) == Fid]
+        return fids
+
+    @property
+    def data(self):
+        data = numpy.array([fid.data for fid in self.get_fids()])
+        return data
+
     def add_fid(self, fid):
         if isinstance(fid, Fid):
             setattr(self, fid.id, fid)
@@ -176,7 +185,8 @@ class FidArray(Base):
             return fid_array 
         else:
             raise IOError('Data could not be imported.')
-        
+       
+            # add these thingses precious!
             #    if varian:
             #            procpar, data = ng.varian.read(path)
             #    if bruker:

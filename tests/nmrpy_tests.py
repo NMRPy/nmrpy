@@ -155,6 +155,11 @@ class TestFidArrayInitialisation(unittest.TestCase):
         path = './tests/test_data/test1.fid'
         fid_array = FidArray.from_path(path)
 
+    def test_data_property(self):
+        path = './tests/test_data/test1.fid'
+        fid_array = FidArray.from_path(path)
+        self.assertIsInstance(fid_array.data, numpy.ndarray)
+
     def test_failed_from_path_array(self):
         path = None
         fid_array = FidArray.from_path(path)
