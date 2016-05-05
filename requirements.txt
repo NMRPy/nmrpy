@@ -1,4 +1,5 @@
 backports.shutil-get-terminal-size==1.0.0
+coverage==4.0.3
 cycler==0.10.0
 decorator==4.0.9
 ipython==4.2.0

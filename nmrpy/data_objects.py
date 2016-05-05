@@ -3,23 +3,55 @@ import scipy as sp
 import pylab as pl
 import lmfit
 
-class Fid():
-    
-    def __init__(self, *args, **kwargs):
-        self.__set_id(kwargs.get('id', 'fid0'))
-        self.set_data(kwargs.get('data', []))
 
-    def __str__(self):
-        return 'FID: %s (%i data)'%(self.get_id(), len(self.get_data()))
+class Base():
+
+    def __init__(self, *args, **kwargs):
+        self.set_id(kwargs.get('id', None))
 
     def get_id(self):
         return self.id
 
-    def __set_id(self, id):
-        if isinstance(id, str):
+    def set_id(self, id):
+        if isinstance(id, str) or id is None:
             self.id = id
         else:
-            raise AttributeError('id must be a string.')
+            raise AttributeError('ID must be a string or None.')
+
+    @staticmethod
+    def _is_iter(i):
+        try:
+            iter(i)
+            return True
+        except TypeError:
+            return False
+
+    @classmethod
+    def _is_iter_of_iters(cls, i):
+        if i == []:
+            return False
+        elif cls._is_iter(i) and all(cls._is_iter(j) for j in i):
+            return True
+        return False
+
+    @classmethod
+    def _is_flat_iter(cls, i):
+        if i == []:
+            return True
+        elif cls._is_iter(i) and not any(cls._is_iter(j) for j in i):
+            return True
+        return False
+
+
+
+class Fid(Base):
+    
+    def __init__(self, *args, **kwargs):
+        self.set_id(kwargs.get('id', 'fid0'))
+        self.set_data(kwargs.get('data', []))
+
+    def __str__(self):
+        return 'FID: %s (%i data)'%(self.get_id(), len(self.get_data()))
 
     def get_data(self):
         return self.data
@@ -47,43 +79,8 @@ class Fid():
        return new_instance  
         
 
-    @staticmethod
-    def _is_iter(i):
-        try:
-            iter(i)
-            return True
-        except TypeError:
-            return False
 
-    @classmethod
-    def _is_iter_of_iters(cls, i):
-        if i == []:
-            return False
-        elif cls._is_iter(i) and all(cls._is_iter(j) for j in i):
-            return True
-        return False
-
-    @classmethod
-    def _is_flat_iter(cls, i):
-        if i == []:
-            return True
-        elif cls._is_iter(i) and not any(cls._is_iter(j) for j in i):
-            return True
-        return False
-
-class FidArray():
-
-    def __init__(self, *args, **kwargs):
-        self.set_id(kwargs.get('id', None))
-
-    def get_id(self):
-        return self.id
-
-    def set_id(self, id):
-        if isinstance(id, str) or id is None:
-            self.id = id
-        else:
-            raise AttributeError('ID must be a string or None.')
+class FidArray(Base):
 
     def add_fid(self, fid):
         if isinstance(fid, Fid):
@@ -117,21 +114,6 @@ class FidArray():
         fid_array.add_fids(fids)
         return fid_array
 
-    @staticmethod
-    def _is_iter(i):
-        try:
-            iter(i)
-            return True
-        except TypeError:
-            return False
-
-    @classmethod
-    def _is_iter_of_iters(cls, i):
-        if i == []:
-            return False
-        elif cls._is_iter(i) and all(cls._is_iter(j) for j in i):
-            return True
-        return False
 
 if __name__ == '__main__':
     pass
