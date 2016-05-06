@@ -350,12 +350,8 @@ class Importer(Base):
             self._procpar = procpar['acqus']
         except AttributeError:
             print('probably not Bruker data')
-        try:
-            print('Attempting Varian')
-            procpar, data = nmrglue.varian.read(self.fid_path)
-        except (FileNotFoundError, OSError):
-            print('fid_path does not specify a valid .fid directory.')
-            return 
+        print('Attempting Varian')
+        procpar, data = nmrglue.varian.read(self.fid_path)
         try:
             self._procpar = procpar
             self.data = data 
