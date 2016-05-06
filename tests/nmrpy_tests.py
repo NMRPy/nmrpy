@@ -1,6 +1,11 @@
 import unittest
-from nmrpy.data_objects import FidArray, Fid
+from nmrpy.data_objects import *
 import numpy
+
+class TestBaseInitialisation(unittest.TestCase):
+
+    def test_init(self):
+        base = Base()
 
 class TestFidInitialisation(unittest.TestCase):
     
@@ -29,11 +34,11 @@ class TestFidInitialisation(unittest.TestCase):
     def test_fid_assignment(self):
         fid = Fid()
         self.assertIsInstance(fid.id, str)
-        self.assertIsInstance(fid.data, list)
+        self.assertIsInstance(fid.data, numpy.ndarray)
         self.assertFalse(any(self._is_iter(i) for i in fid.data))
         fid = Fid(id='string', data=self.fid_good_data[0])
         self.assertIsInstance(fid.id, str)
-        self.assertIsInstance(fid.data, list)
+        self.assertIsInstance(fid.data, numpy.ndarray)
         self.assertFalse(any(self._is_iter(i) for i in fid.data))
 
     def test_failed_fid_assignment(self):
@@ -47,7 +52,8 @@ class TestFidInitialisation(unittest.TestCase):
     def test_fid_from_data(self):
         for data in self.fid_good_data:
             fid = Fid.from_data(data)
-            self.assertEqual(fid.data, list(data))
+            self.assertIsInstance(fid.data, numpy.ndarray)
+            self.assertEqual(list(fid.data), list(data))
         
     def test_fid_from_data_failed(self):
         for test_data in self.fid_bad_data:
@@ -108,6 +114,21 @@ class TestFidArrayInitialisation(unittest.TestCase):
         fid_array.add_fid(self.fid)
         self.assertEqual(fid_array.get_fid(self.fid.id), self.fid)
 
+    def test_failed_fid_array_add_fid(self):
+        fid_array = FidArray()
+        with self.assertRaises(AttributeError):
+            fid_array.add_fid('not_fid')
+
+    def test_failed_fid_array_procpar_setter(self):
+        fid_array = FidArray()
+        with self.assertRaises(AttributeError):
+            fid_array.procpar = 'string'
+
+    def test_failed_fid_array_data_setter(self):
+        fid_array = FidArray()
+        with self.assertRaises(AttributeError):
+            fid_array.data = 'string'
+
     def test_fid_array_del_fid(self):
         fid_array = FidArray()
         fid_array.add_fid(self.fid)
@@ -149,11 +170,25 @@ class TestFidArrayInitialisation(unittest.TestCase):
 
     def test_from_path_single(self):
         path = './tests/test_data/test2.fid'
-        fid_array = FidArray.from_path(path)
+        fid_array = FidArray.from_path(fid_path=path)
 
     def test_from_path_array(self):
         path = './tests/test_data/test1.fid'
+        fid_array = FidArray.from_path(fid_path=path)
+
+    def test_from_path_array_varian(self):
+        path = './tests/test_data/test1.fid'
+        fid_array = FidArray.from_path(fid_path=path, file_format='varian')
+
+    def test_failed_from_path_array_bruker(self):
+        path = './tests/test_data/test1.fid'
+        with self.assertRaises(AttributeError):
+            fid_array = FidArray.from_path(fid_path=path, file_format='bruker')
+
+    def test_array_procpar(self):
+        path = './tests/test_data/test2.fid'
         fid_array = FidArray.from_path(path)
+        self.assertIsInstance(fid_array.procpar, dict)
 
     def test_data_property(self):
         path = './tests/test_data/test1.fid'
@@ -162,18 +197,27 @@ class TestFidArrayInitialisation(unittest.TestCase):
 
     def test_failed_from_path_array(self):
         path = None
-        fid_array = FidArray.from_path(path)
-        self.assertEqual(fid_array, None)
+        with self.assertRaises(AttributeError):
+            fid_array = FidArray.from_path(path)
+        path = 'non_existent_path'
+        with self.assertRaises(OSError):
+            fid_array = FidArray.from_path(path)
 
     def test_failed_from_path_array_varian(self):
+        path = None
+        with self.assertRaises(AttributeError):
+            fid_array = FidArray.from_path(path, file_format='varian')
         path = 'non_existent_path'
-        fid_array = FidArray.from_path(path)
-        self.assertEqual(fid_array, None)
+        with self.assertRaises(OSError):
+            fid_array = FidArray.from_path(path, file_format='varian')
 
     def test_failed_from_path_array_bruker(self):
+        path = None
+        with self.assertRaises(AttributeError):
+            fid_array = FidArray.from_path(path, file_format='bruker')
         path = 'non_existent_path'
-        fid_array = FidArray.from_path(path, file_format='bruker')
-        self.assertEqual(fid_array, None)
+        with self.assertRaises(OSError):
+            fid_array = FidArray.from_path(path, file_format='bruker')
 
     def test__is_iter_of_iters(self):
         FidArray._is_iter_of_iters([[]])

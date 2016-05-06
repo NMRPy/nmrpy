@@ -66,7 +66,7 @@ class Fid(Base):
     @data.setter    
     def data(self, data):
         if Fid._is_valid_dataset(data):
-            self.__data = list(data)
+            self.__data = numpy.array(data)
 
     @classmethod
     def _is_valid_dataset(cls, data):
@@ -101,6 +101,10 @@ class FidArray(Base):
     This object collects several FIDs into an array and contains all the
     processing methods necessary for bulk processing of these FIDs.
     '''
+
+    def __init__(self, *args, **kwargs):
+        self.id = kwargs.get('id', None)
+        self.procpar = kwargs.get('procpar', None)
 
     def get_fid(self, id):
         try:
@@ -145,6 +149,17 @@ class FidArray(Base):
                 except AttributeError as e:
                     print(e)
 
+    @property
+    def procpar(self):
+        return self.__procpar
+
+    @procpar.setter
+    def procpar(self, procpar):
+        if isinstance(procpar, dict) or procpar is None:
+            self.__procpar = procpar 
+        else:
+            raise AttributeError('procpar must be a dictionary or None.')
+
     @classmethod
     def from_data(cls, data):
         if not cls._is_iter_of_iters(data):
@@ -158,47 +173,127 @@ class FidArray(Base):
         return fid_array
 
     @classmethod
-    def from_path(cls, fid_path=None, file_format='varian'):
-        if not fid_path:
-            print('No path specified.')
-            return
-        if file_format == 'varian':
-            try:
-                procpar, data = nmrglue.varian.read(fid_path)
-            except OSError:
-                print('file/directory does not exist')
-                return
+    def from_path(cls, fid_path='.', file_format=None):
+        if not file_format:
+            importer = Importer(fid_path=fid_path)
+            importer.import_fid()
+        elif file_format == 'varian':
+            importer = VarianImporter(fid_path=fid_path)
+            importer.import_fid()
         elif file_format == 'bruker':
-            try:
-                procpar, data = nmrglue.bruker.read(fid_path)
-            except OSError:
-                print('file/directory does not exist')
-                return
-
-        if cls._is_iter(data):
-            if cls._is_iter_of_iters(data):
-                fids = [Fid.from_data(i) for i in data]
-                fid_array = cls()
-                fid_array.add_fids(fids)
-            else:
-                fid_array = cls.from_data([data])
+            importer = BrukerImporter(fid_path=fid_path)
+            importer.import_fid()
+        
+        if cls._is_iter(importer.data):
+            fid_array = cls.from_data(importer.data)
+            fid_array.procpar = importer.procpar
             return fid_array 
         else:
             raise IOError('Data could not be imported.')
-       
-            # add these thingses precious!
-            #    if varian:
-            #            procpar, data = ng.varian.read(path)
-            #    if bruker:
-            #            procpar, data = ng.bruker.read(path)
-            #            procpar = procpar['acqus']
-            #    fid = FID_array(
-            #        data=data,
-            #        procpar=procpar,
-            #        path=path,
-            #        varian=varian,
-            #        bruker=bruker)
-            #    return fid
+
+class Importer(Base):
+
+
+    def __init__(self, fid_path='.'):
+        self.fid_path = fid_path
+        self.procpar = None
+        self.data = None
+        self._data_dtypes = [
+                        numpy.dtype('complex64'),
+                        numpy.dtype('complex128'),
+                        numpy.dtype('complex256'),
+                        ]
+
+    @property
+    def fid_path(self):
+        return self.__fid_path
+
+    @fid_path.setter
+    def fid_path(self, fid_path):
+        if isinstance(fid_path, str):
+            self.__fid_path = fid_path
+        else:
+            raise AttributeError('fid_path must be a string.')
+
+    @property
+    def procpar(self):
+        return self.__procpar
+
+    @procpar.setter
+    def procpar(self, procpar):
+        if isinstance(procpar, dict) or procpar is None:
+            self.__procpar = procpar 
+        else:
+            raise AttributeError('procpar must be a dictionary or None.')
+
+    @property
+    def data(self):
+        return self.__data
+
+    @data.setter
+    def data(self, data):
+        if data is None:
+            self.__data = data
+        elif data.dtype in self._data_dtypes:
+            if Importer._is_iter_of_iters(data):
+                self.__data = data
+            elif Importer._is_iter(data):
+                self.__data = numpy.array([data])
+        else:
+            raise AttributeError('data must be an iterable or None.')
+
+    def import_fid(self):
+        """
+        This will first attempt to import Bruker data. Failing that, Varian.
+        """
+        try:
+            print('Attempting Bruker')
+            procpar, data = nmrglue.bruker.read(self.fid_path)
+        except (FileNotFoundError, OSError):
+            print('fid_path does not specify a valid .fid directory.')
+            return 
+        try:
+            self.data = data
+            self.procpar = procpar['acqus']
+        except AttributeError:
+            print('probably not Bruker data')
+        try:
+            print('Attempting Varian')
+            procpar, data = nmrglue.varian.read(self.fid_path)
+        except (FileNotFoundError, OSError):
+            print('fid_path does not specify a valid .fid directory.')
+            return 
+        try:
+            self.procpar = procpar
+            self.data = data 
+        except AttributeError:
+            print('probably not Varian data')
+
+
+
+class VarianImporter(Importer):
+
+    def import_fid(self):
+        try:
+            procpar, data = nmrglue.varian.read(self.fid_path)
+            self.procpar = procpar
+            self.data = data 
+        except FileNotFoundError:
+            print('fid_path does not specify a valid .fid directory.')
+        except OSError:
+            print('fid_path does not specify a valid .fid directory.')
+        
+class BrukerImporter(Importer):
+
+    def import_fid(self):
+        try:
+            procpar, data = nmrglue.bruker.read(self.fid_path)
+            self.data = data 
+            self.procpar = procpar['acqus']
+        except FileNotFoundError:
+            print('fid_path does not specify a valid .fid directory.')
+        except OSError:
+            print('fid_path does not specify a valid .fid directory.')
 
 
 if __name__ == '__main__':
