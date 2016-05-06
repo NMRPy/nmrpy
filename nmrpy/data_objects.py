@@ -5,9 +5,14 @@ import lmfit
 import nmrglue
 
 class Base():
-
+    """
+    The base class for several classes. This is a collection of useful properties/setters and parsing functions.
+    """
     def __init__(self, *args, **kwargs):
         self.id = kwargs.get('id', None)
+        self._procpar = kwargs.get('procpar', None)
+        self._params = None
+        self.fid_path = kwargs.get('fid_path', '.')
 
     @property
     def id(self):
@@ -20,6 +25,17 @@ class Base():
         else:
             raise AttributeError('ID must be a string or None.')
         
+    @property
+    def fid_path(self):
+        return self.__fid_path
+
+    @fid_path.setter
+    def fid_path(self, fid_path):
+        if isinstance(fid_path, str):
+            self.__fid_path = fid_path
+        else:
+            raise AttributeError('fid_path must be a string.')
+
     @classmethod
     def _is_iter(cls, i):
         try:
@@ -71,9 +87,10 @@ class Base():
 
     #processing
     def _extract_procpar(self, procpar):
-        return self._extract_procpar_varian(procpar)
-        #except:
-        #    print('not varian')
+        try:
+            return self._extract_procpar_bruker(procpar)
+        except KeyError:
+            return self._extract_procpar_varian(procpar)
 
     @staticmethod
     def _extract_procpar_varian(procpar):
@@ -114,6 +131,36 @@ class Base():
             )
         return params
 
+    @staticmethod
+    def _extract_procpar_bruker(procpar): #finish this
+        """
+        Extract some commonly-used NMR parameters (using Bruker denotations)
+        and return a parameter dictionary 'params'.
+        """
+        d1 = procpar['RD']
+        sfrq = procpar['SFO1']
+        nt = procpar['NS']
+        sw_hz = procpar['SW_h']
+        sw = procpar['SW']
+        # lefthand offset of the processed data in ppm
+        #for i in open(self.filename+'/pdata/1/procs').readlines():
+        #        if 'OFFSET' in i:
+        #                sw_left = float(i.split(' ')[1])
+        at = procpar['TD']/(2*sw_hz)
+        rt = at+d1
+        acqtime = (nt*rt)/60.  # convert to mins.
+        params = dict(
+            at=at,
+            d1=d1,
+            sfrq=sfrq,
+            rt=rt,
+            nt=nt,
+            acqtime=acqtime,
+            #sw_left=sw_left,
+            sw=sw,
+            sw_hz=sw_hz)
+        return params
+
 
 class Fid(Base):
     '''
@@ -122,10 +169,8 @@ class Fid(Base):
     '''    
 
     def __init__(self, *args, **kwargs):
-        self.id = kwargs.get('id', None)
+        super().__init__(*args, **kwargs)
         self.data = kwargs.get('data', [])
-        self._procpar = kwargs.get('procpar', None)
-        self._params = None
 
     def __str__(self):
         return 'FID: %s (%i data)'%(self.id, len(self.data))
@@ -171,13 +216,10 @@ class Fid(Base):
 class FidArray(Base):
     '''
     This object collects several FIDs into an array and contains all the
-    processing methods necessary for bulk processing of these FIDs.
+    processing methods necessary for bulk processing of these FIDs. The class
+    methods '.from_path' and '.from_data' will instantiate a new FidArray object
+    from a Varian/Bruker .fid path or an iterable of data respectively.
     '''
-
-    def __init__(self, *args, **kwargs):
-        self.id = kwargs.get('id', None)
-        self._procpar = kwargs.get('procpar', None)
-        self._params = None
 
     def get_fid(self, id):
         try:
@@ -250,9 +292,11 @@ class FidArray(Base):
         
         if cls._is_iter(importer.data):
             fid_array = cls.from_data(importer.data)
+            fid_array.fid_path = fid_path
             fid_array._procpar = importer._procpar
             for fid in fid_array.get_fids():
                 fid._procpar = fid_array._procpar
+                fid.fid_path = fid_array.fid_path
             return fid_array 
         else:
             raise IOError('Data could not be imported.')
@@ -263,27 +307,17 @@ class FidArray(Base):
 class Importer(Base):
 
 
-    def __init__(self, fid_path='.'):
-        self.fid_path = fid_path
-        self._procpar = None
-        self._params = None
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        #self.fid_path = fid_path
+        #self._procpar = None
+        #self._params = None
         self.data = None
         self._data_dtypes = [
                         numpy.dtype('complex64'),
                         numpy.dtype('complex128'),
                         numpy.dtype('complex256'),
                         ]
-
-    @property
-    def fid_path(self):
-        return self.__fid_path
-
-    @fid_path.setter
-    def fid_path(self, fid_path):
-        if isinstance(fid_path, str):
-            self.__fid_path = fid_path
-        else:
-            raise AttributeError('fid_path must be a string.')
 
     @property
     def data(self):
