@@ -44,6 +44,75 @@ class Base():
             return True
         return False
 
+    @property
+    def _procpar(self):
+        return self.__procpar
+
+    @_procpar.setter
+    def _procpar(self, procpar):
+        if procpar is None:
+            self.__procpar = procpar 
+        elif isinstance(procpar, dict):
+            self.__procpar = procpar 
+            self._params = self._extract_procpar(procpar)
+        else:
+            raise AttributeError('procpar must be a dictionary or None.')
+
+    @property
+    def _params(self):
+        return self.__params
+
+    @_params.setter
+    def _params(self, params):
+        if isinstance(params, dict) or params is None:
+            self.__params = params
+        else:
+            raise AttributeError('params must be a dictionary or None.')
+
+    #processing
+    def _extract_procpar(self, procpar):
+        return self._extract_procpar_varian(procpar)
+        #except:
+        #    print('not varian')
+
+    @staticmethod
+    def _extract_procpar_varian(procpar):
+        """
+        Extract some commonely-used NMR parameters (using Varian denotations)
+        and return a parameter dictionary 'params'.
+        """
+        at = float(procpar['procpar']['at']['values'][0])
+        d1 = float(procpar['procpar']['d1']['values'][0])
+        sfrq = float(procpar['procpar']['sfrq']['values'][0])
+        reffrq = float(procpar['procpar']['reffrq']['values'][0])
+        rfp = float(procpar['procpar']['rfp']['values'][0])
+        rfl = float(procpar['procpar']['rfl']['values'][0])
+        tof = float(procpar['procpar']['tof']['values'][0])
+        rt = at+d1
+        nt = numpy.array(
+            [procpar['procpar']['nt']['values']], dtype=float)
+        acqtime = (nt*rt).cumsum()/60.  # convert to mins.
+        sw = round(
+            float(procpar['procpar']['sw']['values'][0]) /
+            float(procpar['procpar']['sfrq']['values'][0]), 2)
+        sw_hz = float(procpar['procpar']['sw']['values'][0])
+        sw_left = (0.5+1e6*(sfrq-reffrq)/sw_hz)*sw_hz/sfrq
+        params = dict(
+            at=at,
+            d1=d1,
+            rt=rt,
+            nt=nt,
+            acqtime=acqtime,
+            sw=sw,
+            sw_hz=sw_hz,
+            sfrq=sfrq,
+            reffrq=reffrq,
+            rfp=rfp,
+            rfl=rfl,
+            tof=tof,
+            sw_left=sw_left,
+            )
+        return params
 
 
 class Fid(Base):
@@ -53,8 +122,10 @@ class Fid(Base):
     '''    
 
     def __init__(self, *args, **kwargs):
-        self.id = kwargs.get('id', 'fid0')
+        self.id = kwargs.get('id', None)
         self.data = kwargs.get('data', [])
+        self._procpar = kwargs.get('procpar', None)
+        self._params = None
 
     def __str__(self):
         return 'FID: %s (%i data)'%(self.id, len(self.data))
@@ -67,6 +138,7 @@ class Fid(Base):
     def data(self, data):
         if Fid._is_valid_dataset(data):
             self.__data = numpy.array(data)
+
 
     @classmethod
     def _is_valid_dataset(cls, data):
@@ -104,7 +176,8 @@ class FidArray(Base):
 
     def __init__(self, *args, **kwargs):
         self.id = kwargs.get('id', None)
-        self.procpar = kwargs.get('procpar', None)
+        self._procpar = kwargs.get('procpar', None)
+        self._params = None
 
     def get_fid(self, id):
         try:
@@ -149,16 +222,6 @@ class FidArray(Base):
                 except AttributeError as e:
                     print(e)
 
-    @property
-    def procpar(self):
-        return self.__procpar
-
-    @procpar.setter
-    def procpar(self, procpar):
-        if isinstance(procpar, dict) or procpar is None:
-            self.__procpar = procpar 
-        else:
-            raise AttributeError('procpar must be a dictionary or None.')
 
     @classmethod
     def from_data(cls, data):
@@ -168,7 +231,8 @@ class FidArray(Base):
         fids = []
         for fid_index, datum in zip(range(len(data)), data):
             fid_id = 'fid%i'%fid_index
-            fids.append(Fid(id=fid_id, data=datum))
+            fid = Fid(id=fid_id, data=datum)
+            fids.append(fid)
         fid_array.add_fids(fids)
         return fid_array
 
@@ -186,17 +250,23 @@ class FidArray(Base):
         
         if cls._is_iter(importer.data):
             fid_array = cls.from_data(importer.data)
-            fid_array.procpar = importer.procpar
+            fid_array._procpar = importer._procpar
+            for fid in fid_array.get_fids():
+                fid._procpar = fid_array._procpar
             return fid_array 
         else:
             raise IOError('Data could not be imported.')
+
+
+
 
 class Importer(Base):
 
 
     def __init__(self, fid_path='.'):
         self.fid_path = fid_path
-        self.procpar = None
+        self._procpar = None
+        self._params = None
         self.data = None
         self._data_dtypes = [
                         numpy.dtype('complex64'),
@@ -214,17 +284,6 @@ class Importer(Base):
             self.__fid_path = fid_path
         else:
             raise AttributeError('fid_path must be a string.')
-
-    @property
-    def procpar(self):
-        return self.__procpar
-
-    @procpar.setter
-    def procpar(self, procpar):
-        if isinstance(procpar, dict) or procpar is None:
-            self.__procpar = procpar 
-        else:
-            raise AttributeError('procpar must be a dictionary or None.')
 
     @property
     def data(self):
@@ -254,7 +313,7 @@ class Importer(Base):
             return 
         try:
             self.data = data
-            self.procpar = procpar['acqus']
+            self._procpar = procpar['acqus']
         except AttributeError:
             print('probably not Bruker data')
         try:
@@ -264,7 +323,7 @@ class Importer(Base):
             print('fid_path does not specify a valid .fid directory.')
             return 
         try:
-            self.procpar = procpar
+            self._procpar = procpar
             self.data = data 
         except AttributeError:
             print('probably not Varian data')
@@ -276,8 +335,8 @@ class VarianImporter(Importer):
     def import_fid(self):
         try:
             procpar, data = nmrglue.varian.read(self.fid_path)
-            self.procpar = procpar
             self.data = data 
+            self._procpar = procpar
         except FileNotFoundError:
             print('fid_path does not specify a valid .fid directory.')
         except OSError:
@@ -289,7 +348,7 @@ class BrukerImporter(Importer):
         try:
             procpar, data = nmrglue.bruker.read(self.fid_path)
             self.data = data 
-            self.procpar = procpar['acqus']
+            self._procpar = procpar['acqus']
         except FileNotFoundError:
             print('fid_path does not specify a valid .fid directory.')
         except OSError:

@@ -33,7 +33,7 @@ class TestFidInitialisation(unittest.TestCase):
 
     def test_fid_assignment(self):
         fid = Fid()
-        self.assertIsInstance(fid.id, str)
+        self.assertEqual(fid.id, None)
         self.assertIsInstance(fid.data, numpy.ndarray)
         self.assertFalse(any(self._is_iter(i) for i in fid.data))
         fid = Fid(id='string', data=self.fid_good_data[0])
@@ -48,6 +48,11 @@ class TestFidInitialisation(unittest.TestCase):
         for test_data in self.fid_bad_data:
             with self.assertRaises(AttributeError):
                Fid(data=test_data)
+
+    def test_failed_fid_procpar_setter(self):
+        fid = Fid()
+        with self.assertRaises(AttributeError):
+            fid._procpar = 'string'
     
     def test_fid_from_data(self):
         for data in self.fid_good_data:
@@ -122,7 +127,7 @@ class TestFidArrayInitialisation(unittest.TestCase):
     def test_failed_fid_array_procpar_setter(self):
         fid_array = FidArray()
         with self.assertRaises(AttributeError):
-            fid_array.procpar = 'string'
+            fid_array._procpar = 'string'
 
     def test_failed_fid_array_data_setter(self):
         fid_array = FidArray()
@@ -171,14 +176,20 @@ class TestFidArrayInitialisation(unittest.TestCase):
     def test_from_path_single(self):
         path = './tests/test_data/test2.fid'
         fid_array = FidArray.from_path(fid_path=path)
+        self.assertIsInstance(fid_array._procpar, dict)
+        self.assertIsInstance(fid_array._params, dict)
 
     def test_from_path_array(self):
         path = './tests/test_data/test1.fid'
         fid_array = FidArray.from_path(fid_path=path)
+        self.assertIsInstance(fid_array._procpar, dict)
+        self.assertIsInstance(fid_array._params, dict)
 
     def test_from_path_array_varian(self):
         path = './tests/test_data/test1.fid'
         fid_array = FidArray.from_path(fid_path=path, file_format='varian')
+        self.assertIsInstance(fid_array._procpar, dict)
+        self.assertIsInstance(fid_array._params, dict)
 
     def test_failed_from_path_array_bruker(self):
         path = './tests/test_data/test1.fid'
@@ -188,7 +199,8 @@ class TestFidArrayInitialisation(unittest.TestCase):
     def test_array_procpar(self):
         path = './tests/test_data/test2.fid'
         fid_array = FidArray.from_path(path)
-        self.assertIsInstance(fid_array.procpar, dict)
+        self.assertIsInstance(fid_array._procpar, dict)
+        self.assertIsInstance(fid_array._params, dict)
 
     def test_data_property(self):
         path = './tests/test_data/test1.fid'
