@@ -53,6 +53,21 @@ class TestFidInitialisation(unittest.TestCase):
         fid = Fid()
         with self.assertRaises(AttributeError):
             fid._procpar = 'string'
+
+    def test_fid_peaks_setter(self):
+        fid = Fid()
+        fid.peaks = numpy.array([1, 2])
+        fid.peaks = [1, 2]
+        self.assertIsInstance(fid.peaks, numpy.ndarray) 
+
+    def test_failed_fid_peaks_setter(self):
+        fid = Fid()
+        with self.assertRaises(AttributeError):
+            fid.peaks = [1, 'string']
+        with self.assertRaises(AttributeError):
+            fid.peaks = 'string'
+        with self.assertRaises(AttributeError):
+            fid.peaks = [[1,2], [3,4]]
     
     def test_fid_from_data(self):
         for data in self.fid_good_data:
@@ -200,7 +215,8 @@ class TestFidInitialisation(unittest.TestCase):
         peaks = [100,200]
         data_index = [0,2000]
         fid = fid_array.get_fids()[0]
-        fid._f_fitp(data_index, peaks, 0.5)
+        fid.peaks = peaks
+        fid._f_fitp(data_index, fid.peaks, 0.5)
         fid.data = list(fid.data)
         fid._f_fitp(data_index, peaks, 0.5)
 

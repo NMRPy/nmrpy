@@ -195,7 +195,7 @@ class Fid(Base):
         if not Fid._is_flat_iter(peaks):
             raise AttributeError('peaks must be a flat iterable')
         if not all(isinstance(i, numbers.Number) for i in peaks):
-            raise AttributeError('peaks must be number')
+            raise AttributeError('peaks must be numbers')
         self._peaks = numpy.array(peaks)
 
     @classmethod
