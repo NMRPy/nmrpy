@@ -245,6 +245,173 @@ class Fid(Base):
        new_instance = cls()
        new_instance.data = data
        return new_instance  
+
+    def real(self):
+            """Discard imaginary component of data."""
+            self.data = np.real(self.data)
+
+    # GENERAL FUNCTIONS
+    def ps(self, p0=0.0, p1=0.0, inv=False):
+            """
+            Linear Phase Correction
+
+            Parameters:
+
+            * p0    Zero order phase in degrees.
+            * p1    First order phase in degrees.
+
+            """
+            if not all(isinstance(i, float) for i in [p0, p1]):
+                raise AttributeError('p0 and p1 must be floats.')
+            if not all(numpy.iscomplex(self.data)):
+                raise AttributeError('self.data must be complex.')
+            # convert to radians
+            p0 = p0*np.pi/180.0
+            p1 = p1*np.pi/180.0
+            size = len(data)
+            #if len(data.shape) == 2:
+            #        size = float(len(data[0]))
+            #if len(data.shape) == 1:
+            #        size = float(len(data))
+            ph = np.exp(1.0j*(p0+(p1*np.arange(size)/size)))
+            return ph*data
+
+    #@staticmethod
+    #def conv_to_ppm(data, index, sw_left, sw):
+    #        if isinstance(index, list):
+    #                index = np.array(index)
+    #        frc_sw = index/float(len(data))
+    #        return list(sw_left-sw+frc_sw*sw)
+
+    #@staticmethod
+    #def conv_to_index(data, ppm, sw_left, sw):
+    #        if isinstance(ppm, list):
+    #                ppm = np.array(ppm)
+    #        frc_sw = (ppm+(sw-sw_left))/sw
+    #        return list(np.array(frc_sw*len(data), int))
+
+    #def _phase_all_data_using_phases(self):
+    #        self.data = np.array(
+    #            [self.ps
+    #             (i[0], p0=i[1][0], p1=i[1][1])
+    #             for i in zip(self.data, self.phases)])
+
+    #def phase_auto(
+    #        self,
+    #        method='area',
+    #        thresh=0.0,
+    #        mp=True,
+    #        cores=None,
+    #        discard_imaginary=True):
+    #        """ Automatically phase array of spectra.
+
+
+    #            Keyword arguments:
+    #            method -- phasing method, the available options are:
+    #                        area     - minimise total integral of spectrum
+    #                        neg      - minimise negative area of spectrum
+    #                        neg_area - a combination of the previous two methods
+    #            thresh -- threshold below which to consider data as signal and not noise (typically negative or 0), used by the 'neg' method
+    #            mp     -- multiprocessing, parallelise the phasing process over multiple processors, significantly reduces computation time
+    #            discard_imaginary -- discards imaginary component of complex values after phasing
+    #        """
+    #        if np.sum(np.iscomplex(self.data) == False) > 0:
+    #                # as np.iscomplex returns False for 0+0j, we need to
+    #                # check manually
+    #                for i in self.data[np.iscomplex(self.data) == False]:
+    #                        if not isinstance(i, np.complex128):
+    #                                print "Cannot perform phase correction on non-imaginary data."
+    #                                return
+
+    #        if method == 'area':
+    #                if mp:
+    #                        self._phase_area_mp(cores=cores)
+    #                else:
+    #                        self._phase_area()
+
+    #        if method == 'neg':
+    #                if mp:
+    #                        self._phase_neg_mp(thresh=thresh, cores=cores)
+    #                else:
+    #                        self._phase_neg(thresh=thresh, )
+
+    #        if method == 'neg_area':
+    #                if mp:
+    #                        self._phase_neg_area_mp(thresh=thresh, cores=cores)
+    #                else:
+    #                        self._phase_neg_area(thresh=thresh, )
+    #        if discard_imaginary:
+    #                self.real()
+
+    #def _phase_area_single(self, n):
+    #        def err_ps(pars, data):
+    #                err = self.ps(data, pars[0], pars[1], inv=False).real
+    #                return np.array([abs(err).sum()]*2)
+
+    #        phase = leastsq(
+    #            err_ps, [
+    #                1.0, 0.0], args=(
+    #                self.data[n]), maxfev=10000)[0]
+    #        self.data[n] = self.ps(self.data[n], phase[0], phase[1])
+    #        for i in range(len(self.data)):
+    #                if abs(self.data[i].min()) > abs(self.data[i].max()):
+    #                        self.data[i] *= -1
+    #        print '%i\t%d\t%d' % (n, phase[0], phase[1])
+    #        return self.data[n]
+
+    #def _phase_neg_single(self, n):
+    #        def err_ps(pars, data):
+    #                err = self.ps(data, pars[0], pars[1], inv=False).real
+    #                return np.array([err[err < self._thresh].sum()]*2)
+
+    #        phase = leastsq(
+    #            err_ps, [
+    #                1.0, 0.0], args=(
+    #                self.data[n]), maxfev=10000)[0]
+    #        self.data[n] = self.ps(self.data[n], phase[0], phase[1])
+    #        for i in range(len(self.data)):
+    #                if abs(self.data[i].min()) > abs(self.data[i].max()):
+    #                        self.data[i] *= -1
+    #        print '%i\t%d\t%d' % (n, phase[0], phase[1])
+    #        return self.data[n]
+
+    #def _phase_neg_area_single(self, n):
+    #        def err_ps(pars, data):
+    #                err = self.ps(data, pars[0], pars[1], inv=False).real
+    #                err = np.array(
+    #                    2
+    #                    *
+    #                    [abs(err).sum() + abs(err[err < self._thresh]).sum()])
+    #                return err
+    #        phase = leastsq(
+    #            err_ps, [
+    #                1.0, 0.0], args=(
+    #                self.data[n]), maxfev=10000)[0]
+    #        self.data[n] = self.ps(self.data[n], phase[0], phase[1])
+    #        for i in range(len(self.data)):
+    #                if abs(self.data[i].min()) > abs(self.data[i].max()):
+    #                        self.data[i] *= -1
+    #        print '%i\t%d\t%d' % (n, phase[0], phase[1])
+    #        return self.data[n]
+
+    """
+     that the following function has to use a top-level global function '_unwrap_fid' to parallelise as it is a class method
+    """ 
+
+    #def _phase_area_mp(self, cores=None):
+    #        print 'fid\tp0\tp1'
+    #        if cores is not None:
+    #            proc_pool = Pool(cores)
+    #        else:
+    #            proc_pool = Pool(cpu_count()-1)
+    #        self.data = np.array(
+    #            proc_pool.map(_unwrap_fid_area,
+    #                          zip([self] * len(self.data), range(len(self.data)))))
+    #        proc_pool.close()
+    #        proc_pool.join()
+
+
+
         
     @staticmethod
     def _f_pk(x, offset=0.0, gauss_sigma=1.0, gauss_amp=1.0, lorentz_hwhm=1.0, lorentz_amp=1.0, frac_lor_gau=0.0):
