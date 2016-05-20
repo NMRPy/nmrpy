@@ -1,9 +1,10 @@
 import numpy
-import scipy as sp
-import pylab as pl
+import scipy
+import pylab
 import lmfit
 import nmrglue
 import numbers
+from scipy.optimize import leastsq
 
 class Base():
     """
@@ -162,7 +163,6 @@ class Base():
             sw_hz=sw_hz)
         return params
 
-
 class Fid(Base):
     '''
     The basic FID class contains all the data for a single spectrum, and the
@@ -225,7 +225,7 @@ class Fid(Base):
             gauss amplitude -- amplitude of gaussian peak
             lorentz_hwhm -- lorentzian half width at half maximum height
             lorentz_amplitude -- amplitude of lorentzian peak
-            fraction of function to be Gaussian (0 -> 1)
+            frac_lor_gau: fraction of function to be Gaussian (0 -> 1)
             Note: specifying a Gaussian fraction of 0 will produce a pure Lorentzian and vice versa.
             """
 
@@ -235,8 +235,12 @@ class Fid(Base):
                 raise ValueError('Keyword parameters must be numbers.') 
             if not Fid._is_iter(x):
                 raise ValueError('x must be an interable') 
-            if type(x) is not numpy.ndarray:
+            if not isinstance(x, numpy.ndarray):
                 x = numpy.array(x) 
+            if frac_lor_gau > 1.0:
+                frac_lor_gau = 1.0
+            if frac_lor_gau < 0.0:
+                frac_lor_gau = 0.0
             
             f_gauss = lambda offset, gauss_amp, gauss_sigma, x: gauss_amp*numpy.exp(-(offset-x)**2/gauss_sigma)
             f_lorentz = lambda offset, lorentz_amp, lorentz_hwhm, x: lorentz_amp*lorentz_hwhm**2/(lorentz_hwhm**2+4*(offset-x)**2)
@@ -248,7 +252,8 @@ class Fid(Base):
             return peak
     
     def _f_pks(self, parameterset_list, x):
-            """Return the sum of a series of peak evaluations for deconvolution. See _f_pk().
+            """
+            Return the sum of a series of peak evaluations for deconvolution. See _f_pk().
     
             Keyword arguments:
             parameterset_list -- a list of parameter lists: [spectral offset (x), 
@@ -256,16 +261,20 @@ class Fid(Base):
                                             gauss: amplitude, 
                                             lorentz: scale (HWHM), 
                                             lorentz: amplitude, 
-                                            fraction of function to be Gaussian (0 -> 1)]
+                                            frac_lor_gau: fraction of function to be Gaussian (0 -> 1)]
             x -- array of equal length to FID
             """
 
+            if not Fid._is_iter(parameterset_list):
+                raise ValueError('Parameter set must be an interable') 
             for p in parameterset_list:
+                if not Fid._is_iter(p):
+                    raise ValueError('Parameter set must be an interable') 
                 if not all(isinstance(i, numbers.Number) for i in p):
                     raise ValueError('Keyword parameters must be numbers.') 
             if not Fid._is_iter(x):
                 raise ValueError('x must be an interable') 
-            if type(x) is not numpy.ndarray:
+            if not isinstance(x, numpy.ndarray):
                 x = numpy.array(x) 
 
 
@@ -281,6 +290,162 @@ class Fid(Base):
                 peaks += peak
             return peaks
 
+    def _f_res(self, p, data, frac_lor_gau):
+            """
+            Objective function for deconvolution. Returns residuals of the devonvolution fit.
+    
+            x -- array of equal length to FID
+
+            Keyword arguments:
+            p -- flattened parameter list: n*[
+                                offset -- spectral offset in x
+                                gauss sigma -- 2*sigma**2
+                                gauss amplitude -- amplitude of gaussian peak
+                                lorentz_hwhm -- lorentzian half width at half maximum height
+                                lorentz_amplitude -- amplitude of lorentzian peak
+                                fraction of function to be Gaussian (0 -> 1)
+                                ]
+                where n is the number of peaks
+            data -- spectrum array
+            frac_lor_gau -- gaussian/lorentian fraction
+ 
+            """
+
+            if not Fid._is_iter(p):
+                raise ValueError('Parameter list must be an interable') 
+            if not all(isinstance(i, numbers.Number) for i in p):
+                raise ValueError('Keyword parameters must be numbers.') 
+            if Fid._is_iter_of_iters(data):
+                raise ValueError('data must be flat.')
+            if not Fid._is_iter(data):
+                raise ValueError('data must be an interable') 
+            if not isinstance(p, numpy.ndarray):
+                p = numpy.array(p) 
+            if not isinstance(data, numpy.ndarray):
+                data = numpy.array(data) 
+
+            if len(p.shape) < 2:
+                    p = p.reshape([-1, 6])
+
+            p = abs(p)      # forces positive parameter values
+
+            #append frac_lor_gau to parameters
+            if frac_lor_gau is not None:
+                    p = p.transpose()
+                    p[-1] = p[-1]*0+frac_lor_gau
+                    p = p.transpose()
+            x = numpy.arange(len(data), dtype='f8')
+            res = data-self._f_pks(p, x)
+            return res
+
+    def _f_makep(self, data, peaks):
+            """
+            Make a set of initial peak parameters for deconvolution.
+    
+            Keyword arguments:
+            data -- data to be fitted
+            peaks -- selected peak positions (see peakpicker())
+    
+    
+            """
+            if not Fid._is_iter(data):
+                raise ValueError('data must be an interable') 
+            if not Fid._is_iter(peaks):
+                raise ValueError('peaks must be an interable') 
+            if Fid._is_iter_of_iters(data):
+                raise ValueError('data must be flat.')
+            if Fid._is_iter_of_iters(peaks):
+                raise ValueError('peaks must be flat.')
+            if not isinstance(data, numpy.ndarray):
+                data = numpy.array(data) 
+
+            p = []
+            for i in peaks:
+                    single_peak = [i, 10, data.max()/2, 10, data.max()/2, 0.5]
+                    p.append(single_peak)
+            return numpy.array(p)
+
+    def _f_conv(self, parameterset_list, data):
+            """
+            Returns the maximum of a convolution of an initial set of lineshapes and the data to be fitted.
+    
+            parameterset_list -- a list of parameter lists: n*[[spectral offset (x), 
+                                            gauss: 2*sigma**2, 
+                                            gauss: amplitude, 
+                                            lorentz: scale (HWHM), 
+                                            lorentz: amplitude, 
+                                            frac_lor_gau: fraction of function to be Gaussian (0 -> 1)]]
+                                where n is the number of peaks
+            data -- 1D spectral array
+    
+            """
+
+            if not Fid._is_iter(data):
+                raise ValueError('data must be an interable') 
+            if not Fid._is_iter(parameterset_list):
+                raise ValueError('parameterset_list must be an interable') 
+            if Fid._is_iter_of_iters(data):
+                raise ValueError('data must be flat.')
+            if not isinstance(data, numpy.ndarray):
+                data = numpy.array(data) 
+
+            data[data == 0.0] = 1e-6
+            x = numpy.arange(len(data), dtype='f8')
+            peaks_init = self._f_pks(parameterset_list, x)
+            data_convolution = numpy.convolve(data, peaks_init[::-1])
+            auto_convolution = numpy.convolve(peaks_init, peaks_init[::-1])
+            max_data_convolution = numpy.where(data_convolution == data_convolution.max())[0][0]
+            max_auto_convolution = numpy.where(auto_convolution == auto_convolution.max())[0][0]
+            return max_data_convolution - max_auto_convolution
+
+    def _f_fitp(self, data_index, peaks, frac_lor_gau):
+            """Fit a section of spectral data with a combination of Gaussian/Lorentzian peak for deconvolution.
+    
+            Keyword arguments:
+            data_index -- list of two index values to specify data to be fitted, 1D array
+            peaks -- selected peak positions (see peakpicker())
+            frac_lor_gau -- fraction of fitted function to be Gaussian (1 - Guassian, 0 - Lorentzian)
+   
+            returns:
+                fits -- list of fitted peak parameter sets
+                
+            Note: peaks are fitted using the Levenberg-Marquardt algorithm as implemented in SciPy.optimize [1].
+    
+            [1] Marquardt, Donald W. 'An algorithm for least-squares estimation of nonlinear parameters.' Journal of the Society for Industrial & Applied Mathematics 11.2 (1963): 431-441.
+            """
+            if not Fid._is_iter(data_index):
+                raise ValueError('data_index must be an interable') 
+            if not len(data_index) == 2:
+                raise ValueError('data_index must contain two values.')
+            if data_index[0] == data_index[1]:
+                raise ValueError('data_index must contain different values.')
+            data_index = sorted(data_index)
+            data = self.data[data_index[0]:data_index[1]]
+            data = numpy.real(data)
+            if not Fid._is_iter(data):
+                raise ValueError('data must be an interable') 
+            if not Fid._is_iter(peaks):
+                raise ValueError('peaks must be an interable') 
+            if Fid._is_iter_of_iters(data):
+                raise ValueError('data must be flat.')
+            if not isinstance(data, numpy.ndarray):
+                data = numpy.array(data) 
+
+            p = self._f_makep(data, peaks)
+            init_ref = self._f_conv(p, data)
+            p = self._f_makep(data, peaks+init_ref)
+            p = p.flatten()
+
+            try:
+                fit = leastsq(self._f_res, p, args=(data, frac_lor_gau), full_output=1)
+                fits = numpy.array(abs(fit[0].reshape([-1, 6])))
+                cov = fit[1]
+            except:
+                fits = None
+                cov = None
+            return fits, cov
+                
+                
 
 class FidArray(Base):
     '''
@@ -299,7 +464,7 @@ class FidArray(Base):
             print('{} does not exist.'.format(id))
 
     def get_fids(self):
-        fids = [self.__dict__[id] for id in sorted(self.__dict__) if type(self.__dict__[id]) == Fid]
+        fids = [self.__dict__[id] for id in sorted(self.__dict__) if isinstance(self.__dict__[id], Fid)]
         return fids
 
     @property
@@ -372,17 +537,11 @@ class FidArray(Base):
         else:
             raise IOError('Data could not be imported.')
 
-
-
-
 class Importer(Base):
 
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        #self.fid_path = fid_path
-        #self._procpar = None
-        #self._params = None
         self.data = None
         self._data_dtypes = [
                         numpy.dtype('complex64'),
@@ -430,8 +589,6 @@ class Importer(Base):
         except AttributeError:
             print('probably not Varian data')
 
-
-
 class VarianImporter(Importer):
 
     def import_fid(self):
@@ -455,7 +612,6 @@ class BrukerImporter(Importer):
             print('fid_path does not specify a valid .fid directory.')
         except OSError:
             print('fid_path does not specify a valid .fid directory.')
-
 
 if __name__ == '__main__':
     pass
