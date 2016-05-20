@@ -69,6 +69,19 @@ class TestFidInitialisation(unittest.TestCase):
         with self.assertRaises(AttributeError):
             fid.peaks = [[1,2], [3,4]]
     
+    def test_failed_fid_ranges_setter(self):
+        fid = Fid()
+        fid.peaks = [50, 60, 150, 160, 300]
+        fid.ranges = [[1, 100], [100, 200]]
+        self.assertEquals(fid._grouped_peaklist, [[50, 60],[150, 160]])
+
+    def test_failed_fid_ranges_setter(self):
+        fid = Fid()
+        with self.assertRaises(AttributeError):
+            fid.ranges = [1, 1]
+        with self.assertRaises(AttributeError):
+            fid.ranges = ['string', 1]
+
     def test_fid_from_data(self):
         for data in self.fid_good_data:
             fid = Fid.from_data(data)

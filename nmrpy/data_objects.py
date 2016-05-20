@@ -173,6 +173,7 @@ class Fid(Base):
         super().__init__(*args, **kwargs)
         self.data = kwargs.get('data', [])
         self.peaks = []
+        self.ranges = None
 
     def __str__(self):
         return 'FID: %s (%i data)'%(self.id, len(self.data))
@@ -197,6 +198,34 @@ class Fid(Base):
         if not all(isinstance(i, numbers.Number) for i in peaks):
             raise AttributeError('peaks must be numbers')
         self._peaks = numpy.array(peaks)
+
+    @property
+    def ranges(self):
+        return self._ranges
+    
+    @ranges.setter    
+    def ranges(self, ranges):
+        if ranges == None:
+            self._ranges = None
+            return
+        if not Fid._is_iter_of_iters(ranges) or ranges is None:
+            raise AttributeError('ranges must be an iterable of iterables or None')
+        ranges = numpy.array(ranges)
+        if ranges.shape[1] != 2:
+            raise AttributeError('ranges must be an iterable of 2-length iterables or an empty iterables e.g. [[]]')
+        for r in ranges:
+            if not all(isinstance(i, numbers.Number) for i in r):
+                raise AttributeError('ranges must be numbers')
+        self._ranges = ranges
+
+    @property
+    def _grouped_peaklist(self):
+            if self.ranges is not None:
+                return [[peak for peak in self.peaks if peak > peak_range[0] and peak < peak_range[1]]
+                        for peak_range in self.ranges]
+            else:
+                return []
+
 
     @classmethod
     def _is_valid_dataset(cls, data):
@@ -439,7 +468,7 @@ class Fid(Base):
                 fits = None
                 cov = None
             return fits, cov
-                
+     
                 
 
 class FidArray(Base):
