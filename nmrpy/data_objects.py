@@ -172,6 +172,7 @@ class Fid(Base):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.data = kwargs.get('data', [])
+        self.peaks = []
 
     def __str__(self):
         return 'FID: %s (%i data)'%(self.id, len(self.data))
@@ -185,6 +186,17 @@ class Fid(Base):
         if Fid._is_valid_dataset(data):
             self.__data = numpy.array(data)
 
+    @property
+    def peaks(self):
+        return self._peaks
+    
+    @peaks.setter    
+    def peaks(self, peaks):
+        if not Fid._is_flat_iter(peaks):
+            raise AttributeError('peaks must be a flat iterable')
+        if not all(isinstance(i, numbers.Number) for i in peaks):
+            raise AttributeError('peaks must be number')
+        self._peaks = numpy.array(peaks)
 
     @classmethod
     def _is_valid_dataset(cls, data):
@@ -194,14 +206,7 @@ class Fid(Base):
             raise AttributeError('Data must be an iterable.')
         if not cls._is_flat_iter(data):
             raise AttributeError('Data must not be nested.')
-        if not all(isinstance(i, (int, 
-                                float, 
-                                complex, 
-                                numpy.complex,
-                                numpy.complex64,
-                                numpy.complex128,
-                                numpy.complex256,
-                                )) for i in data):
+        if not all(isinstance(i, numbers.Number) for i in data):
             raise AttributeError('Data must consist of numbers only.')
         return True 
         
@@ -234,7 +239,7 @@ class Fid(Base):
             if not all(isinstance(i, numbers.Number) for i in parameters):
                 raise ValueError('Keyword parameters must be numbers.') 
             if not Fid._is_iter(x):
-                raise ValueError('x must be an interable') 
+                raise ValueError('x must be an iterable') 
             if not isinstance(x, numpy.ndarray):
                 x = numpy.array(x) 
             if frac_lor_gau > 1.0:
@@ -266,14 +271,14 @@ class Fid(Base):
             """
 
             if not Fid._is_iter(parameterset_list):
-                raise ValueError('Parameter set must be an interable') 
+                raise ValueError('Parameter set must be an iterable') 
             for p in parameterset_list:
                 if not Fid._is_iter(p):
-                    raise ValueError('Parameter set must be an interable') 
+                    raise ValueError('Parameter set must be an iterable') 
                 if not all(isinstance(i, numbers.Number) for i in p):
                     raise ValueError('Keyword parameters must be numbers.') 
             if not Fid._is_iter(x):
-                raise ValueError('x must be an interable') 
+                raise ValueError('x must be an iterable') 
             if not isinstance(x, numpy.ndarray):
                 x = numpy.array(x) 
 
@@ -312,13 +317,11 @@ class Fid(Base):
             """
 
             if not Fid._is_iter(p):
-                raise ValueError('Parameter list must be an interable') 
+                raise ValueError('Parameter list must be an iterable') 
             if not all(isinstance(i, numbers.Number) for i in p):
                 raise ValueError('Keyword parameters must be numbers.') 
-            if Fid._is_iter_of_iters(data):
-                raise ValueError('data must be flat.')
-            if not Fid._is_iter(data):
-                raise ValueError('data must be an interable') 
+            if not Fid._is_flat_iter(data):
+                raise ValueError('data must be a flat iterable.')
             if not isinstance(p, numpy.ndarray):
                 p = numpy.array(p) 
             if not isinstance(data, numpy.ndarray):
@@ -348,14 +351,10 @@ class Fid(Base):
     
     
             """
-            if not Fid._is_iter(data):
-                raise ValueError('data must be an interable') 
-            if not Fid._is_iter(peaks):
-                raise ValueError('peaks must be an interable') 
-            if Fid._is_iter_of_iters(data):
-                raise ValueError('data must be flat.')
-            if Fid._is_iter_of_iters(peaks):
-                raise ValueError('peaks must be flat.')
+            if not Fid._is_flat_iter(data):
+                raise ValueError('data must be a flat iterable') 
+            if not Fid._is_flat_iter(peaks):
+                raise ValueError('peaks must be a flat iterable') 
             if not isinstance(data, numpy.ndarray):
                 data = numpy.array(data) 
 
@@ -380,12 +379,10 @@ class Fid(Base):
     
             """
 
-            if not Fid._is_iter(data):
-                raise ValueError('data must be an interable') 
+            if not Fid._is_flat_iter(data):
+                raise ValueError('data must be a flat iterable') 
             if not Fid._is_iter(parameterset_list):
-                raise ValueError('parameterset_list must be an interable') 
-            if Fid._is_iter_of_iters(data):
-                raise ValueError('data must be flat.')
+                raise ValueError('parameterset_list must be an iterable') 
             if not isinstance(data, numpy.ndarray):
                 data = numpy.array(data) 
 
@@ -399,7 +396,7 @@ class Fid(Base):
             return max_data_convolution - max_auto_convolution
 
     def _f_fitp(self, data_index, peaks, frac_lor_gau):
-            """Fit a section of spectral data with a combination of Gaussian/Lorentzian peak for deconvolution.
+            """Fit a section of spectral data with a combination of Gaussian/Lorentzian peaks for deconvolution.
     
             Keyword arguments:
             data_index -- list of two index values to specify data to be fitted, 1D array
@@ -414,7 +411,7 @@ class Fid(Base):
             [1] Marquardt, Donald W. 'An algorithm for least-squares estimation of nonlinear parameters.' Journal of the Society for Industrial & Applied Mathematics 11.2 (1963): 431-441.
             """
             if not Fid._is_iter(data_index):
-                raise ValueError('data_index must be an interable') 
+                raise ValueError('data_index must be an iterable') 
             if not len(data_index) == 2:
                 raise ValueError('data_index must contain two values.')
             if data_index[0] == data_index[1]:
@@ -422,12 +419,10 @@ class Fid(Base):
             data_index = sorted(data_index)
             data = self.data[data_index[0]:data_index[1]]
             data = numpy.real(data)
-            if not Fid._is_iter(data):
-                raise ValueError('data must be an interable') 
-            if not Fid._is_iter(peaks):
-                raise ValueError('peaks must be an interable') 
-            if Fid._is_iter_of_iters(data):
-                raise ValueError('data must be flat.')
+            if not Fid._is_flat_iter(data):
+                raise ValueError('data must be a flat iterable') 
+            if not Fid._is_flat_iter(peaks):
+                raise ValueError('peaks must be a flat iterable') 
             if not isinstance(data, numpy.ndarray):
                 data = numpy.array(data) 
 
