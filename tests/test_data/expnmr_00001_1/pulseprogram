@@ -1,0 +1,58 @@
+# 1 "/pisa/exp/stan/nmr/lists/pp/zg"
+;zg
+;avance-version
+;1D sequence
+
+
+
+# 1 "/pisa/exp/stan/nmr/lists/pp//Avance.incl"
+;Avance.incl
+;
+;version  99/08/02
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# 7 "/pisa/exp/stan/nmr/lists/pp/zg"
+
+
+1 ze
+2 d1
+  p1 ph1
+  go=2 ph31
+  wr #0
+exit
+
+ph1=0 2 2 0 1 3 3 1
+ph31=0 2 2 0 1 3 3 1
+
+
+
+;pl1 : f1 channel - power level for pulse (default)
+;p1 : f1 channel -  high power pulse
+;d1 : relaxation delay; 1-5 * T1

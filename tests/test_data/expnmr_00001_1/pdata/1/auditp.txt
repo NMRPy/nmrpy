@@ -1,0 +1,14 @@
+##TITLE= Audit trail, XWIN-NMR		Version 3.5
+##JCAMPDX= 5.01
+##ORIGIN= Bruker BioSpin GmbH
+##OWNER= qiucui
+$$ C:/Bruker/XWIN-NMR/data/cui/nmr/expnmr_00001/1/pdata/1/auditp.txt
+##AUDIT TRAIL=  $$ (NUMBER, WHEN, WHO, WHERE, WHAT)
+(   1,<2007-04-09 14:18:13.96 -500>,<qiucui>,<CUI>,
+      <efp LB = 0.5 FT_mod = 6 PKNL = 1 PHC0 = 29.43856 PHC1 = -13.1336 SI = 32K 
+       data hash MD5: 32K
+       99 40 D7 E6 3A 91 21 B1 C7 79 44 D4 15 88 4C 8D>)
+##END=
+
+$$ hash MD5
+$$ C4 38 1B FD CB B9 2B 2E F6 FA 9D E1 C9 B3 D4 D9

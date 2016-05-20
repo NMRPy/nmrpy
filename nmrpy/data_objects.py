@@ -220,6 +220,8 @@ class FidArray(Base):
     methods '.from_path' and '.from_data' will instantiate a new FidArray object
     from a Varian/Bruker .fid path or an iterable of data respectively.
     '''
+    def __str__(self):
+        return 'FidArray of {} FID(s)'.format(len(self.data))
 
     def get_fid(self, id):
         try:
