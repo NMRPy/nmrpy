@@ -91,6 +91,34 @@ class TestFidInitialisation(unittest.TestCase):
         else:
             return False
 
+    def test_f_pk(self):
+        fid = Fid()
+        fid._f_pk([i for i in range(100)])
+        fid._f_pk(numpy.arange(100))
+
+    def test_f_pk_failed(self):
+        fid = Fid()
+        with self.assertRaises(ValueError):
+            fid._f_pk(numpy.arange(100), offset='g')
+        with self.assertRaises(ValueError):
+            fid._f_pk(5)
+         
+    def test_f_pks(self):
+        fid = Fid()
+        x = numpy.arange(100)
+        p1 = [10.0, 1.0, 1.0, 1.0, 1.0, 0.5]
+        p2 = [20.0, 1.0, 1.0, 1.0, 1.0, 0.5]
+        fid._f_pks([p1, p2], x)
+
+    def test_f_pks_failed(self):
+        fid = Fid()
+        x = numpy.arange(100)
+        p1 = ['j', 1.0, 1.0, 1.0, 1.0, 0.5]
+        p2 = [20.0, 1.0, 1.0, 1.0, 1.0, 0.5]
+        with self.assertRaises(ValueError):
+            fid._f_pks([p1, p2], x)
+        with self.assertRaises(ValueError):
+            fid._f_pks([p2, p2], 4)
 
 class TestFidArrayInitialisation(unittest.TestCase):
     
@@ -181,6 +209,10 @@ class TestFidArrayInitialisation(unittest.TestCase):
 
     def test_from_path_array(self):
         path = './tests/test_data/test1.fid'
+        fid_array = FidArray.from_path(fid_path=path)
+        self.assertIsInstance(fid_array._procpar, dict)
+        self.assertIsInstance(fid_array._params, dict)
+        path = './tests/test_data/expnmr_00001_1'
         fid_array = FidArray.from_path(fid_path=path)
         self.assertIsInstance(fid_array._procpar, dict)
         self.assertIsInstance(fid_array._params, dict)

@@ -3,6 +3,7 @@ import scipy as sp
 import pylab as pl
 import lmfit
 import nmrglue
+import numbers
 
 class Base():
     """
@@ -211,6 +212,74 @@ class Fid(Base):
        new_instance.data = data
        return new_instance  
         
+    @staticmethod
+    def _f_pk(x, offset=0.0, gauss_sigma=1.0, gauss_amp=1.0, lorentz_hwhm=1.0, lorentz_amp=1.0, frac_lor_gau=0.0):
+            """
+            Return the evaluation of a combined Gaussian/3-parameter Lorentzian function for deconvolution.
+            
+            x -- array of equal length to FID
+
+            Keyword arguments:
+            offset -- spectral offset in x
+            gauss sigma -- 2*sigma**2
+            gauss amplitude -- amplitude of gaussian peak
+            lorentz_hwhm -- lorentzian half width at half maximum height
+            lorentz_amplitude -- amplitude of lorentzian peak
+            fraction of function to be Gaussian (0 -> 1)
+            Note: specifying a Gaussian fraction of 0 will produce a pure Lorentzian and vice versa.
+            """
+
+            #validation
+            parameters = [offset, gauss_sigma, gauss_amp, lorentz_hwhm, lorentz_amp, frac_lor_gau]
+            if not all(isinstance(i, numbers.Number) for i in parameters):
+                raise ValueError('Keyword parameters must be numbers.') 
+            if not Fid._is_iter(x):
+                raise ValueError('x must be an interable') 
+            if type(x) is not numpy.ndarray:
+                x = numpy.array(x) 
+            
+            f_gauss = lambda offset, gauss_amp, gauss_sigma, x: gauss_amp*numpy.exp(-(offset-x)**2/gauss_sigma)
+            f_lorentz = lambda offset, lorentz_amp, lorentz_hwhm, x: lorentz_amp*lorentz_hwhm**2/(lorentz_hwhm**2+4*(offset-x)**2)
+
+            gauss_peak = f_gauss(offset, gauss_amp, gauss_sigma, x)
+            lorentz_peak = f_lorentz(offset, lorentz_amp, lorentz_hwhm, x)
+            peak = frac_lor_gau*gauss_peak + (1-frac_lor_gau)*lorentz_peak
+
+            return peak
+    
+    def _f_pks(self, parameterset_list, x):
+            """Return the sum of a series of peak evaluations for deconvolution. See _f_pk().
+    
+            Keyword arguments:
+            parameterset_list -- a list of parameter lists: [spectral offset (x), 
+                                            gauss: 2*sigma**2, 
+                                            gauss: amplitude, 
+                                            lorentz: scale (HWHM), 
+                                            lorentz: amplitude, 
+                                            fraction of function to be Gaussian (0 -> 1)]
+            x -- array of equal length to FID
+            """
+
+            for p in parameterset_list:
+                if not all(isinstance(i, numbers.Number) for i in p):
+                    raise ValueError('Keyword parameters must be numbers.') 
+            if not Fid._is_iter(x):
+                raise ValueError('x must be an interable') 
+            if type(x) is not numpy.ndarray:
+                x = numpy.array(x) 
+
+
+            peaks = x*0.0
+            for p in parameterset_list:
+                peak = self._f_pk(x, offset=p[0], 
+                        gauss_sigma=p[1], 
+                        gauss_amp=p[2], 
+                        lorentz_hwhm=p[3], 
+                        lorentz_amp=p[4], 
+                        frac_lor_gau=p[5],
+                        )
+                peaks += peak
+            return peaks
 
 
 class FidArray(Base):
@@ -344,19 +413,20 @@ class Importer(Base):
         try:
             print('Attempting Bruker')
             procpar, data = nmrglue.bruker.read(self.fid_path)
+            self.data = data
+            self._procpar = procpar['acqus']
+            return
         except (FileNotFoundError, OSError):
             print('fid_path does not specify a valid .fid directory.')
             return 
-        try:
-            self.data = data
-            self._procpar = procpar['acqus']
         except AttributeError:
             print('probably not Bruker data')
-        print('Attempting Varian')
-        procpar, data = nmrglue.varian.read(self.fid_path)
-        try:
+        try: 
+            print('Attempting Varian')
+            procpar, data = nmrglue.varian.read(self.fid_path)
             self._procpar = procpar
             self.data = data 
+            return
         except AttributeError:
             print('probably not Varian data')
 
