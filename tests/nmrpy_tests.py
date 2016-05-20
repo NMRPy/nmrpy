@@ -93,6 +93,23 @@ class TestFidInitialisation(unittest.TestCase):
             with self.assertRaises(AttributeError):
                Fid.from_data(test_data)
 
+    def test_ps(self):
+        path = './tests/test_data/test1.fid'
+        fid_array = FidArray.from_path(fid_path=path, file_format='varian')
+        fid = fid_array.fid00
+        fid.ps(p0=20, p1=20)
+
+    def test_ps_failed(self):
+        path = './tests/test_data/test1.fid'
+        fid_array = FidArray.from_path(fid_path=path, file_format='varian')
+        fid = fid_array.fid00
+        with self.assertRaises(AttributeError):
+            fid.ps(p0='string', p1=20)
+        with self.assertRaises(AttributeError):
+            fid.ps(p0=34.0, p1='string')
+        with self.assertRaises(AttributeError):
+            fid.ps(p0=34.0, p1=4j)
+
     def test__is_iter_of_iters(self):
         Fid._is_iter_of_iters([[]])
 
