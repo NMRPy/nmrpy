@@ -54,6 +54,17 @@ class TestFidInitialisation(unittest.TestCase):
         with self.assertRaises(AttributeError):
             fid._procpar = 'string'
 
+    def test_fid__file_format_setter(self):
+        fid = Fid()
+        for i in ['varian', 'bruker', None]:
+            fid._file_format = i
+
+    def test_failed_fid__file_format_setter(self):
+        fid = Fid()
+        for i in ['string', 1]:
+            with self.assertRaises(AttributeError):
+                fid._file_format = i
+
     def test_fid_peaks_setter(self):
         fid = Fid()
         fid.peaks = numpy.array([1, 2])
@@ -98,7 +109,7 @@ class TestFidInitialisation(unittest.TestCase):
     def test_real(self):
         fid = Fid.from_data(numpy.arange(10, dtype='complex'))
         fid.real()
-        self.assertFalse(any(numpy.iscomplex(fid.data)))
+        self.assertFalse(fid.data.dtype in fid._complex_dtypes)
 
     def test_fid_from_data(self):
         for data in self.fid_good_data:
@@ -110,23 +121,6 @@ class TestFidInitialisation(unittest.TestCase):
         for test_data in self.fid_bad_data:
             with self.assertRaises(AttributeError):
                Fid.from_data(test_data)
-
-    def test_ps(self):
-        path = './tests/test_data/test1.fid'
-        fid_array = FidArray.from_path(fid_path=path, file_format='varian')
-        fid = fid_array.fid00
-        fid.ps(p0=20, p1=20)
-
-    def test_ps_failed(self):
-        path = './tests/test_data/test1.fid'
-        fid_array = FidArray.from_path(fid_path=path, file_format='varian')
-        fid = fid_array.fid00
-        with self.assertRaises(AttributeError):
-            fid.ps(p0='string', p1=20)
-        with self.assertRaises(AttributeError):
-            fid.ps(p0=34.0, p1='string')
-        with self.assertRaises(AttributeError):
-            fid.ps(p0=34.0, p1=4j)
 
     def test__is_iter_of_iters(self):
         Fid._is_iter_of_iters([[]])
@@ -280,6 +274,9 @@ class TestFidInitialisation(unittest.TestCase):
             fid._f_fitp([1, 1], peaks, 0.5)
         with self.assertRaises(ValueError):
             fid._f_fitp([1], peaks, 0.5)
+
+
+
 
 class TestFidArrayInitialisation(unittest.TestCase):
     
@@ -477,6 +474,64 @@ class TestFidArrayInitialisation(unittest.TestCase):
             return True
         else:
             return False
+
+
+class TestFidUtils(unittest.TestCase):
+
+    def setUp(self):
+        path_varian = './tests/test_data/test1.fid'
+        self.fid_array_varian = FidArray.from_path(fid_path=path_varian, file_format='varian')
+        path_bruker = './tests/test_data/bruker1'
+        self.fid_array_bruker = FidArray.from_path(fid_path=path_bruker, file_format='bruker')
+    
+    def test_ps(self):
+        fid = self.fid_array_varian.get_fids()[0]
+        fid.ps(p0=20, p1=20)
+        fid = self.fid_array_bruker.get_fids()[0]
+        fid.ps(p0=20, p1=20)
+
+    def test_ps_failed(self):
+        for fid in [self.fid_array_varian.get_fids()[0], self.fid_array_bruker.get_fids()[0]]:
+            with self.assertRaises(AttributeError):
+                fid.ps(p0='string', p1=20)
+            with self.assertRaises(AttributeError):
+                fid.ps(p0=34.0, p1='string')
+            with self.assertRaises(AttributeError):
+                fid.ps(p0=34.0, p1=4j)
+
+    def test_conv_to_ppm_index(self):
+        fid = Fid()
+        fid.data = numpy.arange(100)
+        index = 50
+        sw_left = 10
+        sw = 50
+        ppm = fid._conv_to_ppm(fid.data, index, sw_left, sw)
+        new_index = fid._conv_to_index(fid.data, ppm, sw_left, sw)
+        self.assertEqual(ppm, -15.0)
+        self.assertEqual(index, new_index)
+        self.assertIsInstance(new_index, int)
+        ppm = fid._conv_to_ppm(fid.data, 2*[index], sw_left, sw)
+        new_index = fid._conv_to_index(fid.data, ppm, sw_left, sw)
+        self.assertIsInstance(new_index, numpy.ndarray)
+        self.assertTrue(all(isinstance(i, numpy.int64) for i in new_index))
+        
+    def test_ft(self):
+        fid = self.fid_array_varian.get_fids()[0]
+        data = numpy.array(numpy.fft.fft(fid.data), dtype=fid.data.dtype)
+        s = data.shape[-1]
+        data = numpy.append(data[int(s / 2.0):], data[: int(s / 2.0)])
+        fid.ft()
+        self.assertTrue(numpy.allclose(data, fid.data))
+        self.assertIsInstance(fid.data, numpy.ndarray)
+
+        fid = self.fid_array_bruker.get_fids()[0]
+        data = numpy.array(numpy.fft.fft(fid.data), dtype=fid.data.dtype)
+        s = data.shape[-1]
+        data = numpy.append(data[int(s / 2.0):: -1], data[s: int(s / 2.0): -1])
+        fid.ft()
+        self.assertTrue(numpy.allclose(data, fid.data))
+        self.assertIsInstance(fid.data, numpy.ndarray)
+ 
 
 if __name__ == '__main__':
     unittest.main()

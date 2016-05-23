@@ -15,6 +15,7 @@ class Base():
         self._procpar = kwargs.get('procpar', None)
         self._params = None
         self.fid_path = kwargs.get('fid_path', '.')
+        self._file_format = None
         self._complex_dtypes = [
                         numpy.dtype('complex64'),
                         numpy.dtype('complex128'),
@@ -42,6 +43,17 @@ class Base():
             self.__fid_path = fid_path
         else:
             raise AttributeError('fid_path must be a string.')
+
+    @property
+    def _file_format(self):
+        return self.__file_format
+
+    @_file_format.setter
+    def _file_format(self, file_format):
+        if file_format in ['varian', 'bruker', None]: 
+            self.__file_format = file_format
+        else:
+            raise AttributeError('_file_format must be "varian", "bruker", or None.')
 
     @classmethod
     def _is_iter(cls, i):
@@ -179,6 +191,10 @@ class Fid(Base):
         self.data = kwargs.get('data', [])
         self.peaks = []
         self.ranges = None
+        self._flags = {
+            "ft": False,
+        }
+
 
     def __str__(self):
         return 'FID: %s (%i data)'%(self.id, len(self.data))
@@ -256,6 +272,25 @@ class Fid(Base):
             self.data = numpy.real(self.data)
 
     # GENERAL FUNCTIONS
+    def ft(self):
+            """Fourier Transform the FID array.
+
+            Note: calculates the Discrete Fourier Transform using the Fast Fourier Transform algorithm as implemented in NumPy [1].
+
+            [1] Cooley, James W., and John W. Tukey, 1965, 'An algorithm for the machine calculation of complex Fourier series,' Math. Comput. 19: 297-301.
+
+            """
+            if self._flags['ft']:
+                    return
+            self._flags['ft'] = True
+            data = numpy.array(numpy.fft.fft(self.data), dtype=self.data.dtype)
+            s = data.shape[-1]
+            if self._file_format == 'varian' or self._file_format == None:
+                    self.data = numpy.append(data[int(s / 2.0):], data[: int(s / 2.0)])
+            if self._file_format == 'bruker':
+                    self.data = numpy.append(data[int(s / 2.0):: -1], data[s: int(s / 2.0): -1])
+
+
     def ps(self, p0=0.0, p1=0.0, inv=False):
             """
             Linear Phase Correction
@@ -274,27 +309,32 @@ class Fid(Base):
             p0 = p0*numpy.pi/180.0
             p1 = p1*numpy.pi/180.0
             size = len(self.data)
-            #if len(data.shape) == 2:
-            #        size = float(len(data[0]))
-            #if len(data.shape) == 1:
-            #        size = float(len(data))
             ph = numpy.exp(1.0j*(p0+(p1*numpy.arange(size)/size)))
             return ph*self.data
 
-    #@staticmethod
-    #def conv_to_ppm(data, index, sw_left, sw):
-    #        if isinstance(index, list):
-    #                index = numpy.array(index)
-    #        frc_sw = index/float(len(data))
-    #        return list(sw_left-sw+frc_sw*sw)
+    @staticmethod
+    def _conv_to_ppm(data, index, sw_left, sw):
+            if isinstance(index, list):
+                    index = numpy.array(index)
+            frc_sw = index/float(len(data))
+            return sw_left-sw+frc_sw*sw
 
-    #@staticmethod
-    #def conv_to_index(data, ppm, sw_left, sw):
-    #        if isinstance(ppm, list):
-    #                ppm = numpy.array(ppm)
-    #        frc_sw = (ppm+(sw-sw_left))/sw
-    #        return list(numpy.array(frc_sw*len(data), int))
-
+    @staticmethod
+    def _conv_to_index(data, ppm, sw_left, sw):
+            conv_to_int = False
+            if not Fid._is_iter(ppm):
+                ppm = [ppm]
+                conv_to_int = True
+            if isinstance(ppm, list):
+                    ppm = numpy.array(ppm)
+            if any(ppm > sw_left) or any(ppm < sw_left-sw):
+                raise AttributeError('ppm must be in spectral width.')
+            frc_sw = (ppm+(sw-sw_left))/sw
+            if conv_to_int:
+                return int(numpy.ceil(frc_sw*len(data)))
+            return numpy.array(numpy.ceil(frc_sw*len(data)), dtype=int)
+    
+    #move this to FidArray
     #def _phase_all_data_using_phases(self):
     #        self.data = numpy.array(
     #            [self.ps
@@ -640,8 +680,6 @@ class Fid(Base):
                 fits = None
                 cov = None
             return fits, cov
-     
-                
 
 class FidArray(Base):
     '''
@@ -724,9 +762,11 @@ class FidArray(Base):
         
         if cls._is_iter(importer.data):
             fid_array = cls.from_data(importer.data)
+            fid_array._file_format = importer._file_format
             fid_array.fid_path = fid_path
             fid_array._procpar = importer._procpar
             for fid in fid_array.get_fids():
+                fid._file_format = fid_array._file_format
                 fid._procpar = fid_array._procpar
                 fid.fid_path = fid_array.fid_path
             return fid_array 
@@ -770,6 +810,7 @@ class Importer(Base):
             procpar, data = nmrglue.bruker.read(self.fid_path)
             self.data = data
             self._procpar = procpar['acqus']
+            self._file_format = 'bruker'
             return
         except (FileNotFoundError, OSError):
             print('fid_path does not specify a valid .fid directory.')
@@ -781,6 +822,7 @@ class Importer(Base):
             procpar, data = nmrglue.varian.read(self.fid_path)
             self._procpar = procpar
             self.data = data 
+            self._file_format = 'varian'
             return
         except AttributeError:
             print('probably not Varian data')
@@ -792,6 +834,7 @@ class VarianImporter(Importer):
             procpar, data = nmrglue.varian.read(self.fid_path)
             self.data = data 
             self._procpar = procpar
+            self._file_format = 'varian'
         except FileNotFoundError:
             print('fid_path does not specify a valid .fid directory.')
         except OSError:
@@ -804,6 +847,7 @@ class BrukerImporter(Importer):
             procpar, data = nmrglue.bruker.read(self.fid_path)
             self.data = data 
             self._procpar = procpar['acqus']
+            self._file_format = 'bruker'
         except FileNotFoundError:
             print('fid_path does not specify a valid .fid directory.')
         except OSError:
