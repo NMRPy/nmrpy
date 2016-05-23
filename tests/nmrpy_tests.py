@@ -69,7 +69,7 @@ class TestFidInitialisation(unittest.TestCase):
         with self.assertRaises(AttributeError):
             fid.peaks = [[1,2], [3,4]]
     
-    def test_failed_fid_ranges_setter(self):
+    def test_fid_ranges_setter(self):
         fid = Fid()
         fid.peaks = [50, 60, 150, 160, 300]
         fid.ranges = [[1, 100], [100, 200]]
@@ -81,6 +81,24 @@ class TestFidInitialisation(unittest.TestCase):
             fid.ranges = [1, 1]
         with self.assertRaises(AttributeError):
             fid.ranges = ['string', 1]
+        with self.assertRaises(AttributeError):
+            fid.ranges = [1, 1, 1]
+
+    def test_fid_data_setter(self):
+        fid = Fid()
+        for data in self.fid_good_data:
+            fid.data = data
+            self.assertIsInstance(fid.data, numpy.ndarray)
+
+    def test_failed_fid_data_setter(self):
+        for test_data in self.fid_bad_data:
+            with self.assertRaises(AttributeError):
+               Fid.from_data(test_data)
+
+    def test_real(self):
+        fid = Fid.from_data(numpy.arange(10, dtype='complex'))
+        fid.real()
+        self.assertFalse(any(numpy.iscomplex(fid.data)))
 
     def test_fid_from_data(self):
         for data in self.fid_good_data:
@@ -262,7 +280,6 @@ class TestFidInitialisation(unittest.TestCase):
             fid._f_fitp([1, 1], peaks, 0.5)
         with self.assertRaises(ValueError):
             fid._f_fitp([1], peaks, 0.5)
-
 
 class TestFidArrayInitialisation(unittest.TestCase):
     
