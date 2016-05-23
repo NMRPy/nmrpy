@@ -291,7 +291,7 @@ class Fid(Base):
                     self.data = numpy.append(data[int(s / 2.0):: -1], data[s: int(s / 2.0): -1])
 
 
-    def ps(self, p0=0.0, p1=0.0, inv=False):
+    def ps(self, p0=0.0, p1=0.0):
             """
             Linear Phase Correction
 
@@ -388,21 +388,28 @@ class Fid(Base):
     #        if discard_imaginary:
     #                self.real()
 
-    #def _phase_area_single(self, n):
-    #        def err_ps(pars, data):
-    #                err = self.ps(data, pars[0], pars[1], inv=False).real
-    #                return numpy.array([abs(err).sum()]*2)
+    def _phased_data_sum(self, pars):
+            err = self.ps(p0=pars['p0'].value, p1=pars['p1'].value).real
+            return numpy.array([abs(err).sum()]*2)
 
-    #        phase = leastsq(
-    #            err_ps, [
-    #                1.0, 0.0], args=(
-    #                self.data[n]), maxfev=10000)[0]
-    #        self.data[n] = self.ps(self.data[n], phase[0], phase[1])
-    #        for i in range(len(self.data)):
-    #                if abs(self.data[i].min()) > abs(self.data[i].max()):
-    #                        self.data[i] *= -1
-    #        print '%i\t%d\t%d' % (n, phase[0], phase[1])
-    #        return self.data[n]
+    def phase_correct(self, method='leastsq'):
+            """
+            Phase-correct a single fid by minimising total area.
+            """
+            if self.data.dtype not in self._complex_dtypes:
+                raise AttributeError('Only complex data can be phase-corrected.')
+            if not self._flags['ft']:
+                raise AttributeError('Only Fourier-transformed data can be phase-corrected.')
+            p = lmfit.Parameters()
+            p.add_many(
+                    ('p0', 1.0, True),
+                    ('p1', 0.0, True),
+                    )
+            mz = lmfit.minimize(self._phased_data_sum, p, method=method)
+            self.data = self.ps(p0=mz.params['p0'].value, p1=mz.params['p1'].value)
+            if abs(self.data.min()) > abs(self.data.max()):
+                    self.data *= -1
+            print('%s\t%d\t%d'%(self.id, mz.params['p0'].value, mz.params['p1'].value))
 
     #def _phase_neg_single(self, n):
     #        def err_ps(pars, data):
@@ -779,11 +786,6 @@ class Importer(Base):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.data = None
-        self._data_dtypes = [
-                        numpy.dtype('complex64'),
-                        numpy.dtype('complex128'),
-                        numpy.dtype('complex256'),
-                        ]
 
     @property
     def data(self):
@@ -793,7 +795,7 @@ class Importer(Base):
     def data(self, data):
         if data is None:
             self.__data = data
-        elif data.dtype in self._data_dtypes:
+        elif data.dtype in self._complex_dtypes:
             if Importer._is_iter_of_iters(data):
                 self.__data = data
             elif Importer._is_iter(data):

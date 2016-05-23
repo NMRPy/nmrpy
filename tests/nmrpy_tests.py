@@ -84,7 +84,7 @@ class TestFidInitialisation(unittest.TestCase):
         fid = Fid()
         fid.peaks = [50, 60, 150, 160, 300]
         fid.ranges = [[1, 100], [100, 200]]
-        self.assertEquals(fid._grouped_peaklist, [[50, 60],[150, 160]])
+        self.assertEqual(fid._grouped_peaklist, [[50, 60],[150, 160]])
 
     def test_failed_fid_ranges_setter(self):
         fid = Fid()
@@ -532,6 +532,15 @@ class TestFidUtils(unittest.TestCase):
         self.assertTrue(numpy.allclose(data, fid.data))
         self.assertIsInstance(fid.data, numpy.ndarray)
  
+    def test_phase_correct(self):
+        fid = self.fid_array_varian.get_fids()[0]
+        fid.ft()
+        fid.phase_correct()
+
+        fid = self.fid_array_bruker.get_fids()[0]
+        fid.ft()
+        fid.phase_correct()
+        
 
 if __name__ == '__main__':
     unittest.main()
