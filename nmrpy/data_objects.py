@@ -841,6 +841,13 @@ class FidArray(Base):
             for fid in self.get_fids():
                 fid.phase_correct(method=method)
 
+    def ps_fids(self, p0=0.0, p1=0.0):
+        """
+        Apply phase-correction to all FIDs.
+        """
+        for fid in self.get_fids():
+            fid.ps(p0=p0, p1=p1)  
+
     @staticmethod
     def _generic_mp(fcn, iterable, cpus):
         proc_pool = Pool(cpus)

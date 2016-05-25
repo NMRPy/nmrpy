@@ -577,6 +577,10 @@ class TestFidArrayUtils(unittest.TestCase):
         with self.assertRaises(AttributeError):
             self.fid_array_varian.phase_correct_fids()
 
+    def test_ps_fids(self):
+        self.fid_array_varian.ft_fids()
+        self.fid_array_varian.ps_fids(p0=20, p1=20)
+
 
 if __name__ == '__main__':
     unittest.main()
