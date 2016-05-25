@@ -4,3 +4,4 @@
 .coverage
 htmlcov
 *.sh
+quicktest.py

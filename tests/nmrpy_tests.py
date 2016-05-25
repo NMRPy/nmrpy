@@ -251,30 +251,6 @@ class TestFidInitialisation(unittest.TestCase):
         with self.assertRaises(ValueError):
             fid._f_conv([p1, p2], numpy.array(2*[data]))
 
-    def test_f_fitp(self):
-        path = './tests/test_data/test1.fid'
-        fid_array = FidArray.from_path(fid_path=path, file_format='varian')
-        peaks = [100,200]
-        data_index = [0,2000]
-        fid = fid_array.get_fids()[0]
-        fid.peaks = peaks
-        fid._f_fitp(data_index, fid.peaks, 0.5)
-        fid.data = list(fid.data)
-        fid._f_fitp(data_index, peaks, 0.5)
-
-    def test_f_fitp_failed(self):
-        path = './tests/test_data/test1.fid'
-        fid_array = FidArray.from_path(fid_path=path, file_format='varian')
-        peaks = [100,200]
-        data_index = [0,2000]
-        fid = fid_array.get_fids()[0]
-        with self.assertRaises(ValueError):
-            fid._f_fitp(1, peaks, 0.5)
-        with self.assertRaises(ValueError):
-            fid._f_fitp([1, 1], peaks, 0.5)
-        with self.assertRaises(ValueError):
-            fid._f_fitp([1], peaks, 0.5)
-
 
 
 
@@ -546,6 +522,29 @@ class TestFidUtils(unittest.TestCase):
         fid.ft()
         fid.phase_correct()
         
+    def test_f_fitp(self):
+        self.fid_array_varian.ft_fids()
+        self.fid_array_varian.phase_correct_fids(mp=True, method='nelder')
+        fid = self.fid_array_varian.get_fids()[0]
+        fid.peaks = [-4.71, -4.64, -4.17]
+        data_index = [6000,7000]
+        fid._f_fitp(data_index, fid.peaks, 0.5)
+        fid.data = list(fid.data)
+        fid._f_fitp(data_index, fid.peaks, 0.5)
+
+    def test_f_fitp_failed(self):
+        self.fid_array_varian.ft_fids()
+        self.fid_array_varian.phase_correct_fids(mp=True, method='nelder')
+        fid = self.fid_array_varian.get_fids()[0]
+        fid.peaks = [-4.71, -4.64, -4.17]
+        data_index = [6000,7000]
+        with self.assertRaises(ValueError):
+            fid._f_fitp(1, fid.peaks, 0.5)
+        with self.assertRaises(ValueError):
+            fid._f_fitp([1, 1], fid.peaks, 0.5)
+        with self.assertRaises(ValueError):
+            fid._f_fitp([1], fid.peaks, 0.5)
+
 
 class TestFidArrayUtils(unittest.TestCase):
 
