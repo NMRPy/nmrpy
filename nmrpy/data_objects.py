@@ -5,22 +5,27 @@ import lmfit
 import nmrglue
 import numbers
 from scipy.optimize import leastsq
+from multiprocessing import Pool, cpu_count
+
 
 class Base():
     """
     The base class for several classes. This is a collection of useful properties/setters and parsing functions.
     """
+    _complex_dtypes = [
+                    numpy.dtype('complex64'),
+                    numpy.dtype('complex128'),
+                    numpy.dtype('complex256'),
+                    ]
+
+    _file_formats = ['varian', 'bruker', None]
+
     def __init__(self, *args, **kwargs):
         self.id = kwargs.get('id', None)
         self._procpar = kwargs.get('procpar', None)
         self._params = None
         self.fid_path = kwargs.get('fid_path', '.')
         self._file_format = None
-        self._complex_dtypes = [
-                        numpy.dtype('complex64'),
-                        numpy.dtype('complex128'),
-                        numpy.dtype('complex256'),
-                        ]
 
     @property
     def id(self):
@@ -50,7 +55,7 @@ class Base():
 
     @_file_format.setter
     def _file_format(self, file_format):
-        if file_format in ['varian', 'bruker', None]: 
+        if file_format in self._file_formats:
             self.__file_format = file_format
         else:
             raise AttributeError('_file_format must be "varian", "bruker", or None.')
@@ -273,44 +278,38 @@ class Fid(Base):
 
     # GENERAL FUNCTIONS
     def ft(self):
-            """Fourier Transform the FID array.
+        """Fourier Transform the FID array.
 
-            Note: calculates the Discrete Fourier Transform using the Fast Fourier Transform algorithm as implemented in NumPy [1].
+        Note: calculates the Discrete Fourier Transform using the Fast Fourier Transform algorithm as implemented in NumPy [1].
 
-            [1] Cooley, James W., and John W. Tukey, 1965, 'An algorithm for the machine calculation of complex Fourier series,' Math. Comput. 19: 297-301.
+        [1] Cooley, James W., and John W. Tukey, 1965, 'An algorithm for the machine calculation of complex Fourier series,' Math. Comput. 19: 297-301.
 
-            """
-            if self._flags['ft']:
-                    return
+        """
+        if self._flags['ft']:
+                raise AttributeError('Data have already been Fourier Transformed.')
+        if Fid._is_valid_dataset(self.data):
+            list_params = (self.data, self._file_format)
+            self.data = Fid._ft(list_params)
             self._flags['ft'] = True
-            data = numpy.array(numpy.fft.fft(self.data), dtype=self.data.dtype)
-            s = data.shape[-1]
-            if self._file_format == 'varian' or self._file_format == None:
-                    self.data = numpy.append(data[int(s / 2.0):], data[: int(s / 2.0)])
-            if self._file_format == 'bruker':
-                    self.data = numpy.append(data[int(s / 2.0):: -1], data[s: int(s / 2.0): -1])
 
+    @classmethod
+    def _ft(cls, list_params):
+        """
+        Class method for Fourier-transforming data using multiprocessing.
+        list_params is a tuple of (<data>, <file_format>).
+        """
+        if len(list_params) != 2:
+            raise AttributeError('Wrong number of parameters. list_params must contain [<data>, <file_format>]')
+        data, file_format = list_params
+        if Fid._is_valid_dataset(data) and file_format in Fid._file_formats:
+            data = numpy.array(numpy.fft.fft(data), dtype=data.dtype)
+            s = len(data)
+            if file_format == 'varian' or file_format == None:
+                    ft_data = numpy.append(data[int(s / 2.0):], data[: int(s / 2.0)])
+            if file_format == 'bruker':
+                    ft_data = numpy.append(data[int(s / 2.0):: -1], data[s: int(s / 2.0): -1])
+            return ft_data
 
-    def ps(self, p0=0.0, p1=0.0):
-            """
-            Linear Phase Correction
-
-            Parameters:
-
-            * p0    Zero order phase in degrees.
-            * p1    First order phase in degrees.
-
-            """
-            if not all(isinstance(i, (float, int)) for i in [p0, p1]):
-                raise AttributeError('p0 and p1 must be floats or ints.')
-            if not self.data.dtype in self._complex_dtypes:
-                raise AttributeError('self.data must be complex.')
-            # convert to radians
-            p0 = p0*numpy.pi/180.0
-            p1 = p1*numpy.pi/180.0
-            size = len(self.data)
-            ph = numpy.exp(1.0j*(p0+(p1*numpy.arange(size)/size)))
-            return ph*self.data
 
     @staticmethod
     def _conv_to_ppm(data, index, sw_left, sw):
@@ -341,6 +340,7 @@ class Fid(Base):
     #             (i[0], p0=i[1][0], p1=i[1][1])
     #             for i in zip(self.data, self.phases)])
 
+    #move this to FidArray
     #def phase_auto(
     #        self,
     #        method='area',
@@ -388,9 +388,6 @@ class Fid(Base):
     #        if discard_imaginary:
     #                self.real()
 
-    def _phased_data_sum(self, pars):
-            err = self.ps(p0=pars['p0'].value, p1=pars['p1'].value).real
-            return numpy.array([abs(err).sum()]*2)
 
     def phase_correct(self, method='leastsq'):
             """
@@ -400,54 +397,80 @@ class Fid(Base):
                 raise AttributeError('Only complex data can be phase-corrected.')
             if not self._flags['ft']:
                 raise AttributeError('Only Fourier-transformed data can be phase-corrected.')
+            print('phasing: %s'%self.id)
+            self.data = Fid._phase_correct((self.data, method))
+
+    @classmethod
+    def _phase_correct(cls, list_params):
+            """
+            Class method for phase-correction using multiprocessing.
+            list_params is a tuple of (<data>, <fitting method>).
+            """
+            data, method = list_params
             p = lmfit.Parameters()
             p.add_many(
                     ('p0', 1.0, True),
                     ('p1', 0.0, True),
                     )
-            mz = lmfit.minimize(self._phased_data_sum, p, method=method)
-            self.data = self.ps(p0=mz.params['p0'].value, p1=mz.params['p1'].value)
-            if abs(self.data.min()) > abs(self.data.max()):
-                    self.data *= -1
-            print('%s\t%d\t%d'%(self.id, mz.params['p0'].value, mz.params['p1'].value))
+            mz = lmfit.minimize(Fid._phased_data_sum, p, args=([data]), method=method)
+            phased_data = Fid._ps(data, p0=mz.params['p0'].value, p1=mz.params['p1'].value)
+            if abs(phased_data.min()) > abs(phased_data.max()):
+                    phased_data *= -1
+            print('%d\t%d'%(mz.params['p0'].value, mz.params['p1'].value))
+            return phased_data
+        
+    @classmethod
+    def _phased_data_sum(cls, pars, data):
+            err = Fid._ps(data, p0=pars['p0'].value, p1=pars['p1'].value).real
+            return numpy.array([abs(err).sum()]*2)
 
-    #def _phase_neg_single(self, n):
-    #        def err_ps(pars, data):
-    #                err = self.ps(data, pars[0], pars[1], inv=False).real
-    #                return numpy.array([err[err < self._thresh].sum()]*2)
+    @classmethod
+    def _ps(cls, data, p0=0.0, p1=0.0):
+            """
+            Linear Phase Correction
 
-    #        phase = leastsq(
-    #            err_ps, [
-    #                1.0, 0.0], args=(
-    #                self.data[n]), maxfev=10000)[0]
-    #        self.data[n] = self.ps(self.data[n], phase[0], phase[1])
-    #        for i in range(len(self.data)):
-    #                if abs(self.data[i].min()) > abs(self.data[i].max()):
-    #                        self.data[i] *= -1
-    #        print '%i\t%d\t%d' % (n, phase[0], phase[1])
-    #        return self.data[n]
+            Parameters:
 
-    #def _phase_neg_area_single(self, n):
-    #        def err_ps(pars, data):
-    #                err = self.ps(data, pars[0], pars[1], inv=False).real
-    #                err = numpy.array(
-    #                    2
-    #                    *
-    #                    [abs(err).sum() + abs(err[err < self._thresh]).sum()])
-    #                return err
-    #        phase = leastsq(
-    #            err_ps, [
-    #                1.0, 0.0], args=(
-    #                self.data[n]), maxfev=10000)[0]
-    #        self.data[n] = self.ps(self.data[n], phase[0], phase[1])
-    #        for i in range(len(self.data)):
-    #                if abs(self.data[i].min()) > abs(self.data[i].max()):
-    #                        self.data[i] *= -1
-    #        print '%i\t%d\t%d' % (n, phase[0], phase[1])
-    #        return self.data[n]
+            * p0    Zero order phase in degrees.
+            * p1    First order phase in degrees.
 
+            """
+            if not all(isinstance(i, (float, int)) for i in [p0, p1]):
+                raise AttributeError('p0 and p1 must be floats or ints.')
+            if not data.dtype in Fid._complex_dtypes:
+                raise AttributeError('data must be complex.')
+            # convert to radians
+            p0 = p0*numpy.pi/180.0
+            p1 = p1*numpy.pi/180.0
+            size = len(data)
+            ph = numpy.exp(1.0j*(p0+(p1*numpy.arange(size)/size)))
+            return ph*data
+
+    def ps(self, p0=0.0, p1=0.0):
+            """
+            Linear Phase Correction
+
+            Parameters:
+
+            * p0    Zero order phase in degrees.
+            * p1    First order phase in degrees.
+
+            """
+            if not all(isinstance(i, (float, int)) for i in [p0, p1]):
+                raise AttributeError('p0 and p1 must be floats or ints.')
+            if not self.data.dtype in self._complex_dtypes:
+                raise AttributeError('data must be complex.')
+            # convert to radians
+            p0 = p0*numpy.pi/180.0
+            p1 = p1*numpy.pi/180.0
+            size = len(self.data)
+            ph = numpy.exp(1.0j*(p0+(p1*numpy.arange(size)/size)))
+            self.data = ph*self.data
+
+
+    #move to FidArray
     """
-     that the following function has to use a top-level global function '_unwrap_fid' to parallelise as it is a class method
+     Note that the following function has to use a top-level global function '_unwrap_fid' to parallelise as it is a class method
     """ 
 
     #def _phase_area_mp(self, cores=None):
@@ -741,7 +764,6 @@ class FidArray(Base):
                 except AttributeError as e:
                     print(e)
 
-
     @classmethod
     def from_data(cls, data):
         if not cls._is_iter_of_iters(data):
@@ -780,8 +802,59 @@ class FidArray(Base):
         else:
             raise IOError('Data could not be imported.')
 
-class Importer(Base):
+    def ft_fids(self, mp=False, cpus=None):
+        """ 
+        Fourier-transform all FIDs.
 
+        Keyword arguments:
+        mp     -- parallelise over multiple processors, significantly reduces computation time
+        cpus  -- defines number of CPUs to utilise if 'mp' is set to True
+        """
+        if mp:
+            fids = self.get_fids()
+            list_params = [[fid.data, fid._file_format] for fid in fids]
+            ft_data = self._generic_mp(Fid._ft, list_params, cpus)
+            for fid, datum in zip(fids, ft_data):
+                fid.data = datum
+                fid._flags['ft'] = True
+        else: 
+            for fid in self.get_fids():
+                fid.ft()
+
+    def phase_correct_fids(self, method='leastsq', mp=False, cpus=None, discard_imaginary=False):
+        """ 
+        Apply phase-correction to all FIDs.
+
+        Keyword arguments:
+        method -- see Fid.phase_correct()
+        mp     -- parallelise the phasing process over multiple processors, significantly reduces computation time
+        cores  -- defines number of CPUs to utilise if 'mp' is set to True
+        discard_imaginary -- discards imaginary component of complex values after phasing
+        """
+        if mp: 
+            fids = self.get_fids()
+            list_params = [[fid.data, method] for fid in fids]
+            phased_data = self._generic_mp(Fid._phase_correct, list_params, cpus)
+            for fid, datum in zip(fids, phased_data):
+                fid.data = datum
+        else:
+            for fid in self.get_fids():
+                fid.phase_correct(method=method)
+
+    @staticmethod
+    def _generic_mp(fcn, iterable, cpus):
+        proc_pool = Pool(cpus)
+        result = proc_pool.map(fcn, iterable)
+        proc_pool.close()
+        proc_pool.join()
+        return result
+        
+    @staticmethod
+    def _generic_exec(fcn_obj_tuples):
+        getattr(fcn_obj_tuples[1], fcn_obj_tuples[0])()
+        return fcn_obj_tuples[1]
+
+class Importer(Base):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

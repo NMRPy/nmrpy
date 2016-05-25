@@ -532,6 +532,11 @@ class TestFidUtils(unittest.TestCase):
         self.assertTrue(numpy.allclose(data, fid.data))
         self.assertIsInstance(fid.data, numpy.ndarray)
  
+    def test_failed__ft(self):
+        fid = self.fid_array_varian.get_fids()[0]
+        with self.assertRaises(AttributeError):
+            Fid._ft([fid.data])
+
     def test_phase_correct(self):
         fid = self.fid_array_varian.get_fids()[0]
         fid.ft()
@@ -541,6 +546,37 @@ class TestFidUtils(unittest.TestCase):
         fid.ft()
         fid.phase_correct()
         
+
+class TestFidArrayUtils(unittest.TestCase):
+
+    def setUp(self):
+        path_varian = './tests/test_data/test1.fid'
+        self.fid_array_varian = FidArray.from_path(fid_path=path_varian, file_format='varian')
+        path_bruker = './tests/test_data/bruker1'
+        self.fid_array_bruker = FidArray.from_path(fid_path=path_bruker, file_format='bruker')
+
+    def test_ft_fids(self):
+        self.fid_array_varian.ft_fids()
+
+    def test_ft_fids_mp(self):
+        self.fid_array_varian.ft_fids(mp=True)
+
+    def test_phase_correct_fids(self):
+        self.fid_array_varian.ft_fids()
+        self.fid_array_varian.phase_correct_fids()
+
+    def test_phase_correct_fids_mp(self):
+        self.fid_array_varian.ft_fids()
+        self.fid_array_varian.phase_correct_fids(mp=True)
+
+    def test_phase_correct_fids_mp_nelder(self):
+        self.fid_array_varian.ft_fids()
+        self.fid_array_varian.phase_correct_fids(mp=True, method='nelder')
+
+    def test_failed_phase_correct_fids(self):
+        with self.assertRaises(AttributeError):
+            self.fid_array_varian.phase_correct_fids()
+
 
 if __name__ == '__main__':
     unittest.main()
