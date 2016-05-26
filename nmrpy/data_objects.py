@@ -643,14 +643,12 @@ class Fid(Base):
 
     @classmethod
     def _deconv_datum(cls, datum, peaks, ranges, frac_lor_gau=0.0):
-        #if not cls._is_iter(data_index):
-        #    raise ValueError('data_index must be an iterable') 
-        #if not len(data_index) == 2:
-        #    raise ValueError('data_index must contain two values.')
-        #if data_index[0] == data_index[1]:
-        #    raise ValueError('data_index must contain different values.')
-        #data_index = sorted(data_index)
-        #data = data[data_index[0]:data_index[1]]
+        if not cls._is_iter_of_iters(ranges):
+            raise ValueError('ranges must be an iterable of iterables') 
+        if not all(len(rng) == 2 for rng in ranges):
+            raise ValueError('ranges must contain two values.')
+        if not all(rng[0] != rng[1] for rng in ranges):
+            raise ValueError('data_index must contain different values.')
         fit = []
         for j in zip(peaks, ranges):
             d_slice = datum[j[1][0]:j[1][1]]
