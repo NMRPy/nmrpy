@@ -246,11 +246,14 @@ class Fid(Base):
 
     @property
     def _grouped_peaklist(self):
-            if self.ranges is not None:
-                return [[peak for peak in self.peaks if peak > peak_range[0] and peak < peak_range[1]]
-                        for peak_range in self.ranges]
-            else:
-                return []
+        """
+        self.peaks arranged according to self.ranges
+        """
+        if self.ranges is not None:
+            return [[peak for peak in self.peaks if peak > peak_range[0] and peak < peak_range[1]]
+                    for peak_range in self.ranges]
+        else:
+            return []
 
 
     @classmethod
@@ -395,249 +398,329 @@ class Fid(Base):
             return ph*data
 
     def ps(self, p0=0.0, p1=0.0):
-            """
-            Linear Phase Correction
+        """
+        Linear Phase Correction
+        
+        Parameters:
+        
+        * p0    Zero order phase in degrees.
+        * p1    First order phase in degrees.
+        
+        """
+        if not all(isinstance(i, (float, int)) for i in [p0, p1]):
+            raise AttributeError('p0 and p1 must be floats or ints.')
+        if not self.data.dtype in self._complex_dtypes:
+            raise AttributeError('data must be complex.')
+        # convert to radians
+        p0 = p0*numpy.pi/180.0
+        p1 = p1*numpy.pi/180.0
+        size = len(self.data)
+        ph = numpy.exp(1.0j*(p0+(p1*numpy.arange(size)/size)))
+        self.data = ph*self.data
 
-            Parameters:
 
-            * p0    Zero order phase in degrees.
-            * p1    First order phase in degrees.
-
-            """
-            if not all(isinstance(i, (float, int)) for i in [p0, p1]):
-                raise AttributeError('p0 and p1 must be floats or ints.')
-            if not self.data.dtype in self._complex_dtypes:
-                raise AttributeError('data must be complex.')
-            # convert to radians
-            p0 = p0*numpy.pi/180.0
-            p1 = p1*numpy.pi/180.0
-            size = len(self.data)
-            ph = numpy.exp(1.0j*(p0+(p1*numpy.arange(size)/size)))
-            self.data = ph*self.data
-
-
-    @staticmethod
-    def _f_pk(x, offset=0.0, gauss_sigma=1.0, gauss_amp=1.0, lorentz_hwhm=1.0, lorentz_amp=1.0, frac_lor_gau=0.0):
-            """
-            Return the evaluation of a combined Gaussian/3-parameter Lorentzian function for deconvolution.
-            
-            x -- array of equal length to FID
-
-            Keyword arguments:
-            offset -- spectral offset in x
-            gauss sigma -- 2*sigma**2
-            gauss amplitude -- amplitude of gaussian peak
-            lorentz_hwhm -- lorentzian half width at half maximum height
-            lorentz_amplitude -- amplitude of lorentzian peak
-            frac_lor_gau: fraction of function to be Gaussian (0 -> 1)
-            Note: specifying a Gaussian fraction of 0 will produce a pure Lorentzian and vice versa.
-            """
-
-            #validation
-            parameters = [offset, gauss_sigma, gauss_amp, lorentz_hwhm, lorentz_amp, frac_lor_gau]
-            if not all(isinstance(i, numbers.Number) for i in parameters):
-                raise ValueError('Keyword parameters must be numbers.') 
-            if not Fid._is_iter(x):
-                raise ValueError('x must be an iterable') 
-            if not isinstance(x, numpy.ndarray):
-                x = numpy.array(x) 
-            if frac_lor_gau > 1.0:
-                frac_lor_gau = 1.0
-            if frac_lor_gau < 0.0:
-                frac_lor_gau = 0.0
-            
-            f_gauss = lambda offset, gauss_amp, gauss_sigma, x: gauss_amp*numpy.exp(-(offset-x)**2/gauss_sigma)
-            f_lorentz = lambda offset, lorentz_amp, lorentz_hwhm, x: lorentz_amp*lorentz_hwhm**2/(lorentz_hwhm**2+4*(offset-x)**2)
-
-            gauss_peak = f_gauss(offset, gauss_amp, gauss_sigma, x)
-            lorentz_peak = f_lorentz(offset, lorentz_amp, lorentz_hwhm, x)
-            peak = frac_lor_gau*gauss_peak + (1-frac_lor_gau)*lorentz_peak
-
-            return peak
-    
-    def _f_pks(self, parameterset_list, x):
-            """
-            Return the sum of a series of peak evaluations for deconvolution. See _f_pk().
-    
-            Keyword arguments:
-            parameterset_list -- a list of parameter lists: [spectral offset (x), 
-                                            gauss: 2*sigma**2, 
-                                            gauss: amplitude, 
-                                            lorentz: scale (HWHM), 
-                                            lorentz: amplitude, 
-                                            frac_lor_gau: fraction of function to be Gaussian (0 -> 1)]
-            x -- array of equal length to FID
-            """
-
-            if not Fid._is_iter(parameterset_list):
+    @classmethod
+    def _f_pk(cls, x, offset=0.0, gauss_sigma=1.0, gauss_amp=1.0, lorentz_hwhm=1.0, lorentz_amp=1.0, frac_lor_gau=0.0):
+        """
+        Return the evaluation of a combined Gaussian/3-parameter Lorentzian function for deconvolution.
+        
+        x -- array of equal length to FID
+        
+        Keyword arguments:
+        offset -- spectral offset in x
+        gauss sigma -- 2*sigma**2
+        gauss amplitude -- amplitude of gaussian peak
+        lorentz_hwhm -- lorentzian half width at half maximum height
+        lorentz_amplitude -- amplitude of lorentzian peak
+        frac_lor_gau: fraction of function to be Gaussian (0 -> 1)
+        Note: specifying a Gaussian fraction of 0 will produce a pure Lorentzian and vice versa.
+        """
+        
+        #validation
+        parameters = [offset, gauss_sigma, gauss_amp, lorentz_hwhm, lorentz_amp, frac_lor_gau]
+        if not all(isinstance(i, numbers.Number) for i in parameters):
+            raise ValueError('Keyword parameters must be numbers.') 
+        if not cls._is_iter(x):
+            raise ValueError('x must be an iterable') 
+        if not isinstance(x, numpy.ndarray):
+            x = numpy.array(x) 
+        if frac_lor_gau > 1.0:
+            frac_lor_gau = 1.0
+        if frac_lor_gau < 0.0:
+            frac_lor_gau = 0.0
+        
+        f_gauss = lambda offset, gauss_amp, gauss_sigma, x: gauss_amp*numpy.exp(-(offset-x)**2/gauss_sigma)
+        f_lorentz = lambda offset, lorentz_amp, lorentz_hwhm, x: lorentz_amp*lorentz_hwhm**2/(lorentz_hwhm**2+4*(offset-x)**2)
+        
+        gauss_peak = f_gauss(offset, gauss_amp, gauss_sigma, x)
+        lorentz_peak = f_lorentz(offset, lorentz_amp, lorentz_hwhm, x)
+        peak = frac_lor_gau*gauss_peak + (1-frac_lor_gau)*lorentz_peak
+        
+        return peak
+   
+    @classmethod 
+    def _f_pks(cls, parameterset_list, x):
+        """
+        Return the sum of a series of peak evaluations for deconvolution. See _f_pk().
+        
+        Keyword arguments:
+        parameterset_list -- a list of parameter lists: [spectral offset (x), 
+                                        gauss: 2*sigma**2, 
+                                        gauss: amplitude, 
+                                        lorentz: scale (HWHM), 
+                                        lorentz: amplitude, 
+                                        frac_lor_gau: fraction of function to be Gaussian (0 -> 1)]
+        x -- array of equal length to FID
+        """
+        
+        if not cls._is_iter(parameterset_list):
+            raise ValueError('Parameter set must be an iterable') 
+        for p in parameterset_list:
+            if not cls._is_iter(p):
                 raise ValueError('Parameter set must be an iterable') 
-            for p in parameterset_list:
-                if not Fid._is_iter(p):
-                    raise ValueError('Parameter set must be an iterable') 
-                if not all(isinstance(i, numbers.Number) for i in p):
-                    raise ValueError('Keyword parameters must be numbers.') 
-            if not Fid._is_iter(x):
-                raise ValueError('x must be an iterable') 
-            if not isinstance(x, numpy.ndarray):
-                x = numpy.array(x) 
-
-
-            peaks = x*0.0
-            for p in parameterset_list:
-                peak = self._f_pk(x, offset=p[0], 
-                        gauss_sigma=p[1], 
-                        gauss_amp=p[2], 
-                        lorentz_hwhm=p[3], 
-                        lorentz_amp=p[4], 
-                        frac_lor_gau=p[5],
-                        )
-                peaks += peak
-            return peaks
-
-    def _f_res(self, p, data, frac_lor_gau):
-            """
-            Objective function for deconvolution. Returns residuals of the devonvolution fit.
-    
-            x -- array of equal length to FID
-
-            Keyword arguments:
-            p -- flattened parameter list: n*[
-                                offset -- spectral offset in x
-                                gauss sigma -- 2*sigma**2
-                                gauss amplitude -- amplitude of gaussian peak
-                                lorentz_hwhm -- lorentzian half width at half maximum height
-                                lorentz_amplitude -- amplitude of lorentzian peak
-                                fraction of function to be Gaussian (0 -> 1)
-                                ]
-                where n is the number of peaks
-            data -- spectrum array
-            frac_lor_gau -- gaussian/lorentian fraction
- 
-            """
-
-            if not Fid._is_iter(p):
-                raise ValueError('Parameter list must be an iterable') 
             if not all(isinstance(i, numbers.Number) for i in p):
                 raise ValueError('Keyword parameters must be numbers.') 
-            if not Fid._is_flat_iter(data):
-                raise ValueError('data must be a flat iterable.')
-            if not isinstance(p, numpy.ndarray):
-                p = numpy.array(p) 
-            if not isinstance(data, numpy.ndarray):
-                data = numpy.array(data) 
+        if not cls._is_iter(x):
+            raise ValueError('x must be an iterable') 
+        if not isinstance(x, numpy.ndarray):
+            x = numpy.array(x) 
+        
+        
+        peaks = x*0.0
+        for p in parameterset_list:
+            peak = cls._f_pk(x, 
+                    offset=p[0], 
+                    gauss_sigma=p[1], 
+                    gauss_amp=p[2], 
+                    lorentz_hwhm=p[3], 
+                    lorentz_amp=p[4], 
+                    frac_lor_gau=p[5],
+                    )
+            peaks += peak
+        return peaks
 
-            if len(p.shape) < 2:
-                    p = p.reshape([-1, 6])
+    @classmethod
+    def _f_res(cls, p, data, frac_lor_gau):
+        """
+        Objective function for deconvolution. Returns residuals of the devonvolution fit.
+        
+        x -- array of equal length to FID
+        
+        Keyword arguments:
+        p -- flattened parameter list: n*[
+                            offset -- spectral offset in x
+                            gauss sigma -- 2*sigma**2
+                            gauss amplitude -- amplitude of gaussian peak
+                            lorentz_hwhm -- lorentzian half width at half maximum height
+                            lorentz_amplitude -- amplitude of lorentzian peak
+                            fraction of function to be Gaussian (0 -> 1)
+                            ]
+            where n is the number of peaks
+        data -- spectrum array
+        frac_lor_gau -- gaussian/lorentian fraction
+        
+        """
+        
+        if not cls._is_iter(p):
+            raise ValueError('Parameter list must be an iterable') 
+        if not all(isinstance(i, numbers.Number) for i in p):
+            raise ValueError('Keyword parameters must be numbers.') 
+        if not cls._is_flat_iter(data):
+            raise ValueError('data must be a flat iterable.')
+        if not isinstance(p, numpy.ndarray):
+            p = numpy.array(p) 
+        if not isinstance(data, numpy.ndarray):
+            data = numpy.array(data) 
+        
+        if len(p.shape) < 2:
+                p = p.reshape([-1, 6])
+        
+        p = abs(p)      # forces positive parameter values
+        
+        #append frac_lor_gau to parameters
+        if frac_lor_gau is not None:
+                p = p.transpose()
+                p[-1] = p[-1]*0+frac_lor_gau
+                p = p.transpose()
+        x = numpy.arange(len(data), dtype='f8')
+        res = data-cls._f_pks(p, x)
+        return res
 
-            p = abs(p)      # forces positive parameter values
+    @classmethod
+    def _f_makep(cls, data, peaks):
+        """
+        Make a set of initial peak parameters for deconvolution.
+        
+        Keyword arguments:
+        data -- data to be fitted
+        peaks -- selected peak positions (see peakpicker())
+        
+        
+        """
+        if not cls._is_flat_iter(data):
+            raise ValueError('data must be a flat iterable') 
+        if not cls._is_flat_iter(peaks):
+            raise ValueError('peaks must be a flat iterable') 
+        if not isinstance(data, numpy.ndarray):
+            data = numpy.array(data) 
+        
+        p = []
+        for i in peaks:
+                single_peak = [i, 10, data.max()/2, 10, data.max()/2, 0.5]
+                p.append(single_peak)
+        return numpy.array(p)
 
-            #append frac_lor_gau to parameters
-            if frac_lor_gau is not None:
-                    p = p.transpose()
-                    p[-1] = p[-1]*0+frac_lor_gau
-                    p = p.transpose()
-            x = numpy.arange(len(data), dtype='f8')
-            res = data-self._f_pks(p, x)
-            return res
+    @classmethod
+    def _f_conv(cls, parameterset_list, data):
+        """
+        Returns the maximum of a convolution of an initial set of lineshapes and the data to be fitted.
+        
+        parameterset_list -- a list of parameter lists: n*[[spectral offset (x), 
+                                        gauss: 2*sigma**2, 
+                                        gauss: amplitude, 
+                                        lorentz: scale (HWHM), 
+                                        lorentz: amplitude, 
+                                        frac_lor_gau: fraction of function to be Gaussian (0 -> 1)]]
+                            where n is the number of peaks
+        data -- 1D spectral array
+        
+        """
 
-    def _f_makep(self, data, peaks):
-            """
-            Make a set of initial peak parameters for deconvolution.
-    
-            Keyword arguments:
-            data -- data to be fitted
-            peaks -- selected peak positions (see peakpicker())
-    
-    
-            """
-            if not Fid._is_flat_iter(data):
-                raise ValueError('data must be a flat iterable') 
-            if not Fid._is_flat_iter(peaks):
-                raise ValueError('peaks must be a flat iterable') 
-            if not isinstance(data, numpy.ndarray):
-                data = numpy.array(data) 
+        if not cls._is_flat_iter(data):
+            raise ValueError('data must be a flat iterable') 
+        if not cls._is_iter(parameterset_list):
+            raise ValueError('parameterset_list must be an iterable') 
+        if not isinstance(data, numpy.ndarray):
+            data = numpy.array(data) 
+        
+        data[data == 0.0] = 1e-6
+        x = numpy.arange(len(data), dtype='f8')
+        peaks_init = cls._f_pks(parameterset_list, x)
+        data_convolution = numpy.convolve(data, peaks_init[::-1])
+        auto_convolution = numpy.convolve(peaks_init, peaks_init[::-1])
+        max_data_convolution = numpy.where(data_convolution == data_convolution.max())[0][0]
+        max_auto_convolution = numpy.where(auto_convolution == auto_convolution.max())[0][0]
+        return max_data_convolution - max_auto_convolution
 
-            p = []
-            for i in peaks:
-                    single_peak = [i, 10, data.max()/2, 10, data.max()/2, 0.5]
-                    p.append(single_peak)
-            return numpy.array(p)
-
-    def _f_conv(self, parameterset_list, data):
-            """
-            Returns the maximum of a convolution of an initial set of lineshapes and the data to be fitted.
-    
-            parameterset_list -- a list of parameter lists: n*[[spectral offset (x), 
-                                            gauss: 2*sigma**2, 
-                                            gauss: amplitude, 
-                                            lorentz: scale (HWHM), 
-                                            lorentz: amplitude, 
-                                            frac_lor_gau: fraction of function to be Gaussian (0 -> 1)]]
-                                where n is the number of peaks
-            data -- 1D spectral array
-    
-            """
-
-            if not Fid._is_flat_iter(data):
-                raise ValueError('data must be a flat iterable') 
-            if not Fid._is_iter(parameterset_list):
-                raise ValueError('parameterset_list must be an iterable') 
-            if not isinstance(data, numpy.ndarray):
-                data = numpy.array(data) 
-
-            data[data == 0.0] = 1e-6
-            x = numpy.arange(len(data), dtype='f8')
-            peaks_init = self._f_pks(parameterset_list, x)
-            data_convolution = numpy.convolve(data, peaks_init[::-1])
-            auto_convolution = numpy.convolve(peaks_init, peaks_init[::-1])
-            max_data_convolution = numpy.where(data_convolution == data_convolution.max())[0][0]
-            max_auto_convolution = numpy.where(auto_convolution == auto_convolution.max())[0][0]
-            return max_data_convolution - max_auto_convolution
-
-    def _f_fitp(self, data_index, peaks, frac_lor_gau):
-            """Fit a section of spectral data with a combination of Gaussian/Lorentzian peaks for deconvolution.
-    
-            Keyword arguments:
-            data_index -- list of two index values to specify data to be fitted, 1D array
-            peaks -- selected peak positions (see peakpicker())
-            frac_lor_gau -- fraction of fitted function to be Gaussian (1 - Guassian, 0 - Lorentzian)
+    @classmethod
+    def _f_fitp(cls, data, peaks, frac_lor_gau=0.0):
+        """Fit a section of spectral data with a combination of Gaussian/Lorentzian peaks for deconvolution.
+        
+        Keyword arguments:
+        peaks -- selected peak positions (see peakpicker())
+        frac_lor_gau -- fraction of fitted function to be Gaussian (1 - Guassian, 0 - Lorentzian)
    
-            returns:
-                fits -- list of fitted peak parameter sets
-                
-            Note: peaks are fitted using the Levenberg-Marquardt algorithm as implemented in SciPy.optimize [1].
-    
-            [1] Marquardt, Donald W. 'An algorithm for least-squares estimation of nonlinear parameters.' Journal of the Society for Industrial & Applied Mathematics 11.2 (1963): 431-441.
-            """
-            if not Fid._is_iter(data_index):
-                raise ValueError('data_index must be an iterable') 
-            if not len(data_index) == 2:
-                raise ValueError('data_index must contain two values.')
-            if data_index[0] == data_index[1]:
-                raise ValueError('data_index must contain different values.')
-            data_index = sorted(data_index)
-            data = self.data[data_index[0]:data_index[1]]
-            data = numpy.real(data)
-            if not Fid._is_flat_iter(data):
-                raise ValueError('data must be a flat iterable') 
-            if not Fid._is_flat_iter(peaks):
-                raise ValueError('peaks must be a flat iterable') 
-            if not isinstance(data, numpy.ndarray):
-                data = numpy.array(data) 
+        returns:
+            fits -- list of fitted peak parameter sets
+            
+        Note: peaks are fitted using the Levenberg-Marquardt algorithm as implemented in SciPy.optimize [1].
+        
+        [1] Marquardt, Donald W. 'An algorithm for least-squares estimation of nonlinear parameters.' Journal of the Society for Industrial & Applied Mathematics 11.2 (1963): 431-441.
+        """
+        data = numpy.real(data)
+        if not cls._is_flat_iter(data):
+            raise ValueError('data must be a flat iterable') 
+        if not cls._is_flat_iter(peaks):
+            raise ValueError('peaks must be a flat iterable') 
+        if any(peak > (len(data)-1)  for peak in peaks):
+            raise ValueError('peaks must be within the length of data.')
+        if not isinstance(data, numpy.ndarray):
+            data = numpy.array(data) 
 
-            p = self._f_makep(data, peaks)
-            init_ref = self._f_conv(p, data)
-            p = self._f_makep(data, peaks+init_ref)
-            p = p.flatten()
+        p = cls._f_makep(data, peaks)
+        init_ref = cls._f_conv(p, data)
+        p = cls._f_makep(data, peaks+init_ref)
+        p = p.flatten()
 
-            try:
-                fit = leastsq(self._f_res, p, args=(data, frac_lor_gau), full_output=1)
-                fits = numpy.array(abs(fit[0].reshape([-1, 6])))
-                cov = fit[1]
-            except:
-                fits = None
-                cov = None
-            return fits, cov
+        try:
+            fit = leastsq(cls._f_res, p, args=(data, frac_lor_gau), full_output=1)
+            fits = numpy.array(abs(fit[0].reshape([-1, 6])))
+            cov = fit[1]
+        except:
+            fits = None
+            cov = None
+        return fits, cov
+
+    @classmethod
+    def _deconv_datum(cls, datum, peaks, ranges, frac_lor_gau=0.0):
+        #if not cls._is_iter(data_index):
+        #    raise ValueError('data_index must be an iterable') 
+        #if not len(data_index) == 2:
+        #    raise ValueError('data_index must contain two values.')
+        #if data_index[0] == data_index[1]:
+        #    raise ValueError('data_index must contain different values.')
+        #data_index = sorted(data_index)
+        #data = data[data_index[0]:data_index[1]]
+        fit = []
+        for j in zip(peaks, ranges):
+            d_slice = datum[j[1][0]:j[1][1]]
+            p_slice = j[0]-j[1][0]
+            f = cls._f_fitp(d_slice, p_slice, frac_lor_gau)[0]
+            f = numpy.array(f).transpose()
+            f[0] += j[1][0]
+            f = f.transpose()
+            fit.append(f)
+        return fit
+
+#        def deconv(self, gl=None, mp=True):
+#                """Deconvolute array of spectra (self.data) using specified peak positions (self.peaks) and ranges (self.ranges) by fitting the data with combined Gaussian/Lorentzian functions. Uses the Levenberg-Marquardt least squares algorithm [1] as implemented in SciPy.optimize.leastsq.
+#
+#                    Keyword arguments:
+#                    gl -- ratio of peak function to be Gaussian (1 -- pure Gaussian, 0 -- pure Lorentzian)
+#                    mp     -- multiprocessing, parallelise the deconvlution process over multiple processors, significantly reduces computation time
+#
+#
+#                    [1] Marquardt, Donald W. 'An algorithm for least-squares estimation of nonlinear parameters.' Journal of the Society for Industrial & Applied Mathematics 11.2 (1963): 431-441.
+#                """
+#                self.real()
+#                self._convert_peaklist_to_index()
+#                self.data = self.data[:, ::-1]
+#                if mp:
+#                        self._deconv_mp(gl=gl)
+#                else:
+#                        self._deconv(gl=gl)
+#                self.data = self.data[:, ::-1]
+#                self._convert_peaklist_to_ppm()
+#                print 'done!'
+#
+#        def _deconv_single(self, n):
+#                fit = self._deconv_datum(
+#                    self.data[n],
+#                    self.grouped_peaklist(),
+#                    self.ranges,
+#                    self._flags['gl'])
+#                print 'fit %i/%i' % (n+1, len(self.data))
+#                return fit
+#
+#        def _deconv_mp(self, gl=None):
+#                self._flags['gl'] = gl
+#                proc_pool = Pool(cpu_count()-1)
+#                data_zip = zip([self]*len(self.data), range(len(self.data)))
+#                fits = proc_pool.map(_unwrap_fid_deconv, data_zip)
+#                self.fits = np.array(fits)
+#                self.integrals = f_integrals_array(self.data, self.fits)
+#                proc_pool.close()
+#                proc_pool.join()
+#                #self.integrals = np.array([list(i) for i in self.integrals])
+#                # return f
+#
+#        def _deconv(self, gl=None):
+#                data = self.data
+#                peaks = self.grouped_peaklist()
+#                ranges = self.ranges
+#                fits = []
+#                if len(data.shape) == 2:
+#                        for i in data:
+#                                fits.append(
+#                                    self._deconv_datum(
+#                                        i,
+#                                        peaks,
+#                                        ranges,
+#                                        gl))
+#                                print 'fit %i/%i' % (len(fits), len(self.data))
+#                        self.fits = np.array(fits)
+#                        self.integrals = f_integrals_array(self.data, self.fits)
+#
 
 class FidArray(Base):
     '''
@@ -730,7 +813,7 @@ class FidArray(Base):
         else:
             raise IOError('Data could not be imported.')
 
-    def ft_fids(self, mp=False, cpus=None):
+    def ft_fids(self, mp=True, cpus=None):
         """ 
         Fourier-transform all FIDs.
 
@@ -749,7 +832,7 @@ class FidArray(Base):
             for fid in self.get_fids():
                 fid.ft()
 
-    def phase_correct_fids(self, method='leastsq', mp=False, cpus=None, discard_imaginary=False):
+    def phase_correct_fids(self, method='leastsq', mp=True, cpus=None, discard_imaginary=False):
         """ 
         Apply phase-correction to all FIDs.
 
@@ -761,6 +844,10 @@ class FidArray(Base):
         """
         if mp: 
             fids = self.get_fids()
+            if not all(fid.data.dtype in self._complex_dtypes for fid in fids):
+                raise AttributeError('Only complex data can be phase-corrected.')
+            if not all(fid._flags['ft'] for fid in fids):
+                raise AttributeError('Only Fourier-transformed data can be phase-corrected.')
             list_params = [[fid.data, method] for fid in fids]
             phased_data = self._generic_mp(Fid._phase_correct, list_params, cpus)
             for fid, datum in zip(fids, phased_data):

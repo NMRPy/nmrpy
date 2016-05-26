@@ -252,8 +252,6 @@ class TestFidInitialisation(unittest.TestCase):
             fid._f_conv([p1, p2], numpy.array(2*[data]))
 
 
-
-
 class TestFidArrayInitialisation(unittest.TestCase):
     
     def setUp(self):
@@ -523,27 +521,33 @@ class TestFidUtils(unittest.TestCase):
         fid.phase_correct()
         
     def test_f_fitp(self):
-        self.fid_array_varian.ft_fids()
-        self.fid_array_varian.phase_correct_fids(mp=True, method='nelder')
         fid = self.fid_array_varian.get_fids()[0]
-        fid.peaks = [-4.71, -4.64, -4.17]
-        data_index = [6000,7000]
-        fid._f_fitp(data_index, fid.peaks, 0.5)
+        fid.ft() 
+        fid.phase_correct() 
+        fid.peaks =  [6552, 6570, 6692]
+        Fid._f_fitp(fid.data, fid.peaks, frac_lor_gau=0.5)
         fid.data = list(fid.data)
-        fid._f_fitp(data_index, fid.peaks, 0.5)
+        Fid._f_fitp(fid.data, fid.peaks, frac_lor_gau=0.5)
 
     def test_f_fitp_failed(self):
-        self.fid_array_varian.ft_fids()
-        self.fid_array_varian.phase_correct_fids(mp=True, method='nelder')
         fid = self.fid_array_varian.get_fids()[0]
-        fid.peaks = [-4.71, -4.64, -4.17]
-        data_index = [6000,7000]
+        fid.ft() 
+        fid.phase_correct() 
+        fid.peaks =  [6552, 6570, 6692]
         with self.assertRaises(ValueError):
-            fid._f_fitp(1, fid.peaks, 0.5)
+            Fid._f_fitp(1, fid.peaks, 0.5)
         with self.assertRaises(ValueError):
-            fid._f_fitp([1, 1], fid.peaks, 0.5)
+            Fid._f_fitp(['string', 1], fid.peaks, 0.5)
         with self.assertRaises(ValueError):
-            fid._f_fitp([1], fid.peaks, 0.5)
+            Fid._f_fitp(fid.data, [2*len(fid.data)], frac_lor_gau=0.5)
+
+    def test__deconv_datum(self):
+        fid = self.fid_array_varian.get_fids()[0]
+        fid.ft() 
+        fid.phase_correct() 
+        fid.ranges = [[6000,7000]]
+        fid.peaks =  numpy.array([6552, 6570, 6692])-fid.ranges[0][0]
+        Fid._deconv_datum(fid.data, fid._grouped_peaklist, fid.ranges)
 
 
 class TestFidArrayUtils(unittest.TestCase):
@@ -554,25 +558,29 @@ class TestFidArrayUtils(unittest.TestCase):
         path_bruker = './tests/test_data/bruker1'
         self.fid_array_bruker = FidArray.from_path(fid_path=path_bruker, file_format='bruker')
 
-    def test_ft_fids(self):
-        self.fid_array_varian.ft_fids()
-
     def test_ft_fids_mp(self):
-        self.fid_array_varian.ft_fids(mp=True)
-
-    def test_phase_correct_fids(self):
         self.fid_array_varian.ft_fids()
-        self.fid_array_varian.phase_correct_fids()
+
+    def test_ft_fids(self):
+        self.fid_array_varian.ft_fids(mp=False)
 
     def test_phase_correct_fids_mp(self):
         self.fid_array_varian.ft_fids()
-        self.fid_array_varian.phase_correct_fids(mp=True)
+        self.fid_array_varian.phase_correct_fids()
+
+    def test_phase_correct_fids(self):
+        self.fid_array_varian.ft_fids()
+        self.fid_array_varian.phase_correct_fids(mp=False)
 
     def test_phase_correct_fids_mp_nelder(self):
         self.fid_array_varian.ft_fids()
-        self.fid_array_varian.phase_correct_fids(mp=True, method='nelder')
+        self.fid_array_varian.phase_correct_fids(method='nelder')
 
     def test_failed_phase_correct_fids(self):
+        with self.assertRaises(AttributeError):
+            self.fid_array_varian.phase_correct_fids(mp=True)
+
+    def test_failed_phase_correct_fids_mp(self):
         with self.assertRaises(AttributeError):
             self.fid_array_varian.phase_correct_fids()
 
