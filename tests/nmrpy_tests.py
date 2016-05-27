@@ -457,6 +457,14 @@ class TestFidUtils(unittest.TestCase):
         self.fid_array_varian = FidArray.from_path(fid_path=path_varian, file_format='varian')
         path_bruker = './tests/test_data/bruker1'
         self.fid_array_bruker = FidArray.from_path(fid_path=path_bruker, file_format='bruker')
+        peaks =  [6552, 6570, 6692]
+        ranges = [[6000,6600],[6600,7000]]
+        for fid in self.fid_array_varian.get_fids():
+            fid.peaks = peaks
+            fid.ranges = ranges
+        for fid in self.fid_array_bruker.get_fids():
+            fid.peaks =  peaks
+            fid.ranges = ranges
     
     def test_ps(self):
         fid = self.fid_array_varian.get_fids()[0]
@@ -524,7 +532,6 @@ class TestFidUtils(unittest.TestCase):
         fid = self.fid_array_varian.get_fids()[0]
         fid.ft() 
         fid.phase_correct() 
-        fid.peaks =  [6552, 6570, 6692]
         Fid._f_fitp(fid.data, fid.peaks, frac_lor_gau=0.5)
         fid.data = list(fid.data)
         Fid._f_fitp(fid.data, fid.peaks, frac_lor_gau=0.5)
@@ -533,7 +540,6 @@ class TestFidUtils(unittest.TestCase):
         fid = self.fid_array_varian.get_fids()[0]
         fid.ft() 
         fid.phase_correct() 
-        fid.peaks =  [6552, 6570, 6692]
         with self.assertRaises(ValueError):
             Fid._f_fitp(1, fid.peaks, 0.5)
         with self.assertRaises(ValueError):
@@ -545,16 +551,12 @@ class TestFidUtils(unittest.TestCase):
         fid = self.fid_array_varian.get_fids()[0]
         fid.ft() 
         fid.phase_correct() 
-        fid.ranges = [[6000,6600],[6600,7000]]
-        fid.peaks =  [6552, 6570, 6692]
         Fid._deconv_datum(fid.data, fid._grouped_peaklist, fid.ranges)
 
     def test_deconv(self):
         fid = self.fid_array_varian.get_fids()[0]
         fid.ft() 
         fid.phase_correct() 
-        fid.ranges = [[6000,6600],[6600,7000]]
-        fid.peaks =  [6552, 6570, 6692]
         fid.deconv()
 
 class TestFidArrayUtils(unittest.TestCase):
