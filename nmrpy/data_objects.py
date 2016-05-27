@@ -196,6 +196,7 @@ class Fid(Base):
         self.data = kwargs.get('data', [])
         self.peaks = None
         self.ranges = None
+        self._deconvoluted_peaks = None
         self._flags = {
             "ft": False,
         }
@@ -564,8 +565,14 @@ class Fid(Base):
         Keyword arguments:
         data -- data to be fitted
         peaks -- selected peak positions (see peakpicker())
-        
-        
+       
+        returns: an array of peaks, each consisting of the following parameters:
+                    [[spectral offset (x), 
+                    gauss: 2*sigma**2, 
+                    gauss: amplitude, 
+                    lorentz: scale (HWHM), 
+                    lorentz: amplitude, 
+                    frac_lor_gau: fraction of function to be Gaussian (0 -> 1)]]
         """
         if not cls._is_flat_iter(data):
             raise ValueError('data must be a flat iterable') 
@@ -659,6 +666,10 @@ class Fid(Base):
             raise ValueError('ranges must contain two values.')
         if not all(rng[0] != rng[1] for rng in ranges):
             raise ValueError('data_index must contain different values.')
+        if not isinstance(datum, numpy.ndarray):
+            datum = numpy.array(datum) 
+        if datum.dtype in cls._complex_dtypes:
+            raise AttributeError('data must be not be complex.')
         fit = []
         for j in zip(peaks, ranges):
             d_slice = datum[j[1][0]:j[1][1]]
@@ -673,10 +684,13 @@ class Fid(Base):
     def deconv(self, frac_lor_gau=0.0):
         if not len(self.data):
             raise ValueError('data does not exist.')
+        if self.data.dtype in self._complex_dtypes:
+            raise AttributeError('data must be not be complex.')
         if self.peaks is None:
             raise ValueError('peaks must be picked.')
         if self.ranges is None:
             raise ValueError('ranges must be specified.')
+        print('deconvoluting {}'.format(self.id))
         self._deconvoluted_peaks = Fid._deconv_datum(self.data, 
                                                     self._grouped_peaklist, 
                                                     self.ranges, 
@@ -852,7 +866,15 @@ class FidArray(Base):
             for fid in self.get_fids():
                 fid.ft()
 
-    def phase_correct_fids(self, method='leastsq', mp=True, cpus=None, discard_imaginary=False):
+    def real_fids(self):
+        """ 
+        Discard imaginary component of FID data sets.
+
+        """
+        for fid in self.get_fids():
+            fid.real()
+
+    def phase_correct_fids(self, method='leastsq', mp=True, cpus=None):
         """ 
         Apply phase-correction to all FIDs.
 
@@ -860,7 +882,6 @@ class FidArray(Base):
         method -- see Fid.phase_correct()
         mp     -- parallelise the phasing process over multiple processors, significantly reduces computation time
         cores  -- defines number of CPUs to utilise if 'mp' is set to True
-        discard_imaginary -- discards imaginary component of complex values after phasing
         """
         if mp: 
             fids = self.get_fids()
@@ -875,6 +896,30 @@ class FidArray(Base):
         else:
             for fid in self.get_fids():
                 fid.phase_correct(method=method)
+
+    def deconv_fids(self, mp=True, cpus=None):
+        """ 
+        Apply phase-correction to all FIDs.
+
+        Keyword arguments:
+        method -- see Fid.phase_correct()
+        mp     -- parallelise the phasing process over multiple processors, significantly reduces computation time
+        cores  -- defines number of CPUs to utilise if 'mp' is set to True
+        """
+        if mp: 
+            pass
+            #fids = self.get_fids()
+            #if not all(fid.data.dtype in self._complex_dtypes for fid in fids):
+            #    raise AttributeError('Only complex data can be phase-corrected.')
+            #if not all(fid._flags['ft'] for fid in fids):
+            #    raise AttributeError('Only Fourier-transformed data can be phase-corrected.')
+            #list_params = [[fid.data, method] for fid in fids]
+            #phased_data = self._generic_mp(Fid._phase_correct, list_params, cpus)
+            #for fid, datum in zip(fids, phased_data):
+            #    fid.data = datum
+        else:
+            for fid in self.get_fids():
+                fid.deconv()
 
     def ps_fids(self, p0=0.0, p1=0.0):
         """

@@ -540,6 +540,7 @@ class TestFidUtils(unittest.TestCase):
         fid = self.fid_array_varian.get_fids()[0]
         fid.ft() 
         fid.phase_correct() 
+        fid.real()
         with self.assertRaises(ValueError):
             Fid._f_fitp(1, fid.peaks, 0.5)
         with self.assertRaises(ValueError):
@@ -551,12 +552,14 @@ class TestFidUtils(unittest.TestCase):
         fid = self.fid_array_varian.get_fids()[0]
         fid.ft() 
         fid.phase_correct() 
+        fid.real()
         Fid._deconv_datum(fid.data, fid._grouped_peaklist, fid.ranges)
 
     def test_deconv(self):
         fid = self.fid_array_varian.get_fids()[0]
         fid.ft() 
         fid.phase_correct() 
+        fid.real()
         fid.deconv()
 
 class TestFidArrayUtils(unittest.TestCase):
