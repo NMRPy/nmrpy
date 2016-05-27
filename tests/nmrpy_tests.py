@@ -549,6 +549,13 @@ class TestFidUtils(unittest.TestCase):
         fid.peaks =  [6552, 6570, 6692]
         Fid._deconv_datum(fid.data, fid._grouped_peaklist, fid.ranges)
 
+    def test_deconv(self):
+        fid = self.fid_array_varian.get_fids()[0]
+        fid.ft() 
+        fid.phase_correct() 
+        fid.ranges = [[6000,6600],[6600,7000]]
+        fid.peaks =  [6552, 6570, 6692]
+        fid.deconv()
 
 class TestFidArrayUtils(unittest.TestCase):
 

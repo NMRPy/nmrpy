@@ -194,7 +194,7 @@ class Fid(Base):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.data = kwargs.get('data', [])
-        self.peaks = []
+        self.peaks = None
         self.ranges = None
         self._flags = {
             "ft": False,
@@ -219,11 +219,14 @@ class Fid(Base):
     
     @peaks.setter    
     def peaks(self, peaks):
-        if not Fid._is_flat_iter(peaks):
-            raise AttributeError('peaks must be a flat iterable')
-        if not all(isinstance(i, numbers.Number) for i in peaks):
-            raise AttributeError('peaks must be numbers')
-        self._peaks = numpy.array(peaks)
+        if peaks is not None:
+            if not Fid._is_flat_iter(peaks):
+                raise AttributeError('peaks must be a flat iterable')
+            if not all(isinstance(i, numbers.Number) for i in peaks):
+                raise AttributeError('peaks must be numbers')
+            self._peaks = numpy.array(peaks)
+        else:
+            self._peaks = peaks
 
     @property
     def ranges(self):
@@ -255,6 +258,13 @@ class Fid(Base):
         else:
             return []
 
+    @property
+    def _deconvoluted_peaks(self):
+        return self.__deconvoluted_peaks
+
+    @_deconvoluted_peaks.setter
+    def _deconvoluted_peaks(self, deconvoluted_peaks):
+        self.__deconvoluted_peaks = deconvoluted_peaks 
 
     @classmethod
     def _is_valid_dataset(cls, data):
@@ -660,6 +670,18 @@ class Fid(Base):
             fit.append(f)
         return fit
 
+    def deconv(self, frac_lor_gau=0.0):
+        if not len(self.data):
+            raise ValueError('data does not exist.')
+        if self.peaks is None:
+            raise ValueError('peaks must be picked.')
+        if self.ranges is None:
+            raise ValueError('ranges must be specified.')
+        self._deconvoluted_peaks = Fid._deconv_datum(self.data, 
+                                                    self._grouped_peaklist, 
+                                                    self.ranges, 
+                                                    frac_lor_gau=frac_lor_gau)
+ 
 #        def deconv(self, gl=None, mp=True):
 #                """Deconvolute array of spectra (self.data) using specified peak positions (self.peaks) and ranges (self.ranges) by fitting the data with combined Gaussian/Lorentzian functions. Uses the Levenberg-Marquardt least squares algorithm [1] as implemented in SciPy.optimize.leastsq.
 #
