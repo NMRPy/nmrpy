@@ -431,7 +431,7 @@ class Fid(Base):
 
 
     @classmethod
-    def _f_pk(cls, x, offset=0.0, gauss_sigma=1.0, gauss_amp=1.0, lorentz_hwhm=1.0, lorentz_amp=1.0, frac_lor_gau=0.0):
+    def _f_pk(cls, x, offset=0.0, gauss_sigma=1.0, lorentz_hwhm=1.0, amplitude=1.0, frac_lor_gau=0.0):
         """
         Return the evaluation of a combined Gaussian/3-parameter Lorentzian function for deconvolution.
         
@@ -440,15 +440,14 @@ class Fid(Base):
         Keyword arguments:
         offset -- spectral offset in x
         gauss sigma -- 2*sigma**2
-        gauss amplitude -- amplitude of gaussian peak
         lorentz_hwhm -- lorentzian half width at half maximum height
-        lorentz_amplitude -- amplitude of lorentzian peak
+        amplitude -- amplitude of peak
         frac_lor_gau: fraction of function to be Gaussian (0 -> 1)
         Note: specifying a Gaussian fraction of 0 will produce a pure Lorentzian and vice versa.
         """
         
         #validation
-        parameters = [offset, gauss_sigma, gauss_amp, lorentz_hwhm, lorentz_amp, frac_lor_gau]
+        parameters = [offset, gauss_sigma, lorentz_hwhm, amplitude, frac_lor_gau]
         if not all(isinstance(i, numbers.Number) for i in parameters):
             raise TypeError('Keyword parameters must be numbers.') 
         if not cls._is_iter(x):
@@ -460,11 +459,11 @@ class Fid(Base):
         if frac_lor_gau < 0.0:
             frac_lor_gau = 0.0
         
-        f_gauss = lambda offset, gauss_amp, gauss_sigma, x: gauss_amp*numpy.exp(-(offset-x)**2/gauss_sigma)
-        f_lorentz = lambda offset, lorentz_amp, lorentz_hwhm, x: lorentz_amp*lorentz_hwhm**2/(lorentz_hwhm**2+4*(offset-x)**2)
+        f_gauss = lambda offset, amplitude, gauss_sigma, x: amplitude*numpy.exp(-(offset-x)**2/gauss_sigma)
+        f_lorentz = lambda offset, amplitude, lorentz_hwhm, x: amplitude*lorentz_hwhm**2/(lorentz_hwhm**2+4*(offset-x)**2)
         
-        gauss_peak = f_gauss(offset, gauss_amp, gauss_sigma, x)
-        lorentz_peak = f_lorentz(offset, lorentz_amp, lorentz_hwhm, x)
+        gauss_peak = f_gauss(offset, amplitude, gauss_sigma, x)
+        lorentz_peak = f_lorentz(offset, amplitude, lorentz_hwhm, x)
         peak = frac_lor_gau*gauss_peak + (1-frac_lor_gau)*lorentz_peak
         
         return peak
@@ -477,14 +476,13 @@ class Fid(Base):
         Keyword arguments:
         parameterset_list -- a list of parameter lists: [spectral offset (x), 
                                         gauss: 2*sigma**2, 
-                                        gauss: amplitude, 
                                         lorentz: scale (HWHM), 
-                                        lorentz: amplitude, 
+                                        amplitude: amplitude of peak, 
                                         frac_lor_gau: fraction of function to be Gaussian (0 -> 1)]
         x -- array of equal length to FID
         """
         
-        if not cls._is_iter(parameterset_list):
+        if not cls._is_iter_of_iters(parameterset_list):
             raise TypeError('Parameter set must be an iterable') 
         for p in parameterset_list:
             if not cls._is_iter(p):
@@ -502,10 +500,9 @@ class Fid(Base):
             peak = cls._f_pk(x, 
                     offset=p[0], 
                     gauss_sigma=p[1], 
-                    gauss_amp=p[2], 
-                    lorentz_hwhm=p[3], 
-                    lorentz_amp=p[4], 
-                    frac_lor_gau=p[5],
+                    lorentz_hwhm=p[2], 
+                    amplitude=p[3], 
+                    frac_lor_gau=p[4],
                     )
             peaks += peak
         return peaks
@@ -521,9 +518,8 @@ class Fid(Base):
         p -- flattened parameter list: n*[
                             offset -- spectral offset in x
                             gauss sigma -- 2*sigma**2
-                            gauss amplitude -- amplitude of gaussian peak
                             lorentz_hwhm -- lorentzian half width at half maximum height
-                            lorentz_amplitude -- amplitude of lorentzian peak
+                            amplitude -- amplitude of peak
                             fraction of function to be Gaussian (0 -> 1)
                             ]
             where n is the number of peaks
@@ -544,7 +540,7 @@ class Fid(Base):
             data = numpy.array(data) 
         
         if len(p.shape) < 2:
-                p = p.reshape([-1, 6])
+                p = p.reshape([-1, 5])
         
         p = abs(p)      # forces positive parameter values
         
@@ -569,9 +565,8 @@ class Fid(Base):
         returns: an array of peaks, each consisting of the following parameters:
                     [[spectral offset (x), 
                     gauss: 2*sigma**2, 
-                    gauss: amplitude, 
                     lorentz: scale (HWHM), 
-                    lorentz: amplitude, 
+                    amplitude: amplitude of peak,
                     frac_lor_gau: fraction of function to be Gaussian (0 -> 1)]]
         """
         if not cls._is_flat_iter(data):
@@ -583,7 +578,7 @@ class Fid(Base):
         
         p = []
         for i in peaks:
-                single_peak = [i, 10, data.max()/2, 10, data.max()/2, 0.5]
+                single_peak = [i, 10, 10, data.max()/2, 0.5]
                 p.append(single_peak)
         return numpy.array(p)
 
@@ -594,9 +589,8 @@ class Fid(Base):
         
         parameterset_list -- a list of parameter lists: n*[[spectral offset (x), 
                                         gauss: 2*sigma**2, 
-                                        gauss: amplitude, 
                                         lorentz: scale (HWHM), 
-                                        lorentz: amplitude, 
+                                        amplitude: amplitude of peak, 
                                         frac_lor_gau: fraction of function to be Gaussian (0 -> 1)]]
                             where n is the number of peaks
         data -- 1D spectral array
@@ -651,7 +645,7 @@ class Fid(Base):
 
         try:
             fit = leastsq(cls._f_res, p, args=(data, frac_lor_gau), full_output=1)
-            fits = numpy.array(abs(fit[0].reshape([-1, 6])))
+            fits = numpy.array(abs(fit[0].reshape([-1, 5])))
             cov = fit[1]
         except:
             fits = None
