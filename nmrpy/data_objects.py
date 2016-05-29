@@ -270,13 +270,13 @@ class Fid(Base):
     @classmethod
     def _is_valid_dataset(cls, data):
         if isinstance(data, str):
-            raise AttributeError('Data must be iterable not a string.')
+            raise TypeError('Data must be iterable not a string.')
         if not cls._is_iter(data):
-            raise AttributeError('Data must be an iterable.')
+            raise TypeError('Data must be an iterable.')
         if not cls._is_flat_iter(data):
-            raise AttributeError('Data must not be nested.')
+            raise TypeError('Data must not be nested.')
         if not all(isinstance(i, numbers.Number) for i in data):
-            raise AttributeError('Data must consist of numbers only.')
+            raise TypeError('Data must consist of numbers only.')
         return True 
         
 
@@ -300,7 +300,7 @@ class Fid(Base):
 
         """
         if self._flags['ft']:
-                raise AttributeError('Data have already been Fourier Transformed.')
+                raise ValueError('Data have already been Fourier Transformed.')
         if Fid._is_valid_dataset(self.data):
             list_params = (self.data, self._file_format)
             self.data = Fid._ft(list_params)
@@ -313,7 +313,7 @@ class Fid(Base):
         list_params is a tuple of (<data>, <file_format>).
         """
         if len(list_params) != 2:
-            raise AttributeError('Wrong number of parameters. list_params must contain [<data>, <file_format>]')
+            raise ValueError('Wrong number of parameters. list_params must contain [<data>, <file_format>]')
         data, file_format = list_params
         if Fid._is_valid_dataset(data) and file_format in Fid._file_formats:
             data = numpy.array(numpy.fft.fft(data), dtype=data.dtype)
@@ -345,7 +345,7 @@ class Fid(Base):
             if isinstance(ppm, list):
                     ppm = numpy.array(ppm)
             if any(ppm > sw_left) or any(ppm < sw_left-sw):
-                raise AttributeError('ppm must be in spectral width.')
+                raise ValueError('ppm must be within spectral width.')
             frc_sw = (ppm+(sw-sw_left))/sw
             if conv_to_int:
                 return int(numpy.ceil(frc_sw*len(data)))
@@ -356,9 +356,9 @@ class Fid(Base):
             Phase-correct a single fid by minimising total area.
             """
             if self.data.dtype not in self._complex_dtypes:
-                raise AttributeError('Only complex data can be phase-corrected.')
+                raise TypeError('Only complex data can be phase-corrected.')
             if not self._flags['ft']:
-                raise AttributeError('Only Fourier-transformed data can be phase-corrected.')
+                raise ValueError('Only Fourier-transformed data can be phase-corrected.')
             print('phasing: %s'%self.id)
             self.data = Fid._phase_correct((self.data, method))
 
@@ -398,9 +398,9 @@ class Fid(Base):
 
             """
             if not all(isinstance(i, (float, int)) for i in [p0, p1]):
-                raise AttributeError('p0 and p1 must be floats or ints.')
+                raise TypeError('p0 and p1 must be floats or ints.')
             if not data.dtype in Fid._complex_dtypes:
-                raise AttributeError('data must be complex.')
+                raise TypeError('data must be complex.')
             # convert to radians
             p0 = p0*numpy.pi/180.0
             p1 = p1*numpy.pi/180.0
@@ -419,9 +419,9 @@ class Fid(Base):
         
         """
         if not all(isinstance(i, (float, int)) for i in [p0, p1]):
-            raise AttributeError('p0 and p1 must be floats or ints.')
+            raise TypeError('p0 and p1 must be floats or ints.')
         if not self.data.dtype in self._complex_dtypes:
-            raise AttributeError('data must be complex.')
+            raise TypeError('data must be complex.')
         # convert to radians
         p0 = p0*numpy.pi/180.0
         p1 = p1*numpy.pi/180.0
@@ -450,9 +450,9 @@ class Fid(Base):
         #validation
         parameters = [offset, gauss_sigma, gauss_amp, lorentz_hwhm, lorentz_amp, frac_lor_gau]
         if not all(isinstance(i, numbers.Number) for i in parameters):
-            raise ValueError('Keyword parameters must be numbers.') 
+            raise TypeError('Keyword parameters must be numbers.') 
         if not cls._is_iter(x):
-            raise ValueError('x must be an iterable') 
+            raise TypeError('x must be an iterable') 
         if not isinstance(x, numpy.ndarray):
             x = numpy.array(x) 
         if frac_lor_gau > 1.0:
@@ -485,14 +485,14 @@ class Fid(Base):
         """
         
         if not cls._is_iter(parameterset_list):
-            raise ValueError('Parameter set must be an iterable') 
+            raise TypeError('Parameter set must be an iterable') 
         for p in parameterset_list:
             if not cls._is_iter(p):
-                raise ValueError('Parameter set must be an iterable') 
+                raise TypeError('Parameter set must be an iterable') 
             if not all(isinstance(i, numbers.Number) for i in p):
-                raise ValueError('Keyword parameters must be numbers.') 
+                raise TypeError('Keyword parameters must be numbers.') 
         if not cls._is_iter(x):
-            raise ValueError('x must be an iterable') 
+            raise TypeError('x must be an iterable') 
         if not isinstance(x, numpy.ndarray):
             x = numpy.array(x) 
         
@@ -533,11 +533,11 @@ class Fid(Base):
         """
         
         if not cls._is_iter(p):
-            raise ValueError('Parameter list must be an iterable') 
+            raise TypeError('Parameter list must be an iterable') 
         if not all(isinstance(i, numbers.Number) for i in p):
-            raise ValueError('Keyword parameters must be numbers.') 
+            raise TypeError('Keyword parameters must be numbers.') 
         if not cls._is_flat_iter(data):
-            raise ValueError('data must be a flat iterable.')
+            raise TypeError('data must be a flat iterable.')
         if not isinstance(p, numpy.ndarray):
             p = numpy.array(p) 
         if not isinstance(data, numpy.ndarray):
@@ -575,9 +575,9 @@ class Fid(Base):
                     frac_lor_gau: fraction of function to be Gaussian (0 -> 1)]]
         """
         if not cls._is_flat_iter(data):
-            raise ValueError('data must be a flat iterable') 
+            raise TypeError('data must be a flat iterable') 
         if not cls._is_flat_iter(peaks):
-            raise ValueError('peaks must be a flat iterable') 
+            raise TypeError('peaks must be a flat iterable') 
         if not isinstance(data, numpy.ndarray):
             data = numpy.array(data) 
         
@@ -604,9 +604,9 @@ class Fid(Base):
         """
 
         if not cls._is_flat_iter(data):
-            raise ValueError('data must be a flat iterable') 
+            raise TypeError('data must be a flat iterable') 
         if not cls._is_iter(parameterset_list):
-            raise ValueError('parameterset_list must be an iterable') 
+            raise TypeError('parameterset_list must be an iterable') 
         if not isinstance(data, numpy.ndarray):
             data = numpy.array(data) 
         
@@ -636,9 +636,9 @@ class Fid(Base):
         """
         data = numpy.real(data)
         if not cls._is_flat_iter(data):
-            raise ValueError('data must be a flat iterable') 
+            raise TypeError('data must be a flat iterable') 
         if not cls._is_flat_iter(peaks):
-            raise ValueError('peaks must be a flat iterable') 
+            raise TypeError('peaks must be a flat iterable') 
         if any(peak > (len(data)-1)  for peak in peaks):
             raise ValueError('peaks must be within the length of data.')
         if not isinstance(data, numpy.ndarray):
@@ -666,7 +666,7 @@ class Fid(Base):
         datum, peaks, ranges, frac_lor_gau = list_parameters
 
         if not cls._is_iter_of_iters(ranges):
-            raise ValueError('ranges must be an iterable of iterables') 
+            raise TypeError('ranges must be an iterable of iterables') 
         if not all(len(rng) == 2 for rng in ranges):
             raise ValueError('ranges must contain two values.')
         if not all(rng[0] != rng[1] for rng in ranges):
@@ -674,7 +674,7 @@ class Fid(Base):
         if not isinstance(datum, numpy.ndarray):
             datum = numpy.array(datum) 
         if datum.dtype in cls._complex_dtypes:
-            raise ValueError('data must be not be complex.')
+            raise TypeError('data must be not be complex.')
         fit = []
         for j in zip(peaks, ranges):
             d_slice = datum[j[1][0]:j[1][1]]
@@ -688,13 +688,13 @@ class Fid(Base):
 
     def deconv(self, frac_lor_gau=0.0):
         if not len(self.data):
-            raise ValueError('data does not exist.')
+            raise AttributeError('data does not exist.')
         if self.data.dtype in self._complex_dtypes:
-            raise AttributeError('data must be not be complex.')
+            raise TypeError('data must be not be complex.')
         if self.peaks is None:
-            raise ValueError('peaks must be picked.')
+            raise AttributeError('peaks must be picked.')
         if self.ranges is None:
-            raise ValueError('ranges must be specified.')
+            raise AttributeError('ranges must be specified.')
         print('deconvoluting {}'.format(self.id))
         list_parameters = [self.data, self._grouped_peaklist, self.ranges, frac_lor_gau]
         self._deconvoluted_peaks = Fid._deconv_datum(list_parameters)
@@ -815,7 +815,7 @@ class FidArray(Base):
     @classmethod
     def from_data(cls, data):
         if not cls._is_iter_of_iters(data):
-            raise AttributeError('data must be an iterable of iterables.')
+            raise TypeError('data must be an iterable of iterables.')
         fid_array = cls()
         fids = []
         for fid_index, datum in zip(range(len(data)), data):
@@ -889,9 +889,9 @@ class FidArray(Base):
         if mp: 
             fids = self.get_fids()
             if not all(fid.data.dtype in self._complex_dtypes for fid in fids):
-                raise AttributeError('Only complex data can be phase-corrected.')
+                raise TypeError('Only complex data can be phase-corrected.')
             if not all(fid._flags['ft'] for fid in fids):
-                raise AttributeError('Only Fourier-transformed data can be phase-corrected.')
+                raise ValueError('Only Fourier-transformed data can be phase-corrected.')
             list_params = [[fid.data, method] for fid in fids]
             phased_data = self._generic_mp(Fid._phase_correct, list_params, cpus)
             for fid, datum in zip(fids, phased_data):
@@ -912,7 +912,7 @@ class FidArray(Base):
         if mp: 
             fids = self.get_fids()
             if not all(fid._flags['ft'] for fid in fids):
-                raise AttributeError('Only Fourier-transformed data can be deconvoluted.')
+                raise ValueError('Only Fourier-transformed data can be deconvoluted.')
             list_params = [[fid.data, fid._grouped_peaklist, fid.ranges, frac_lor_gau] for fid in fids]
             deconv_datum = self._generic_mp(Fid._deconv_datum, list_params, cpus)
             for fid, datum in zip(fids, deconv_datum):
@@ -956,8 +956,10 @@ class Importer(Base):
                 self.__data = data
             elif Importer._is_iter(data):
                 self.__data = numpy.array([data])
+            else:
+                raise TypeError('data must be iterable.')
         else:
-            raise AttributeError('data must be an iterable or None.')
+            raise TypeError('data must be complex.')
 
     def import_fid(self):
         """
@@ -973,7 +975,7 @@ class Importer(Base):
         except (FileNotFoundError, OSError):
             print('fid_path does not specify a valid .fid directory.')
             return 
-        except AttributeError:
+        except TypeError:
             print('probably not Bruker data')
         try: 
             print('Attempting Varian')
@@ -982,7 +984,7 @@ class Importer(Base):
             self.data = data 
             self._file_format = 'varian'
             return
-        except AttributeError:
+        except TypeError:
             print('probably not Varian data')
 
 class VarianImporter(Importer):

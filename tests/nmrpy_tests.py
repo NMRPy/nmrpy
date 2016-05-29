@@ -7,250 +7,250 @@ class TestBaseInitialisation(unittest.TestCase):
     def test_init(self):
         base = Base()
 
-class TestFidInitialisation(unittest.TestCase):
-    
-    def setUp(self):
-        self.fid_good_data = [[],
-                            [1, 2.0, 3.0+1j],
-                            numpy.array([1, 2.0, 3.0+1j])
-                            ]
-        self.fid_bad_data = [
-                        'string',
-                        1,
-                        [1, [2]],
-                        [1, 2.0, 'string'],
-                        [1, 2.0, Fid()],
-                        ]
-
-    def test_str(self):
-        fid = Fid()
-        self.assertIsInstance(fid.__str__(), str)
-
-    def test_is_iter(self):
-        for data in self.fid_good_data:
-            self.assertTrue(Fid._is_iter(data))
-        self.assertFalse(Fid._is_iter(1))
-
-    def test_fid_assignment(self):
-        fid = Fid()
-        self.assertEqual(fid.id, None)
-        self.assertIsInstance(fid.data, numpy.ndarray)
-        self.assertFalse(any(self._is_iter(i) for i in fid.data))
-        fid = Fid(id='string', data=self.fid_good_data[0])
-        self.assertIsInstance(fid.id, str)
-        self.assertIsInstance(fid.data, numpy.ndarray)
-        self.assertFalse(any(self._is_iter(i) for i in fid.data))
-
-    def test_failed_fid_assignment(self):
-        for test_id in [1, []]:
-            with self.assertRaises(AttributeError):
-               Fid(id=test_id)
-        for test_data in self.fid_bad_data:
-            with self.assertRaises(AttributeError):
-               Fid(data=test_data)
-
-    def test_failed_fid_procpar_setter(self):
-        fid = Fid()
-        with self.assertRaises(AttributeError):
-            fid._procpar = 'string'
-
-    def test_fid__file_format_setter(self):
-        fid = Fid()
-        for i in ['varian', 'bruker', None]:
-            fid._file_format = i
-
-    def test_failed_fid__file_format_setter(self):
-        fid = Fid()
-        for i in ['string', 1]:
-            with self.assertRaises(AttributeError):
-                fid._file_format = i
-
-    def test_fid_peaks_setter(self):
-        fid = Fid()
-        fid.peaks = numpy.array([1, 2])
-        fid.peaks = [1, 2]
-        self.assertIsInstance(fid.peaks, numpy.ndarray) 
-
-    def test_failed_fid_peaks_setter(self):
-        fid = Fid()
-        with self.assertRaises(AttributeError):
-            fid.peaks = [1, 'string']
-        with self.assertRaises(AttributeError):
-            fid.peaks = 'string'
-        with self.assertRaises(AttributeError):
-            fid.peaks = [[1,2], [3,4]]
-    
-    def test_fid_ranges_setter(self):
-        fid = Fid()
-        fid.peaks = [50, 60, 150, 160, 300]
-        fid.ranges = [[1, 100], [100, 200]]
-        self.assertEqual(fid._grouped_peaklist, [[50, 60],[150, 160]])
-
-    def test_failed_fid_ranges_setter(self):
-        fid = Fid()
-        with self.assertRaises(AttributeError):
-            fid.ranges = [1, 1]
-        with self.assertRaises(AttributeError):
-            fid.ranges = ['string', 1]
-        with self.assertRaises(AttributeError):
-            fid.ranges = [1, 1, 1]
-
-    def test_fid_data_setter(self):
-        fid = Fid()
-        for data in self.fid_good_data:
-            fid.data = data
-            self.assertIsInstance(fid.data, numpy.ndarray)
-
-    def test_failed_fid_data_setter(self):
-        for test_data in self.fid_bad_data:
-            with self.assertRaises(AttributeError):
-               Fid.from_data(test_data)
-
-    def test_real(self):
-        fid = Fid.from_data(numpy.arange(10, dtype='complex'))
-        fid.real()
-        self.assertFalse(fid.data.dtype in fid._complex_dtypes)
-
-    def test_fid_from_data(self):
-        for data in self.fid_good_data:
-            fid = Fid.from_data(data)
-            self.assertIsInstance(fid.data, numpy.ndarray)
-            self.assertEqual(list(fid.data), list(data))
-        
-    def test_fid_from_data_failed(self):
-        for test_data in self.fid_bad_data:
-            with self.assertRaises(AttributeError):
-               Fid.from_data(test_data)
-
-    def test__is_iter_of_iters(self):
-        Fid._is_iter_of_iters([[]])
-
-    def test_failed__is_iter_of_iters(self):
-        for i in [
-                [],
-                [1, 3],
-                [1, [2]],
-                ]:
-            self.assertFalse(Fid._is_iter_of_iters(i))
-
-    @staticmethod
-    def _is_iter(i):
-        try:
-            iter(i)
-            return True
-        except TypeError:
-            return False
-
-    @staticmethod
-    def _is_iter_of_iters(i):
-        if self._is_iter(i) and all(self._is_iter(j) for j in i):
-            return True
-        else:
-            return False
-
-    def test_f_pk(self):
-        fid = Fid()
-        fid._f_pk([i for i in range(100)])
-        fid._f_pk(numpy.arange(100))
-        fid._f_pk(numpy.arange(100), frac_lor_gau = 2.0)
-        fid._f_pk(numpy.arange(100), frac_lor_gau = -2.0)
-
-    def test_f_pk_failed(self):
-        fid = Fid()
-        with self.assertRaises(ValueError):
-            fid._f_pk(numpy.arange(100), offset='g')
-        with self.assertRaises(ValueError):
-            fid._f_pk(5)
-         
-    def test_f_pks(self):
-        fid = Fid()
-        x = numpy.arange(100)
-        p1 = [10.0, 1.0, 1.0, 1.0, 1.0, 0.5]
-        p2 = [20.0, 1.0, 1.0, 1.0, 1.0, 0.5]
-        fid._f_pks([p1, p2], x)
-        fid._f_pks([p1, p2], list(x))
-
-    def test_f_pks_failed(self):
-        fid = Fid()
-        x = numpy.arange(100)
-        p1 = ['j', 1.0, 1.0, 1.0, 1.0, 0.5]
-        p2 = [20.0, 1.0, 1.0, 1.0, 1.0, 0.5]
-        with self.assertRaises(ValueError):
-            fid._f_pks([p1, p2], x)
-        with self.assertRaises(ValueError):
-            fid._f_pks([p2, p2], 4)
-        with self.assertRaises(ValueError):
-            fid._f_pks(1, 4)
-        with self.assertRaises(ValueError):
-            fid._f_pks([1,2], 4)
-
-    def test_f_res(self):
-        fid = Fid()
-        x = numpy.arange(100)
-        p1 = [10.0, 1.0, 1.0, 1.0, 1.0, 0.5]
-        p2 = [20.0, 1.0, 1.0, 1.0, 1.0, 0.5]
-        fid._f_res(p1+p2, x, 0.5)
-        fid._f_res(p1, x, 0.5)
-        fid._f_res(p1, list(x), 0.5)
-
-    def test_f_res_failed(self):
-        fid = Fid()
-        x = numpy.arange(100)
-        p1 = ['j', 1.0, 1.0, 1.0, 1.0, 0.5]
-        p2 = [20.0, 1.0, 1.0, 1.0, 1.0, 0.5]
-        with self.assertRaises(ValueError):
-            fid._f_res(p1+p2, x, 0.5)
-        with self.assertRaises(ValueError):
-            fid._f_res(p2, 3, 0.5)
-        with self.assertRaises(ValueError):
-            fid._f_res('sdf', x, 0.5)
-        with self.assertRaises(ValueError):
-            fid._f_res(4, x, 0.5)
-        with self.assertRaises(ValueError):
-            fid._f_res(p2, numpy.array([x,x]), 0.5)
-
-    def test_f_makep(self):
-        fid = Fid()
-        x = numpy.arange(100)
-        peaks = [10, 20, 30]
-        fid._f_makep(x, peaks)
-        fid._f_makep(list(x), peaks)
-
-    def test_f_makep_failed(self):
-        fid = Fid()
-        x = numpy.arange(100)
-        peaks = [10, 20, 30]
-        with self.assertRaises(ValueError):
-            fid._f_makep(x, 1)
-        with self.assertRaises(ValueError):
-            fid._f_makep(1, peaks)
-        with self.assertRaises(ValueError):
-            fid._f_makep(numpy.array([x,x]), peaks)
-        with self.assertRaises(ValueError):
-            fid._f_makep(x, 2*[peaks])
-
-    def test_f_conv(self):
-        fid = Fid()
-        x = 1+numpy.arange(100)
-        data = 1/x**2
-        p1 = [10.0, 1.0, 1.0, 1.0, 1.0, 0.5]
-        p2 = [20.0, 1.0, 1.0, 1.0, 1.0, 0.5]
-        fid._f_conv([p1, p2], data)
-        fid._f_conv([p1, p2], list(data))
-
-    def test_f_conv_failed(self):
-        fid = Fid()
-        x = 1+numpy.arange(100)
-        data = 1/x**2
-        p1 = [10.0, 1.0, 1.0, 1.0, 1.0, 0.5]
-        p2 = [20.0, 1.0, 1.0, 1.0, 1.0, 0.5]
-        with self.assertRaises(ValueError):
-            fid._f_conv([p1, p2], 1)
-        with self.assertRaises(ValueError):
-            fid._f_conv(1, data)
-        with self.assertRaises(ValueError):
-            fid._f_conv([p1, p2], numpy.array(2*[data]))
-
+#class TestFidInitialisation(unittest.TestCase):
+#    
+#    def setUp(self):
+#        self.fid_good_data = [[],
+#                            [1, 2.0, 3.0+1j],
+#                            numpy.array([1, 2.0, 3.0+1j])
+#                            ]
+#        self.fid_bad_data = [
+#                        'string',
+#                        1,
+#                        [1, [2]],
+#                        [1, 2.0, 'string'],
+#                        [1, 2.0, Fid()],
+#                        ]
+#
+#    def test_str(self):
+#        fid = Fid()
+#        self.assertIsInstance(fid.__str__(), str)
+#
+#    def test_is_iter(self):
+#        for data in self.fid_good_data:
+#            self.assertTrue(Fid._is_iter(data))
+#        self.assertFalse(Fid._is_iter(1))
+#
+#    def test_fid_assignment(self):
+#        fid = Fid()
+#        self.assertEqual(fid.id, None)
+#        self.assertIsInstance(fid.data, numpy.ndarray)
+#        self.assertFalse(any(self._is_iter(i) for i in fid.data))
+#        fid = Fid(id='string', data=self.fid_good_data[0])
+#        self.assertIsInstance(fid.id, str)
+#        self.assertIsInstance(fid.data, numpy.ndarray)
+#        self.assertFalse(any(self._is_iter(i) for i in fid.data))
+#
+#    def test_failed_fid_assignment(self):
+#        for test_id in [1, []]:
+#            with self.assertRaises(AttributeError):
+#               Fid(id=test_id)
+#        for test_data in self.fid_bad_data:
+#            with self.assertRaises(TypeError):
+#               Fid(data=test_data)
+#
+#    def test_failed_fid_procpar_setter(self):
+#        fid = Fid()
+#        with self.assertRaises(AttributeError):
+#            fid._procpar = 'string'
+#
+#    def test_fid__file_format_setter(self):
+#        fid = Fid()
+#        for i in ['varian', 'bruker', None]:
+#            fid._file_format = i
+#
+#    def test_failed_fid__file_format_setter(self):
+#        fid = Fid()
+#        for i in ['string', 1]:
+#            with self.assertRaises(AttributeError):
+#                fid._file_format = i
+#
+#    def test_fid_peaks_setter(self):
+#        fid = Fid()
+#        fid.peaks = numpy.array([1, 2])
+#        fid.peaks = [1, 2]
+#        self.assertIsInstance(fid.peaks, numpy.ndarray) 
+#
+#    def test_failed_fid_peaks_setter(self):
+#        fid = Fid()
+#        with self.assertRaises(AttributeError):
+#            fid.peaks = [1, 'string']
+#        with self.assertRaises(AttributeError):
+#            fid.peaks = 'string'
+#        with self.assertRaises(AttributeError):
+#            fid.peaks = [[1,2], [3,4]]
+#    
+#    def test_fid_ranges_setter(self):
+#        fid = Fid()
+#        fid.peaks = [50, 60, 150, 160, 300]
+#        fid.ranges = [[1, 100], [100, 200]]
+#        self.assertEqual(fid._grouped_peaklist, [[50, 60],[150, 160]])
+#
+#    def test_failed_fid_ranges_setter(self):
+#        fid = Fid()
+#        with self.assertRaises(AttributeError):
+#            fid.ranges = [1, 1]
+#        with self.assertRaises(AttributeError):
+#            fid.ranges = ['string', 1]
+#        with self.assertRaises(AttributeError):
+#            fid.ranges = [1, 1, 1]
+#
+#    def test_fid_data_setter(self):
+#        fid = Fid()
+#        for data in self.fid_good_data:
+#            fid.data = data
+#            self.assertIsInstance(fid.data, numpy.ndarray)
+#
+#    def test_failed_fid_data_setter(self):
+#        for test_data in self.fid_bad_data:
+#            with self.assertRaises(TypeError):
+#               Fid.from_data(test_data)
+#
+#    def test_real(self):
+#        fid = Fid.from_data(numpy.arange(10, dtype='complex'))
+#        fid.real()
+#        self.assertFalse(fid.data.dtype in fid._complex_dtypes)
+#
+#    def test_fid_from_data(self):
+#        for data in self.fid_good_data:
+#            fid = Fid.from_data(data)
+#            self.assertIsInstance(fid.data, numpy.ndarray)
+#            self.assertEqual(list(fid.data), list(data))
+#        
+#    def test_fid_from_data_failed(self):
+#        for test_data in self.fid_bad_data:
+#            with self.assertRaises(TypeError):
+#               Fid.from_data(test_data)
+#
+#    def test__is_iter_of_iters(self):
+#        Fid._is_iter_of_iters([[]])
+#
+#    def test_failed__is_iter_of_iters(self):
+#        for i in [
+#                [],
+#                [1, 3],
+#                [1, [2]],
+#                ]:
+#            self.assertFalse(Fid._is_iter_of_iters(i))
+#
+#    @staticmethod
+#    def _is_iter(i):
+#        try:
+#            iter(i)
+#            return True
+#        except TypeError:
+#            return False
+#
+#    @staticmethod
+#    def _is_iter_of_iters(i):
+#        if self._is_iter(i) and all(self._is_iter(j) for j in i):
+#            return True
+#        else:
+#            return False
+#
+#    def test_f_pk(self):
+#        fid = Fid()
+#        fid._f_pk([i for i in range(100)])
+#        fid._f_pk(numpy.arange(100))
+#        fid._f_pk(numpy.arange(100), frac_lor_gau = 2.0)
+#        fid._f_pk(numpy.arange(100), frac_lor_gau = -2.0)
+#
+#    def test_f_pk_failed(self):
+#        fid = Fid()
+#        with self.assertRaises(TypeError):
+#            fid._f_pk(numpy.arange(100), offset='g')
+#        with self.assertRaises(TypeError):
+#            fid._f_pk(5)
+#         
+#    def test_f_pks(self):
+#        fid = Fid()
+#        x = numpy.arange(100)
+#        p1 = [10.0, 1.0, 1.0, 1.0, 1.0, 0.5]
+#        p2 = [20.0, 1.0, 1.0, 1.0, 1.0, 0.5]
+#        fid._f_pks([p1, p2], x)
+#        fid._f_pks([p1, p2], list(x))
+#
+#    def test_f_pks_failed(self):
+#        fid = Fid()
+#        x = numpy.arange(100)
+#        p1 = ['j', 1.0, 1.0, 1.0, 1.0, 0.5]
+#        p2 = [20.0, 1.0, 1.0, 1.0, 1.0, 0.5]
+#        with self.assertRaises(TypeError):
+#            fid._f_pks([p1, p2], x)
+#        with self.assertRaises(TypeError):
+#            fid._f_pks([p2, p2], 4)
+#        with self.assertRaises(TypeError):
+#            fid._f_pks(1, 4)
+#        with self.assertRaises(TypeError):
+#            fid._f_pks([1,2], 4)
+#
+#    def test_f_res(self):
+#        fid = Fid()
+#        x = numpy.arange(100)
+#        p1 = [10.0, 1.0, 1.0, 1.0, 1.0, 0.5]
+#        p2 = [20.0, 1.0, 1.0, 1.0, 1.0, 0.5]
+#        fid._f_res(p1+p2, x, 0.5)
+#        fid._f_res(p1, x, 0.5)
+#        fid._f_res(p1, list(x), 0.5)
+#
+#    def test_f_res_failed(self):
+#        fid = Fid()
+#        x = numpy.arange(100)
+#        p1 = ['j', 1.0, 1.0, 1.0, 1.0, 0.5]
+#        p2 = [20.0, 1.0, 1.0, 1.0, 1.0, 0.5]
+#        with self.assertRaises(TypeError):
+#            fid._f_res(p1+p2, x, 0.5)
+#        with self.assertRaises(TypeError):
+#            fid._f_res(p2, 3, 0.5)
+#        with self.assertRaises(TypeError):
+#            fid._f_res('sdf', x, 0.5)
+#        with self.assertRaises(TypeError):
+#            fid._f_res(4, x, 0.5)
+#        with self.assertRaises(TypeError):
+#            fid._f_res(p2, numpy.array([x,x]), 0.5)
+#
+#    def test_f_makep(self):
+#        fid = Fid()
+#        x = numpy.arange(100)
+#        peaks = [10, 20, 30]
+#        fid._f_makep(x, peaks)
+#        fid._f_makep(list(x), peaks)
+#
+#    def test_f_makep_failed(self):
+#        fid = Fid()
+#        x = numpy.arange(100)
+#        peaks = [10, 20, 30]
+#        with self.assertRaises(TypeError):
+#            fid._f_makep(x, 1)
+#        with self.assertRaises(TypeError):
+#            fid._f_makep(1, peaks)
+#        with self.assertRaises(TypeError):
+#            fid._f_makep(numpy.array([x,x]), peaks)
+#        with self.assertRaises(TypeError):
+#            fid._f_makep(x, 2*[peaks])
+#
+#    def test_f_conv(self):
+#        fid = Fid()
+#        x = 1+numpy.arange(100)
+#        data = 1/x**2
+#        p1 = [10.0, 1.0, 1.0, 1.0, 1.0, 0.5]
+#        p2 = [20.0, 1.0, 1.0, 1.0, 1.0, 0.5]
+#        fid._f_conv([p1, p2], data)
+#        fid._f_conv([p1, p2], list(data))
+#
+#    def test_f_conv_failed(self):
+#        fid = Fid()
+#        x = 1+numpy.arange(100)
+#        data = 1/x**2
+#        p1 = [10.0, 1.0, 1.0, 1.0, 1.0, 0.5]
+#        p2 = [20.0, 1.0, 1.0, 1.0, 1.0, 0.5]
+#        with self.assertRaises(TypeError):
+#            fid._f_conv([p1, p2], 1)
+#        with self.assertRaises(TypeError):
+#            fid._f_conv(1, data)
+#        with self.assertRaises(TypeError):
+#            fid._f_conv([p1, p2], numpy.array(2*[data]))
+#
 
 class TestFidArrayInitialisation(unittest.TestCase):
     
@@ -272,7 +272,7 @@ class TestFidArrayInitialisation(unittest.TestCase):
     
     def test_failed_fid_array_from_dataable(self):
         fid_data_array = [1, 2.0, 3.0+1j] 
-        with self.assertRaises(AttributeError):
+        with self.assertRaises(TypeError):
             FidArray.from_data(fid_data_array)
 
     def test_fid_array_add_fid(self):
@@ -474,11 +474,11 @@ class TestFidUtils(unittest.TestCase):
 
     def test_ps_failed(self):
         for fid in [self.fid_array_varian.get_fids()[0], self.fid_array_bruker.get_fids()[0]]:
-            with self.assertRaises(AttributeError):
+            with self.assertRaises(TypeError):
                 fid.ps(p0='string', p1=20)
-            with self.assertRaises(AttributeError):
+            with self.assertRaises(TypeError):
                 fid.ps(p0=34.0, p1='string')
-            with self.assertRaises(AttributeError):
+            with self.assertRaises(TypeError):
                 fid.ps(p0=34.0, p1=4j)
 
     def test_conv_to_ppm_index(self):
@@ -516,7 +516,7 @@ class TestFidUtils(unittest.TestCase):
  
     def test_failed__ft(self):
         fid = self.fid_array_varian.get_fids()[0]
-        with self.assertRaises(AttributeError):
+        with self.assertRaises(ValueError):
             Fid._ft([fid.data])
 
     def test_phase_correct(self):
@@ -541,9 +541,9 @@ class TestFidUtils(unittest.TestCase):
         fid.ft() 
         fid.phase_correct() 
         fid.real()
-        with self.assertRaises(ValueError):
+        with self.assertRaises(TypeError):
             Fid._f_fitp(1, fid.peaks, 0.5)
-        with self.assertRaises(ValueError):
+        with self.assertRaises(TypeError):
             Fid._f_fitp(['string', 1], fid.peaks, 0.5)
         with self.assertRaises(ValueError):
             Fid._f_fitp(fid.data, [2*len(fid.data)], frac_lor_gau=0.5)
@@ -599,11 +599,11 @@ class TestFidArrayUtils(unittest.TestCase):
         self.fid_array_varian.phase_correct_fids(method='nelder')
 
     def test_failed_phase_correct_fids(self):
-        with self.assertRaises(AttributeError):
+        with self.assertRaises(ValueError):
             self.fid_array_varian.phase_correct_fids(mp=True)
 
     def test_failed_phase_correct_fids_mp(self):
-        with self.assertRaises(AttributeError):
+        with self.assertRaises(ValueError):
             self.fid_array_varian.phase_correct_fids()
 
     def test_ps_fids(self):
@@ -615,6 +615,10 @@ class TestFidArrayUtils(unittest.TestCase):
         self.fid_array_varian.phase_correct_fids()
         self.fid_array_varian.real_fids()
         self.fid_array_varian.deconv_fids(mp=True, frac_lor_gau=0.0)
+
+    def test_failed_deconv_fids(self):
+        with self.assertRaises(ValueError):
+            self.fid_array_varian.deconv_fids(mp=True, frac_lor_gau=0.0)
 
 if __name__ == '__main__':
     unittest.main()
