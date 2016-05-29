@@ -545,7 +545,7 @@ class Fid(Base):
         """
         
         if not cls._is_iter_of_iters(parameterset_list):
-            raise TypeError('Parameter set must be an iterable') 
+            raise TypeError('Parameter set must be an iterable of iterables') 
         for p in parameterset_list:
             if not cls._is_iter(p):
                 raise TypeError('Parameter set must be an iterable') 
@@ -644,6 +644,7 @@ class Fid(Base):
                     params[par_name].max = 1.0
                     if frac_lor_gau is not None:
                         params[par_name].vary = False
+
         try:
             mz = lmfit.minimize(cls._f_res, params, args=([data]), method=method)
             fits = Fid._parameters_to_list(mz.params)
@@ -658,7 +659,6 @@ class Fid(Base):
         for i in range(n_pks):
             current_params = [p['%s_%s'%(par, i)].value for par in ['offset', 'sigma', 'hwhm', 'amplitude', 'frac_lor_gau']]
             params.append(current_params)
-        params = [i for i in params for j in i]
         return params
 
 
@@ -679,11 +679,12 @@ class Fid(Base):
             datum = numpy.array(datum) 
         if datum.dtype in cls._complex_dtypes:
             raise TypeError('data must be not be complex.')
+
         fit = []
         for j in zip(peaks, ranges):
             d_slice = datum[j[1][0]:j[1][1]]
             p_slice = j[0]-j[1][0]
-            f = cls._f_fitp(d_slice, p_slice, frac_lor_gau=frac_lor_gau, method=method)[0]
+            f = cls._f_fitp(d_slice, p_slice, frac_lor_gau=frac_lor_gau, method=method)
             f = numpy.array(f).transpose()
             f[0] += j[1][0]
             f = f.transpose()
@@ -884,7 +885,7 @@ class FidArray(Base):
         else: 
             for fid in self.get_fids():
                 fid.ft()
-        print('Fourier-transform completed')
+        print('Fourier-transformation completed')
 
     def real_fids(self):
         """ 
