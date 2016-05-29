@@ -659,7 +659,12 @@ class Fid(Base):
         return fits, cov
 
     @classmethod
-    def _deconv_datum(cls, datum, peaks, ranges, frac_lor_gau=0.0):
+    def _deconv_datum(cls, list_parameters):
+        if len(list_parameters) != 4:
+            raise ValueError('list_parameters must consist of four objects.')
+
+        datum, peaks, ranges, frac_lor_gau = list_parameters
+
         if not cls._is_iter_of_iters(ranges):
             raise ValueError('ranges must be an iterable of iterables') 
         if not all(len(rng) == 2 for rng in ranges):
@@ -669,7 +674,7 @@ class Fid(Base):
         if not isinstance(datum, numpy.ndarray):
             datum = numpy.array(datum) 
         if datum.dtype in cls._complex_dtypes:
-            raise AttributeError('data must be not be complex.')
+            raise ValueError('data must be not be complex.')
         fit = []
         for j in zip(peaks, ranges):
             d_slice = datum[j[1][0]:j[1][1]]
@@ -691,10 +696,8 @@ class Fid(Base):
         if self.ranges is None:
             raise ValueError('ranges must be specified.')
         print('deconvoluting {}'.format(self.id))
-        self._deconvoluted_peaks = Fid._deconv_datum(self.data, 
-                                                    self._grouped_peaklist, 
-                                                    self.ranges, 
-                                                    frac_lor_gau=frac_lor_gau)
+        list_parameters = [self.data, self._grouped_peaklist, self.ranges, frac_lor_gau]
+        self._deconvoluted_peaks = Fid._deconv_datum(list_parameters)
  
 #        def deconv(self, gl=None, mp=True):
 #                """Deconvolute array of spectra (self.data) using specified peak positions (self.peaks) and ranges (self.ranges) by fitting the data with combined Gaussian/Lorentzian functions. Uses the Levenberg-Marquardt least squares algorithm [1] as implemented in SciPy.optimize.leastsq.
@@ -897,7 +900,7 @@ class FidArray(Base):
             for fid in self.get_fids():
                 fid.phase_correct(method=method)
 
-    def deconv_fids(self, mp=True, cpus=None):
+    def deconv_fids(self, mp=True, cpus=None, frac_lor_gau=0.0):
         """ 
         Apply phase-correction to all FIDs.
 
@@ -907,19 +910,16 @@ class FidArray(Base):
         cores  -- defines number of CPUs to utilise if 'mp' is set to True
         """
         if mp: 
-            pass
-            #fids = self.get_fids()
-            #if not all(fid.data.dtype in self._complex_dtypes for fid in fids):
-            #    raise AttributeError('Only complex data can be phase-corrected.')
-            #if not all(fid._flags['ft'] for fid in fids):
-            #    raise AttributeError('Only Fourier-transformed data can be phase-corrected.')
-            #list_params = [[fid.data, method] for fid in fids]
-            #phased_data = self._generic_mp(Fid._phase_correct, list_params, cpus)
-            #for fid, datum in zip(fids, phased_data):
-            #    fid.data = datum
+            fids = self.get_fids()
+            if not all(fid._flags['ft'] for fid in fids):
+                raise AttributeError('Only Fourier-transformed data can be deconvoluted.')
+            list_params = [[fid.data, fid._grouped_peaklist, fid.ranges, frac_lor_gau] for fid in fids]
+            deconv_datum = self._generic_mp(Fid._deconv_datum, list_params, cpus)
+            for fid, datum in zip(fids, deconv_datum):
+                fid._deconvoluted_peaks = deconv_datum
         else:
             for fid in self.get_fids():
-                fid.deconv()
+                fid.deconv(frac_lor_gau=frac_lor_gau)
 
     def ps_fids(self, p0=0.0, p1=0.0):
         """
@@ -936,10 +936,6 @@ class FidArray(Base):
         proc_pool.join()
         return result
         
-    @staticmethod
-    def _generic_exec(fcn_obj_tuples):
-        getattr(fcn_obj_tuples[1], fcn_obj_tuples[0])()
-        return fcn_obj_tuples[1]
 
 class Importer(Base):
 

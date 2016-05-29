@@ -553,7 +553,9 @@ class TestFidUtils(unittest.TestCase):
         fid.ft() 
         fid.phase_correct() 
         fid.real()
-        Fid._deconv_datum(fid.data, fid._grouped_peaklist, fid.ranges)
+        frac_lor_gau = 0.0
+        list_parameters = [fid.data, fid._grouped_peaklist, fid.ranges, frac_lor_gau]
+        Fid._deconv_datum(list_parameters)
 
     def test_deconv(self):
         fid = self.fid_array_varian.get_fids()[0]
@@ -569,6 +571,14 @@ class TestFidArrayUtils(unittest.TestCase):
         self.fid_array_varian = FidArray.from_path(fid_path=path_varian, file_format='varian')
         path_bruker = './tests/test_data/bruker1'
         self.fid_array_bruker = FidArray.from_path(fid_path=path_bruker, file_format='bruker')
+        peaks =  [6552, 6570, 6692]
+        ranges = [[6000,6600],[6600,7000]]
+        for fid in self.fid_array_varian.get_fids():
+            fid.peaks = peaks
+            fid.ranges = ranges
+        for fid in self.fid_array_bruker.get_fids():
+            fid.peaks = peaks
+            fid.ranges = ranges
 
     def test_ft_fids_mp(self):
         self.fid_array_varian.ft_fids()
@@ -600,6 +610,11 @@ class TestFidArrayUtils(unittest.TestCase):
         self.fid_array_varian.ft_fids()
         self.fid_array_varian.ps_fids(p0=20, p1=20)
 
+    def test_deconv_fids(self):
+        self.fid_array_varian.ft_fids()
+        self.fid_array_varian.phase_correct_fids()
+        self.fid_array_varian.real_fids()
+        self.fid_array_varian.deconv_fids(mp=True, frac_lor_gau=0.0)
 
 if __name__ == '__main__':
     unittest.main()
