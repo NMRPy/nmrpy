@@ -184,30 +184,6 @@ class TestFidInitialisation(unittest.TestCase):
         with self.assertRaises(TypeError):
             fid._f_pks([1,2], 4)
 
-    def test_f_res(self):
-        fid = Fid()
-        x = numpy.arange(100)
-        p1 = [10.0, 1.0, 1.0, 1.0, 0.5]
-        p2 = [20.0, 1.0, 1.0, 1.0, 0.5]
-        fid._f_res(p1+p2, x, 0.5)
-        fid._f_res(p1, x, 0.5)
-        fid._f_res(p1, list(x), 0.5)
-
-    def test_f_res_failed(self):
-        fid = Fid()
-        x = numpy.arange(100)
-        p1 = ['j', 1.0, 1.0, 1.0, 0.5]
-        p2 = [20.0, 1.0, 1.0, 1.0, 0.5]
-        with self.assertRaises(TypeError):
-            fid._f_res(p1+p2, x, 0.5)
-        with self.assertRaises(TypeError):
-            fid._f_res(p2, 3, 0.5)
-        with self.assertRaises(TypeError):
-            fid._f_res('sdf', x, 0.5)
-        with self.assertRaises(TypeError):
-            fid._f_res(4, x, 0.5)
-        with self.assertRaises(TypeError):
-            fid._f_res(p2, numpy.array([x,x]), 0.5)
 
     def test_f_makep(self):
         fid = Fid()
@@ -552,7 +528,8 @@ class TestFidUtils(unittest.TestCase):
         fid.phase_correct() 
         fid.real()
         frac_lor_gau = 0.0
-        list_parameters = [fid.data, fid._grouped_peaklist, fid.ranges, frac_lor_gau]
+        method = 'nelder'
+        list_parameters = [fid.data, fid._grouped_peaklist, fid.ranges, frac_lor_gau, method]
         Fid._deconv_datum(list_parameters)
 
     def test_deconv(self):
@@ -612,7 +589,13 @@ class TestFidArrayUtils(unittest.TestCase):
         self.fid_array_varian.ft_fids()
         self.fid_array_varian.phase_correct_fids()
         self.fid_array_varian.real_fids()
-        self.fid_array_varian.deconv_fids(mp=True, frac_lor_gau=0.0)
+        self.fid_array_varian.deconv_fids(mp=False, frac_lor_gau=None)
+
+    def test_deconv_fids_mp(self):
+        self.fid_array_varian.ft_fids()
+        self.fid_array_varian.phase_correct_fids()
+        self.fid_array_varian.real_fids()
+        self.fid_array_varian.deconv_fids(mp=True, frac_lor_gau=None)
 
     def test_failed_deconv_fids(self):
         with self.assertRaises(ValueError):
