@@ -605,6 +605,31 @@ class TestFidArrayUtils(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.fid_array_varian.deconv_fids(mp=True, frac_lor_gau=0.0)
 
+class TestPlottingUtils(unittest.TestCase):
+
+    def setUp(self):
+        path_varian = './tests/test_data/test1.fid'
+        self.fid_array_varian = FidArray.from_path(fid_path=path_varian, file_format='varian')
+        path_bruker = './tests/test_data/bruker1'
+        self.fid_array_bruker = FidArray.from_path(fid_path=path_bruker, file_format='bruker')
+        peaks = [ 4.71,  4.64,  4.17,  0.57]
+        ranges = [[ 5.29,  3.67], [1.05,  0.27]]
+        for fid in self.fid_array_varian.get_fids():
+            fid.peaks = peaks
+            fid.ranges = ranges
+        for fid in self.fid_array_bruker.get_fids():
+            fid.peaks = peaks
+            fid.ranges = ranges
+        self.fid_varian = self.fid_array_varian.get_fids()[0]
+        self.fid_bruker = self.fid_array_bruker.get_fids()[0]
+
+    def test_plot_ppm(self):
+        self.fid_varian.ft()
+        self.fid_varian.phase_correct()
+        self.fid_varian.plot_ppm()
+        self.fid_bruker.ft()
+        self.fid_bruker.phase_correct()
+        self.fid_bruker.plot_ppm()
 
 if __name__ == '__main__':
     unittest.main()
