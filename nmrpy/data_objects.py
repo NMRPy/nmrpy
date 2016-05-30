@@ -94,7 +94,6 @@ class Base():
             self.__procpar = procpar 
         elif isinstance(procpar, dict):
             self.__procpar = procpar 
-            print('awe1', self.fid_path)
             self._params = self._extract_procpar(procpar)
         else:
             raise AttributeError('procpar must be a dictionary or None.')
