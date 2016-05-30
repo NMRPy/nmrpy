@@ -249,13 +249,45 @@ class Fid(Base):
         self._ranges = ranges
 
     @property
+    def _index_peaks(self):
+        """
+        self.peaks converted to indices rather than ppm
+        """
+        if self.peaks is not None:
+            return self._conv_to_index(self.data, self.peaks, self._params['sw_left'], self._params['sw'])
+        else:
+            return [] 
+
+    @property
+    def _index_ranges(self):
+        """
+        self.peaks converted to indices rather than ppm
+        """
+        if self.ranges is not None:
+            shp = self.ranges.shape
+            index_ranges = self._conv_to_index(self.data, self.ranges.flatten(), self._params['sw_left'], self._params['sw'])
+            return index_ranges.reshape(shp)
+        else:
+            return [] 
+
+    @property
     def _grouped_peaklist(self):
         """
         self.peaks arranged according to self.ranges
         """
         if self.ranges is not None:
-            return [[peak for peak in self.peaks if peak > peak_range[0] and peak < peak_range[1]]
-                    for peak_range in self.ranges]
+            return numpy.array([[peak for peak in self.peaks if peak > min(peak_range) and peak < max(peak_range)]
+                    for peak_range in self.ranges])
+        else:
+            return []
+    @property
+    def _grouped_index_peaklist(self):
+        """
+        self.peaks arranged according to self.ranges
+        """
+        if self._index_ranges is not None:
+            return numpy.array([[peak for peak in self._index_peaks if peak > min(peak_range) and peak < max(peak_range)]
+                    for peak_range in self._index_ranges])
         else:
             return []
 
@@ -330,7 +362,7 @@ class Fid(Base):
             if isinstance(index, list):
                     index = numpy.array(index)
             frc_sw = index/float(len(data))
-            ppm = sw_left-sw+frc_sw*sw
+            ppm = sw_left-sw*frc_sw
             if Fid._is_iter(ppm):
                 return numpy.array([round(i, 2) for i in ppm])
             else:
@@ -346,10 +378,10 @@ class Fid(Base):
                     ppm = numpy.array(ppm)
             if any(ppm > sw_left) or any(ppm < sw_left-sw):
                 raise ValueError('ppm must be within spectral width.')
-            frc_sw = (ppm+(sw-sw_left))/sw
+            indices = len(data)*(sw_left-ppm)/sw
             if conv_to_int:
-                return int(numpy.ceil(frc_sw*len(data)))
-            return numpy.array(numpy.ceil(frc_sw*len(data)), dtype=int)
+                return int(numpy.ceil(indices))
+            return numpy.array(numpy.ceil(indices), dtype=int)
     
     def phase_correct(self, method='leastsq'):
             """
@@ -712,70 +744,10 @@ class Fid(Base):
         if self.ranges is None:
             raise AttributeError('ranges must be specified.')
         print('deconvoluting {}'.format(self.id))
-        list_parameters = [self.data, self._grouped_peaklist, self.ranges, frac_lor_gau, method]
+        list_parameters = [self.data, self._grouped_index_peaklist, self._index_ranges, frac_lor_gau, method]
         self._deconvoluted_peaks = Fid._deconv_datum(list_parameters)
         print('deconvolution completed')
  
-#        def deconv(self, gl=None, mp=True):
-#                """Deconvolute array of spectra (self.data) using specified peak positions (self.peaks) and ranges (self.ranges) by fitting the data with combined Gaussian/Lorentzian functions. Uses the Levenberg-Marquardt least squares algorithm [1] as implemented in SciPy.optimize.leastsq.
-#
-#                    Keyword arguments:
-#                    gl -- ratio of peak function to be Gaussian (1 -- pure Gaussian, 0 -- pure Lorentzian)
-#                    mp     -- multiprocessing, parallelise the deconvlution process over multiple processors, significantly reduces computation time
-#
-#
-#                    [1] Marquardt, Donald W. 'An algorithm for least-squares estimation of nonlinear parameters.' Journal of the Society for Industrial & Applied Mathematics 11.2 (1963): 431-441.
-#                """
-#                self.real()
-#                self._convert_peaklist_to_index()
-#                self.data = self.data[:, ::-1]
-#                if mp:
-#                        self._deconv_mp(gl=gl)
-#                else:
-#                        self._deconv(gl=gl)
-#                self.data = self.data[:, ::-1]
-#                self._convert_peaklist_to_ppm()
-#                print 'done!'
-#
-#        def _deconv_single(self, n):
-#                fit = self._deconv_datum(
-#                    self.data[n],
-#                    self.grouped_peaklist(),
-#                    self.ranges,
-#                    self._flags['gl'])
-#                print 'fit %i/%i' % (n+1, len(self.data))
-#                return fit
-#
-#        def _deconv_mp(self, gl=None):
-#                self._flags['gl'] = gl
-#                proc_pool = Pool(cpu_count()-1)
-#                data_zip = zip([self]*len(self.data), range(len(self.data)))
-#                fits = proc_pool.map(_unwrap_fid_deconv, data_zip)
-#                self.fits = np.array(fits)
-#                self.integrals = f_integrals_array(self.data, self.fits)
-#                proc_pool.close()
-#                proc_pool.join()
-#                #self.integrals = np.array([list(i) for i in self.integrals])
-#                # return f
-#
-#        def _deconv(self, gl=None):
-#                data = self.data
-#                peaks = self.grouped_peaklist()
-#                ranges = self.ranges
-#                fits = []
-#                if len(data.shape) == 2:
-#                        for i in data:
-#                                fits.append(
-#                                    self._deconv_datum(
-#                                        i,
-#                                        peaks,
-#                                        ranges,
-#                                        gl))
-#                                print 'fit %i/%i' % (len(fits), len(self.data))
-#                        self.fits = np.array(fits)
-#                        self.integrals = f_integrals_array(self.data, self.fits)
-#
-
 class FidArray(Base):
     '''
     This object collects several FIDs into an array and contains all the
@@ -932,7 +904,7 @@ class FidArray(Base):
             fids = self.get_fids()
             if not all(fid._flags['ft'] for fid in fids):
                 raise ValueError('Only Fourier-transformed data can be deconvoluted.')
-            list_params = [[fid.data, fid._grouped_peaklist, fid.ranges, frac_lor_gau, method] for fid in fids]
+            list_params = [[fid.data, fid._grouped_index_peaklist, fid._index_ranges, frac_lor_gau, method] for fid in fids]
             deconv_datum = self._generic_mp(Fid._deconv_datum, list_params, cpus)
             for fid, datum in zip(fids, deconv_datum):
                 fid._deconvoluted_peaks = deconv_datum
@@ -955,7 +927,6 @@ class FidArray(Base):
         proc_pool.close()
         proc_pool.join()
         return result
-        
 
 class Importer(Base):
 

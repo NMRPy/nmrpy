@@ -81,10 +81,14 @@ class TestFidInitialisation(unittest.TestCase):
             fid.peaks = [[1,2], [3,4]]
     
     def test_fid_ranges_setter(self):
-        fid = Fid()
-        fid.peaks = [50, 60, 150, 160, 300]
-        fid.ranges = [[1, 100], [100, 200]]
-        self.assertEqual(fid._grouped_peaklist, [[50, 60],[150, 160]])
+        path = './tests/test_data/test2.fid'
+        fid_array = FidArray.from_path(fid_path=path)
+        fid = fid_array.get_fids()[0]
+        fid.peaks = [ 4.71,  4.64,  4.17,  0.57]
+        fid.ranges = [[ 5.29,  3.67], [1.05,  0.27]]
+        self.assertTrue(numpy.allclose(fid._grouped_peaklist.shape, numpy.array([[ 4.71,  4.64,  4.17], [ 0.57]]).shape))
+        self.assertTrue(numpy.allclose(fid._grouped_index_peaklist.shape, numpy.array([[6551, 6569, 6691], [7624]]).shape))
+
 
     def test_failed_fid_ranges_setter(self):
         fid = Fid()
@@ -188,14 +192,14 @@ class TestFidInitialisation(unittest.TestCase):
     def test_f_makep(self):
         fid = Fid()
         x = numpy.arange(100)
-        peaks = [10, 20, 30]
+        peaks = [ 4.71,  4.64,  4.17,  0.57]
         fid._f_makep(x, peaks)
         fid._f_makep(list(x), peaks)
 
     def test_f_makep_failed(self):
         fid = Fid()
         x = numpy.arange(100)
-        peaks = [10, 20, 30]
+        peaks = [ 4.71,  4.64,  4.17,  0.57]
         with self.assertRaises(TypeError):
             fid._f_makep(x, 1)
         with self.assertRaises(TypeError):
@@ -431,8 +435,8 @@ class TestFidUtils(unittest.TestCase):
         self.fid_array_varian = FidArray.from_path(fid_path=path_varian, file_format='varian')
         path_bruker = './tests/test_data/bruker1'
         self.fid_array_bruker = FidArray.from_path(fid_path=path_bruker, file_format='bruker')
-        peaks =  [6552, 6570, 6692]
-        ranges = [[6000,6600],[6600,7000]]
+        peaks = [ 4.71,  4.64,  4.17,  0.57]
+        ranges = [[ 5.29,  3.67], [1.05,  0.27]]
         for fid in self.fid_array_varian.get_fids():
             fid.peaks = peaks
             fid.ranges = ranges
@@ -529,7 +533,7 @@ class TestFidUtils(unittest.TestCase):
         fid.real()
         frac_lor_gau = 0.0
         method = 'nelder'
-        list_parameters = [fid.data, fid._grouped_peaklist, fid.ranges, frac_lor_gau, method]
+        list_parameters = [fid.data, fid._grouped_index_peaklist, fid._index_ranges, frac_lor_gau, method]
         Fid._deconv_datum(list_parameters)
 
     def test_deconv(self):
@@ -546,8 +550,8 @@ class TestFidArrayUtils(unittest.TestCase):
         self.fid_array_varian = FidArray.from_path(fid_path=path_varian, file_format='varian')
         path_bruker = './tests/test_data/bruker1'
         self.fid_array_bruker = FidArray.from_path(fid_path=path_bruker, file_format='bruker')
-        peaks =  [6552, 6570, 6692]
-        ranges = [[6000,6600],[6600,7000]]
+        peaks = [ 4.71,  4.64,  4.17,  0.57]
+        ranges = [[ 5.29,  3.67], [1.05,  0.27]]
         for fid in self.fid_array_varian.get_fids():
             fid.peaks = peaks
             fid.ranges = ranges
@@ -600,5 +604,7 @@ class TestFidArrayUtils(unittest.TestCase):
     def test_failed_deconv_fids(self):
         with self.assertRaises(ValueError):
             self.fid_array_varian.deconv_fids(mp=True, frac_lor_gau=0.0)
+
+
 if __name__ == '__main__':
     unittest.main()
