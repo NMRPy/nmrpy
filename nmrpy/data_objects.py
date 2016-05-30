@@ -6,7 +6,7 @@ import nmrglue
 import numbers
 from scipy.optimize import leastsq
 from multiprocessing import Pool, cpu_count
-
+from nmrpy.plotting import *
 
 class Base():
     """
@@ -94,6 +94,7 @@ class Base():
             self.__procpar = procpar 
         elif isinstance(procpar, dict):
             self.__procpar = procpar 
+            print('awe1', self.fid_path)
             self._params = self._extract_procpar(procpar)
         else:
             raise AttributeError('procpar must be a dictionary or None.')
@@ -111,10 +112,12 @@ class Base():
 
     #processing
     def _extract_procpar(self, procpar):
-        try:
-            return self._extract_procpar_bruker(procpar)
-        except KeyError:
+        if self._file_format == 'bruker':
+            return self._extract_procpar_bruker(procpar, self.fid_path)
+        elif self._file_format == 'varian':
             return self._extract_procpar_varian(procpar)
+        #else:
+        #    raise AttributeError('Could not parse procpar.') 
 
     @staticmethod
     def _extract_procpar_varian(procpar):
@@ -156,31 +159,31 @@ class Base():
         return params
 
     @staticmethod
-    def _extract_procpar_bruker(procpar): #finish this
+    def _extract_procpar_bruker(procpar, filepath): #finish this
         """
         Extract some commonly-used NMR parameters (using Bruker denotations)
         and return a parameter dictionary 'params'.
         """
         d1 = procpar['RD']
-        sfrq = procpar['SFO1']
+        reffrq = procpar['SFO1']
         nt = procpar['NS']
         sw_hz = procpar['SW_h']
         sw = procpar['SW']
         # lefthand offset of the processed data in ppm
-        #for i in open(self.filename+'/pdata/1/procs').readlines():
-        #        if 'OFFSET' in i:
-        #                sw_left = float(i.split(' ')[1])
+        for i in open(filepath+'/pdata/1/procs').readlines():
+            if 'OFFSET' in i:
+                sw_left = float(i.split(' ')[1])
         at = procpar['TD']/(2*sw_hz)
         rt = at+d1
         acqtime = (nt*rt)/60.  # convert to mins.
         params = dict(
             at=at,
             d1=d1,
-            sfrq=sfrq,
+            reffrq=reffrq,
             rt=rt,
             nt=nt,
             acqtime=acqtime,
-            #sw_left=sw_left,
+            sw_left=sw_left,
             sw=sw,
             sw_hz=sw_hz)
         return params
@@ -747,6 +750,14 @@ class Fid(Base):
         list_parameters = [self.data, self._grouped_index_peaklist, self._index_ranges, frac_lor_gau, method]
         self._deconvoluted_peaks = Fid._deconv_datum(list_parameters)
         print('deconvolution completed')
+
+
+    def plot_ppm(self):
+        plt = Plot()
+        plt._plot_ppm(self.data, self._params)
+        setattr(self, plt.id, plt)
+        plt.fig.show()
+
  
 class FidArray(Base):
     '''
@@ -825,7 +836,7 @@ class FidArray(Base):
         elif file_format == 'bruker':
             importer = BrukerImporter(fid_path=fid_path)
             importer.import_fid()
-        
+       
         if cls._is_iter(importer.data):
             fid_array = cls.from_data(importer.data)
             fid_array._file_format = importer._file_format
@@ -833,8 +844,8 @@ class FidArray(Base):
             fid_array._procpar = importer._procpar
             for fid in fid_array.get_fids():
                 fid._file_format = fid_array._file_format
-                fid._procpar = fid_array._procpar
                 fid.fid_path = fid_array.fid_path
+                fid._procpar = fid_array._procpar
             return fid_array 
         else:
             raise IOError('Data could not be imported.')
