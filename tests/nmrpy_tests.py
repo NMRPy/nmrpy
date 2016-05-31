@@ -156,8 +156,8 @@ class TestFidInitialisation(unittest.TestCase):
         fid = Fid()
         fid._f_pk([i for i in range(100)])
         fid._f_pk(numpy.arange(100))
-        fid._f_pk(numpy.arange(100), frac_lor_gau = 2.0)
-        fid._f_pk(numpy.arange(100), frac_lor_gau = -2.0)
+        fid._f_pk(numpy.arange(100), frac_gauss = 2.0)
+        fid._f_pk(numpy.arange(100), frac_gauss = -2.0)
 
     def test_f_pk_failed(self):
         fid = Fid()
@@ -510,9 +510,9 @@ class TestFidUtils(unittest.TestCase):
         fid = self.fid_array_varian.get_fids()[0]
         fid.ft() 
         fid.phase_correct() 
-        Fid._f_fitp(fid.data, fid.peaks, frac_lor_gau=0.5)
+        Fid._f_fitp(fid.data, fid.peaks, frac_gauss=0.5)
         fid.data = list(fid.data)
-        Fid._f_fitp(fid.data, fid.peaks, frac_lor_gau=0.5)
+        Fid._f_fitp(fid.data, fid.peaks, frac_gauss=0.5)
 
     def test_f_fitp_failed(self):
         fid = self.fid_array_varian.get_fids()[0]
@@ -524,16 +524,16 @@ class TestFidUtils(unittest.TestCase):
         with self.assertRaises(TypeError):
             Fid._f_fitp(['string', 1], fid.peaks, 0.5)
         with self.assertRaises(ValueError):
-            Fid._f_fitp(fid.data, [2*len(fid.data)], frac_lor_gau=0.5)
+            Fid._f_fitp(fid.data, [2*len(fid.data)], frac_gauss=0.5)
 
     def test__deconv_datum(self):
         fid = self.fid_array_varian.get_fids()[0]
         fid.ft() 
         fid.phase_correct() 
         fid.real()
-        frac_lor_gau = 0.0
+        frac_gauss = 0.0
         method = 'nelder'
-        list_parameters = [fid.data, fid._grouped_index_peaklist, fid._index_ranges, frac_lor_gau, method]
+        list_parameters = [fid.data, fid._grouped_index_peaklist, fid._index_ranges, frac_gauss, method]
         Fid._deconv_datum(list_parameters)
 
     def test_deconv(self):
@@ -593,17 +593,17 @@ class TestFidArrayUtils(unittest.TestCase):
         self.fid_array_varian.ft_fids()
         self.fid_array_varian.phase_correct_fids()
         self.fid_array_varian.real_fids()
-        self.fid_array_varian.deconv_fids(mp=False, frac_lor_gau=None)
+        self.fid_array_varian.deconv_fids(mp=False, frac_gauss=None)
 
     def test_deconv_fids_mp(self):
         self.fid_array_varian.ft_fids()
         self.fid_array_varian.phase_correct_fids()
         self.fid_array_varian.real_fids()
-        self.fid_array_varian.deconv_fids(mp=True, frac_lor_gau=None)
+        self.fid_array_varian.deconv_fids(mp=True, frac_gauss=None)
 
     def test_failed_deconv_fids(self):
         with self.assertRaises(ValueError):
-            self.fid_array_varian.deconv_fids(mp=True, frac_lor_gau=0.0)
+            self.fid_array_varian.deconv_fids(mp=True, frac_gauss=0.0)
 
 class TestPlottingUtils(unittest.TestCase):
 
@@ -630,6 +630,14 @@ class TestPlottingUtils(unittest.TestCase):
         self.fid_bruker.ft()
         self.fid_bruker.phase_correct()
         self.fid_bruker.plot_ppm()
+
+    def test_plot_array(self):
+        self.fid_array_varian.emhz_fids()
+        self.fid_array_varian.ft_fids()
+        self.fid_array_varian.phase_correct_fids()
+        self.fid_array_varian.plot_array()
+        self.fid_array_varian.plot_array(filled=True)
+        
 
 if __name__ == '__main__':
     unittest.main()

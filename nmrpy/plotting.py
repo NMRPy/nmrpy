@@ -36,7 +36,7 @@ class Plot():
         else:
             raise AttributeError('fig must be of type matplotlib.figure.Figure.')
 
-    def _plot_ppm(self, data, params):
+    def _plot_ppm(self, data, params, color='k', lw=0.5):
         if not Plot._is_flat_iter(data): 
             raise AttributeError('data must be flat iterable.')
         sw_left = params['sw_left']
@@ -44,7 +44,7 @@ class Plot():
         ppm = numpy.linspace(sw_left-sw, sw_left, len(data))[::-1]
         self.fig = pylab.figure(figsize=[10,5])
         ax = self.fig.add_subplot(111)
-        ax.plot(ppm, data)
+        ax.plot(ppm, data, color=color, lw=lw)
         ax.invert_xaxis()
         ax.set_xlim([sw_left, sw_left-sw])
         ax.grid()

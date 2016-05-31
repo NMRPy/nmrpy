@@ -217,6 +217,13 @@ class Fid(Base):
             self.__data = numpy.array(data)
 
     @property
+    def _ppm(self):
+        if self._params is not None and self.data is not None:
+            return numpy.linspace(self._params['sw_left']-self._params['sw'], self._params['sw_left'], len(self.data))[::-1]
+        else:
+            return None
+
+    @property
     def peaks(self):
         return self._peaks
     
@@ -299,6 +306,14 @@ class Fid(Base):
 
     @_deconvoluted_peaks.setter
     def _deconvoluted_peaks(self, deconvoluted_peaks):
+        """This is a list of lists of peak parameters with the order:
+            [offset, gauss_sigma, lorentz_hwhm, amplitude, frac_gauss]
+            offset: spectral offset
+            gauss_sigma: Gaussian sigma
+            lorentz_hwhm: Lorentzian half-width-at-half-maximum
+            amplitude: height of peak
+            frac_gauss: fraction of peak to be Gaussian (Lorentzian fraction is 1-frac_gauss)
+         """
         self.__deconvoluted_peaks = deconvoluted_peaks 
 
     @classmethod
@@ -481,7 +496,26 @@ class Fid(Base):
 
 
     @classmethod
-    def _f_pk(cls, x, offset=0.0, gauss_sigma=1.0, lorentz_hwhm=1.0, amplitude=1.0, frac_lor_gau=0.0):
+    def _f_gauss(cls, offset, amplitude, gauss_sigma, x):
+        return amplitude*numpy.exp(-(offset-x)**2.0/(2.0*gauss_sigma**2.0))
+    
+    @classmethod
+    def _f_lorentz(cls, offset, amplitude, lorentz_hwhm, x):
+        #return amplitude*lorentz_hwhm**2.0/(lorentz_hwhm**2.0+4.0*(offset-x)**2.0)
+        return amplitude*lorentz_hwhm**2.0/(lorentz_hwhm**2.0+(x-offset)**2.0)
+
+    @classmethod
+    def _f_gauss_int(cls, amplitude, gauss_sigma):
+        return amplitude*numpy.sqrt(2.0*numpy.pi*gauss_sigma**2.0)
+
+    @classmethod
+    def _f_lorentz_int(cls, amplitude, lorentz_hwhm):
+        #make this algebraic!
+        x = numpy.arange(100*lorentz_hwhm)
+        return numpy.sum(amplitude*lorentz_hwhm**2.0/(lorentz_hwhm**2.0+(x-len(x)/2)**2.0))
+
+    @classmethod
+    def _f_pk(cls, x, offset=0.0, gauss_sigma=1.0, lorentz_hwhm=1.0, amplitude=1.0, frac_gauss=0.0):
         """
         Return the evaluation of a combined Gaussian/3-parameter Lorentzian function for deconvolution.
         
@@ -492,36 +526,33 @@ class Fid(Base):
         gauss sigma -- 2*sigma**2
         lorentz_hwhm -- lorentzian half width at half maximum height
         amplitude -- amplitude of peak
-        frac_lor_gau: fraction of function to be Gaussian (0 -> 1)
+        frac_gauss: fraction of function to be Gaussian (0 -> 1)
         Note: specifying a Gaussian fraction of 0 will produce a pure Lorentzian and vice versa.
         """
         
         #validation
-        parameters = [offset, gauss_sigma, lorentz_hwhm, amplitude, frac_lor_gau]
+        parameters = [offset, gauss_sigma, lorentz_hwhm, amplitude, frac_gauss]
         if not all(isinstance(i, numbers.Number) for i in parameters):
             raise TypeError('Keyword parameters must be numbers.') 
         if not cls._is_iter(x):
             raise TypeError('x must be an iterable') 
         if not isinstance(x, numpy.ndarray):
             x = numpy.array(x) 
-        if frac_lor_gau > 1.0:
-            frac_lor_gau = 1.0
-        if frac_lor_gau < 0.0:
-            frac_lor_gau = 0.0
+        if frac_gauss > 1.0:
+            frac_gauss = 1.0
+        if frac_gauss < 0.0:
+            frac_gauss = 0.0
         
-        f_gauss = lambda offset, amplitude, gauss_sigma, x: amplitude*numpy.exp(-(offset-x)**2/gauss_sigma)
-        f_lorentz = lambda offset, amplitude, lorentz_hwhm, x: amplitude*lorentz_hwhm**2/(lorentz_hwhm**2+4*(offset-x)**2)
-        
-        gauss_peak = f_gauss(offset, amplitude, gauss_sigma, x)
-        lorentz_peak = f_lorentz(offset, amplitude, lorentz_hwhm, x)
-        peak = frac_lor_gau*gauss_peak + (1-frac_lor_gau)*lorentz_peak
+        gauss_peak = cls._f_gauss(offset, amplitude, gauss_sigma, x)
+        lorentz_peak = cls._f_lorentz(offset, amplitude, lorentz_hwhm, x)
+        peak = frac_gauss*gauss_peak + (1-frac_gauss)*lorentz_peak
         
         return peak
    
 
 
     @classmethod
-    def _f_makep(cls, data, peaks, frac_lor_gau=None):
+    def _f_makep(cls, data, peaks, frac_gauss=None):
         """
         Make a set of initial peak parameters for deconvolution.
         
@@ -534,7 +565,7 @@ class Fid(Base):
                     gauss: 2*sigma**2, 
                     lorentz: scale (HWHM), 
                     amplitude: amplitude of peak,
-                    frac_lor_gau: fraction of function to be Gaussian (0 -> 1)]]
+                    frac_gauss: fraction of function to be Gaussian (0 -> 1)]]
         """
         if not cls._is_flat_iter(data):
             raise TypeError('data must be a flat iterable') 
@@ -545,7 +576,7 @@ class Fid(Base):
         
         p = []
         for i in peaks:
-                single_peak = [i, 10, 10, data.max()/2, frac_lor_gau]
+                single_peak = [i, 10, 10, data.max()/2, frac_gauss]
                 p.append(single_peak)
         return numpy.array(p)
 
@@ -558,7 +589,7 @@ class Fid(Base):
                                         gauss: 2*sigma**2, 
                                         lorentz: scale (HWHM), 
                                         amplitude: amplitude of peak, 
-                                        frac_lor_gau: fraction of function to be Gaussian (0 -> 1)]]
+                                        frac_gauss: fraction of function to be Gaussian (0 -> 1)]]
                             where n is the number of peaks
         data -- 1D spectral array
         
@@ -590,7 +621,7 @@ class Fid(Base):
                                         gauss: 2*sigma**2, 
                                         lorentz: scale (HWHM), 
                                         amplitude: amplitude of peak, 
-                                        frac_lor_gau: fraction of function to be Gaussian (0 -> 1)]
+                                        frac_gauss: fraction of function to be Gaussian (0 -> 1)]
         x -- array of equal length to FID
         """
         
@@ -614,7 +645,7 @@ class Fid(Base):
                     gauss_sigma=p[1], 
                     lorentz_hwhm=p[2], 
                     amplitude=p[3], 
-                    frac_lor_gau=p[4],
+                    frac_gauss=p[4],
                     )
             peaks += peak
         return peaks
@@ -632,7 +663,7 @@ class Fid(Base):
                             sigma_n -- gaussian 2*sigma**2
                             hwhm_n -- lorentzian half width at half maximum height
                             amplitude_n -- amplitude of peak
-                            frac_lor_gau_n -- fraction of function to be Gaussian (0 -> 1)
+                            frac_gauss_n -- fraction of function to be Gaussian (0 -> 1)
             where n is the peak number (zero-indexed)
         data -- spectrum array
         
@@ -650,12 +681,12 @@ class Fid(Base):
         return res
 
     @classmethod
-    def _f_fitp(cls, data, peaks, frac_lor_gau=None, method='leastsq'):
+    def _f_fitp(cls, data, peaks, frac_gauss=None, method='leastsq'):
         """Fit a section of spectral data with a combination of Gaussian/Lorentzian peaks for deconvolution.
         
         Keyword arguments:
         peaks -- selected peak positions (see peakpicker())
-        frac_lor_gau -- fraction of fitted function to be Gaussian (1 - Guassian, 0 - Lorentzian)
+        frac_gauss -- fraction of fitted function to be Gaussian (1 - Guassian, 0 - Lorentzian)
    
         returns:
             fits -- list of fitted peak parameter sets
@@ -674,27 +705,26 @@ class Fid(Base):
         if not isinstance(data, numpy.ndarray):
             data = numpy.array(data) 
 
-        p = cls._f_makep(data, peaks, frac_lor_gau=0.5)
+        p = cls._f_makep(data, peaks, frac_gauss=0.5)
         init_ref = cls._f_conv(p, data)
-        if frac_lor_gau==None:
-            p = cls._f_makep(data, peaks+init_ref, frac_lor_gau=0.5)
+        if frac_gauss==None:
+            p = cls._f_makep(data, peaks+init_ref, frac_gauss=0.5)
         else:
-            p = cls._f_makep(data, peaks+init_ref, frac_lor_gau=frac_lor_gau)
+            p = cls._f_makep(data, peaks+init_ref, frac_gauss=frac_gauss)
 
         params = lmfit.Parameters()
         for parset in range(len(p)):
-            current_parset = dict(zip(['offset', 'sigma', 'hwhm', 'amplitude', 'frac_lor_gau'], p[parset]))
+            current_parset = dict(zip(['offset', 'sigma', 'hwhm', 'amplitude', 'frac_gauss'], p[parset]))
             for k,v in current_parset.items():
                 par_name = '%s_%i'%(k, parset)
                 params.add(name=par_name, 
                         value=v, 
                         vary=True, 
                         min=0.0)
-                if 'frac_lor_gau' in par_name:
+                if 'frac_gauss' in par_name:
                     params[par_name].max = 1.0
-                    if frac_lor_gau is not None:
+                    if frac_gauss is not None:
                         params[par_name].vary = False
-
         try:
             mz = lmfit.minimize(cls._f_res, params, args=([data]), method=method)
             fits = Fid._parameters_to_list(mz.params)
@@ -707,7 +737,7 @@ class Fid(Base):
         n_pks = int(len(p)/5)
         params = []
         for i in range(n_pks):
-            current_params = [p['%s_%s'%(par, i)].value for par in ['offset', 'sigma', 'hwhm', 'amplitude', 'frac_lor_gau']]
+            current_params = [p['%s_%s'%(par, i)].value for par in ['offset', 'sigma', 'hwhm', 'amplitude', 'frac_gauss']]
             params.append(current_params)
         return params
 
@@ -717,7 +747,7 @@ class Fid(Base):
         if len(list_parameters) != 5:
             raise ValueError('list_parameters must consist of five objects.')
 
-        datum, peaks, ranges, frac_lor_gau, method = list_parameters
+        datum, peaks, ranges, frac_gauss, method = list_parameters
 
         if not cls._is_iter_of_iters(ranges):
             raise TypeError('ranges must be an iterable of iterables') 
@@ -734,21 +764,21 @@ class Fid(Base):
         for j in zip(peaks, ranges):
             d_slice = datum[j[1][0]:j[1][1]]
             p_slice = j[0]-j[1][0]
-            f = cls._f_fitp(d_slice, p_slice, frac_lor_gau=frac_lor_gau, method=method)
+            f = cls._f_fitp(d_slice, p_slice, frac_gauss=frac_gauss, method=method)
             f = numpy.array(f).transpose()
             f[0] += j[1][0]
             f = f.transpose()
             fit.append(f)
         return fit
 
-    def deconv(self, method='leastsq', frac_lor_gau=None):
+    def deconv(self, method='leastsq', frac_gauss=None):
         """
         Deconvolute spectrum.
 
         The 'data' attribute of the Fid object with be deconvoluted by fitting
         a series of peaks. These peaks are generated using the parameters in 'peaks',
-        and 'ranges'. frac_lor_gau (0-1) determines the fraction of each peak to be
-        Lorentzian or Gaussian (1-frac_lor_gau) in shape. Setting frac_lor_gau to None
+        and 'ranges'. frac_gauss (0-1) determines the fraction of each peak to be
+        Lorentzian or Gaussian (1-frac_gauss) in shape. Setting frac_gauss to None
         will fit this parameter as well.
         
         """
@@ -762,14 +792,14 @@ class Fid(Base):
         if self.ranges is None:
             raise AttributeError('ranges must be specified.')
         print('deconvoluting {}'.format(self.id))
-        list_parameters = [self.data, self._grouped_index_peaklist, self._index_ranges, frac_lor_gau, method]
-        self._deconvoluted_peaks = Fid._deconv_datum(list_parameters)
+        list_parameters = [self.data, self._grouped_index_peaklist, self._index_ranges, frac_gauss, method]
+        self._deconvoluted_peaks = numpy.array([j for i in Fid._deconv_datum(list_parameters) for j in i])
         print('deconvolution completed')
 
 
-    def plot_ppm(self):
+    def plot_ppm(self, **kwargs):
         plt = Plot()
-        plt._plot_ppm(self.data, self._params)
+        plt._plot_ppm(self.data, self._params, **kwargs)
         setattr(self, plt.id, plt)
         plt.fig.show()
 
@@ -925,7 +955,7 @@ class FidArray(Base):
                 fid.phase_correct(method=method)
         print('phase-correction completed')
 
-    def deconv_fids(self, mp=True, cpus=None, method='leastsq', frac_lor_gau=0.0):
+    def deconv_fids(self, mp=True, cpus=None, method='leastsq', frac_gauss=0.0):
         """ 
         Apply phase-correction to all FIDs.
 
@@ -938,13 +968,13 @@ class FidArray(Base):
             fids = self.get_fids()
             if not all(fid._flags['ft'] for fid in fids):
                 raise ValueError('Only Fourier-transformed data can be deconvoluted.')
-            list_params = [[fid.data, fid._grouped_index_peaklist, fid._index_ranges, frac_lor_gau, method] for fid in fids]
+            list_params = [[fid.data, fid._grouped_index_peaklist, fid._index_ranges, frac_gauss, method] for fid in fids]
             deconv_datum = self._generic_mp(Fid._deconv_datum, list_params, cpus)
             for fid, datum in zip(fids, deconv_datum):
-                fid._deconvoluted_peaks = deconv_datum
+                fid._deconvoluted_peaks = numpy.array([j for i in datum for j in i])
         else:
             for fid in self.get_fids():
-                fid.deconv(frac_lor_gau=frac_lor_gau)
+                fid.deconv(frac_gauss=frac_gauss)
         print('deconvolution completed')
 
     def ps_fids(self, p0=0.0, p1=0.0):
@@ -992,6 +1022,7 @@ class Importer(Base):
                 raise TypeError('data must be iterable.')
         else:
             raise TypeError('data must be complex.')
+
 
     def import_fid(self):
         """
