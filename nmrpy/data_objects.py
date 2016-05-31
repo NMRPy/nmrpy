@@ -938,6 +938,13 @@ class FidArray(Base):
         proc_pool.join()
         return result
 
+
+    def plot_array(self, **kwargs):
+        plt = Plot()
+        plt._plot_array(self.data, self._params, **kwargs)
+        setattr(self, plt.id, plt)
+        plt.fig.show()
+
 class Importer(Base):
 
     def __init__(self, *args, **kwargs):
