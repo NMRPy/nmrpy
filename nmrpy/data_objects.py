@@ -511,8 +511,9 @@ class Fid(Base):
     @classmethod
     def _f_lorentz_int(cls, amplitude, lorentz_hwhm):
         #make this algebraic!
-        x = numpy.arange(100*lorentz_hwhm)
-        return numpy.sum(amplitude*lorentz_hwhm**2.0/(lorentz_hwhm**2.0+(x-len(x)/2)**2.0))
+        #x = numpy.arange(1000*lorentz_hwhm)
+        #return numpy.sum(amplitude*lorentz_hwhm**2.0/(lorentz_hwhm**2.0+(x-len(x)/2)**2.0))
+        return amplitude*lorentz_hwhm*numpy.pi
 
     @classmethod
     def _f_pk(cls, x, offset=0.0, gauss_sigma=1.0, lorentz_hwhm=1.0, amplitude=1.0, frac_gauss=0.0):
