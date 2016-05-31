@@ -320,6 +320,22 @@ class Fid(Base):
        new_instance.data = data
        return new_instance  
 
+    def zf(self):
+        """Apply a single degree of zero-filling.
+
+        Note: extends data to double length by appending zeroes.
+
+        """
+        self.data = numpy.append(self.data, 0*self.data)
+
+    def emhz(self, lb=5.0):
+        """Apply exponential line-broadening.
+
+        lb -- degree of line-broadening in Hz.
+
+        """
+        self.data = numpy.exp(-numpy.pi*numpy.arange(len(self.data)) * (lb/self._params['sw_hz'])) * self.data
+
     def real(self):
             """Discard imaginary component of data."""
             self.data = numpy.real(self.data)
@@ -848,6 +864,14 @@ class FidArray(Base):
             return fid_array 
         else:
             raise IOError('Data could not be imported.')
+
+    def zf_fids(self):
+        for fid in self.get_fids():
+            fid.zf()
+
+    def emhz_fids(self, lb=5.0):
+        for fid in self.get_fids():
+            fid.emhz(lb=lb)
 
     def ft_fids(self, mp=True, cpus=None):
         """ 

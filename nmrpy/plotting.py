@@ -51,7 +51,7 @@ class Plot():
         ax.set_xlabel('PPM (%.2f MHz)'%(params['reffrq']))
         #self.fig.show()
         
-    def _plot_array(self, data, params, upper_index=None, lower_index=None, upper_ppm=None, lower_ppm=None, lw=0.3, azim=-90, elev=40, filled=False, labels=None, filename=None):
+    def _plot_array(self, data, params, upper_index=None, lower_index=None, upper_ppm=None, lower_ppm=None, lw=0.3, azim=-90, elev=40, filled=False, show_zticks=False, labels=None, filename=None):
         if not Plot._is_iter_of_iters(data): 
             raise AttributeError('data must be 2D.')
         if upper_ppm is not None and lower_ppm is not None:
@@ -84,7 +84,7 @@ class Plot():
 
         acqtime = params['acqtime'][0]
         minutes = numpy.arange(len(data))*acqtime
-        self.fig = pylab.figure(figsize=[15,5])
+        self.fig = pylab.figure(figsize=[15,7.5])
         ax = self.fig.add_subplot(111, projection='3d', azim=azim, elev=elev)
 
         if not filled:
@@ -106,6 +106,8 @@ class Plot():
         ax.set_ylim([minutes[0], minutes[-1]])
         ax.set_xlabel('PPM (%.2f MHz)'%(params['reffrq']))
         ax.set_ylabel('min.')
+        if not show_zticks:
+            ax.set_zticklabels([])
         #self.fig.show()
 
     @classmethod
