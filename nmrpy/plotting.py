@@ -297,6 +297,131 @@ class Phaser(object):
         self.canvas.draw()  # _idle()
         return False
 
+class SpanSelector:
+
+        def __init__(self, data, params):
+                self.fig = pylab.figure(figsize=[15, 7.5])
+                self.data = numpy.array(data)
+                self.ax = self.fig.add_subplot(111)
+                if len(self.data.shape)==1:
+                    ppm = numpy.mgrid[params['sw_left']-params['sw']:params['sw_left']:complex(data.shape[0])]
+                    self.ax.plot(ppm[::-1], data, color='k', lw=1)
+                elif len(self.data.shape)==2:
+                    cl = dict(zip(range(len(data)), pylab.cm.viridis(numpy.linspace(0,1,len(data)))))
+                    ppm = numpy.mgrid[params['sw_left']-params['sw']:params['sw_left']:complex(data.shape[1])]
+                    inc_orig = 0.5*data.max()/len(data)
+                    inc = inc_orig.copy()
+                    for i,j in zip(range(len(data)), data[::-1]):
+                        self.ax.plot(ppm[::-1], j+inc, color=cl[i], lw=1)
+                        inc += inc_orig
+                self.ax.set_xlabel('ppm')
+                self.rectprops = dict(facecolor='0.5', alpha=0.2)
+                self.visible = True
+                self.canvas = self.ax.figure.canvas
+                self.canvas.mpl_connect('motion_notify_event', self.onmove)
+                self.canvas.mpl_connect('button_press_event', self.press)
+                self.canvas.mpl_connect('button_release_event', self.release)
+                self.minspan = 0
+                self.rect = None
+                self.pressv = None
+                self.buttonDown = False
+                self.prev = (0, 0)
+                trans = blended_transform_factory(
+                    self.ax.transData,
+                    self.ax.transAxes)
+                w, h = 0, 1
+                self.rect = Rectangle([0, 0], w, h,
+                                      transform=trans,
+                                      visible=False,
+                                      **self.rectprops
+                                      )
+                self.ax.add_patch(self.rect)
+                self.ranges = []
+                self.peaks = []
+                self.ylims = numpy.array([self.ax.get_ylim()[0], self.data.max() + abs(self.ax.get_ylim()[0])])
+                self.ax.set_ylim([self.ax.get_ylim()[0], self.data.max()*1.1])
+                self.ax_lims = self.ax.get_ylim()
+                self.xlims = [ppm[-1], ppm[0]]
+                self.ax.set_xlim(self.xlims)
+                self.ax.text(
+                    0.95 *
+                    self.ax.get_xlim()[0],
+                    0.7 *
+                    self.ax.get_ylim()[1],
+                    'Peak picking\nLeft - select peak\nMiddle - delete last peak\nDrag Right - select range')
+                cursor = Cursor(self.ax, useblit=True, color='k', linewidth=0.5)
+                cursor.horizOn = False
+                pylab.show()
+
+        def press(self, event):
+                tb = pylab.get_current_fig_manager().toolbar
+                if tb.mode == '':
+                        x = numpy.round(event.xdata, 2)
+                        if event.button == 2:
+                                self.peaks = self.peaks[:-1]
+                                self.ax.lines = self.ax.lines[:-1]
+                        if event.button == 3:
+                                self.buttonDown = True
+                                self.pressv = event.xdata
+                        if event.button == 1 and (x >= self.xlims[1]) and (x <= self.xlims[0]):
+                                self.peaks.append(x)
+                                self.ax.vlines(x,self.ax_lims[0],self.ax_lims[1], color='#CC0000',lw=0.5)
+                                print(x)
+                                self.peaks = sorted(self.peaks)[::-1]
+                        self.canvas.draw()
+
+        def release(self, event):
+                if self.pressv is None or not self.buttonDown:
+                        return
+                self.buttonDown = False
+                self.rect.set_visible(False)
+                vmin = numpy.round(self.pressv, 2)
+                vmax = numpy.round(event.xdata or self.prev[0], 2)
+                if vmin > vmax:
+                        vmin, vmax = vmax, vmin
+                span = vmax - vmin
+                self.pressv = None
+                spantest = False
+                print('%.2f - %.2f' % (vmax,vmin))
+                if len(self.ranges) > 0:
+                        for i in self.ranges:
+                                if (vmin >= i[0]) and (vmin <= i[1]):
+                                        spantest = True
+                                if (vmax >= i[0]) and (vmax <= i[1]):
+                                        spantest = True
+                if span > self.minspan and spantest is False:
+                        self.ranges.append([numpy.round(vmin, 2), numpy.round(vmax, 2)])
+                        self.ax.bar(left=vmin,
+                                    height=sum(abs(self.ylims)),
+                                    width=span,
+                                    bottom=self.ylims[0],
+                                    alpha=0.2,
+                                    color='0.5',
+                                    edgecolor='k')
+                self.canvas.draw()
+                self.ranges = [numpy.sort(i)[::-1] for i in self.ranges]
+                return False
+
+        def onmove(self, event):
+                if self.pressv is None or self.buttonDown is False or event.inaxes is None:
+                        return
+                self.rect.set_visible(self.visible)
+                x, y = event.xdata, event.ydata
+                self.prev = x, y
+                v = x
+                minv, maxv = v, self.pressv
+                if minv > maxv:
+                        minv, maxv = maxv, minv
+                self.rect.set_xy([minv, self.rect.xy[1]])
+                self.rect.set_width(maxv-minv)
+                vmin = self.pressv
+                vmax = event.xdata  # or self.prev[0]
+                if vmin > vmax:
+                        vmin, vmax = vmax, vmin
+                self.canvas.draw_idle()
+                return False
+
+
 
 if __name__ == '__main__':
     pass
