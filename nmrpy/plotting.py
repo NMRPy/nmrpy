@@ -36,7 +36,11 @@ class Plot():
         else:
             raise AttributeError('fig must be of type matplotlib.figure.Figure.')
 
-    def _plot_ppm(self, data, params, upper_ppm=None, lower_ppm=None, color='k', lw=0.5):
+    def _plot_ppm(self, data, params, 
+            upper_ppm=None, 
+            lower_ppm=None, 
+            color='k', 
+            lw=1):
         if not Plot._is_flat_iter(data): 
             raise AttributeError('data must be flat iterable.')
         if upper_ppm is not None and lower_ppm is not None:
@@ -58,6 +62,50 @@ class Plot():
         self.fig = pylab.figure(figsize=[10,5])
         ax = self.fig.add_subplot(111)
         ax.plot(ppm, data, color=color, lw=lw)
+        ax.invert_xaxis()
+        ax.set_xlim([upper_ppm, lower_ppm])
+        ax.grid()
+        ax.set_xlabel('PPM (%.2f MHz)'%(params['reffrq']))
+        #self.fig.show()
+        
+    def _plot_deconv(self, data, params, peakshapes,
+            upper_ppm=None, 
+            lower_ppm=None, 
+            colour='k', 
+            peak_colour='b', 
+            summed_peak_colour='r', 
+            residual_colour='g', 
+            lw=1):
+        if not Plot._is_flat_iter(data): 
+            raise AttributeError('data must be flat iterable.')
+        if not Plot._is_iter_of_iters(peakshapes): 
+            raise AttributeError('data must be flat iterable.')
+        if upper_ppm is not None and lower_ppm is not None:
+            if upper_ppm == lower_ppm or upper_ppm < lower_ppm:
+                raise ValueError('ppm range specified is invalid.')
+        sw_left = params['sw_left']
+        sw = params['sw']
+
+        if upper_ppm is None:
+            upper_ppm = sw_left
+        if lower_ppm is None:
+            lower_ppm = sw_left-sw
+
+        ppm = numpy.linspace(sw_left-sw, sw_left, len(data))[::-1]
+        ppm_bool_index = (ppm <= upper_ppm) * (ppm >= lower_ppm)
+        ppm = ppm[ppm_bool_index]
+        data = data[ppm_bool_index]
+        peakshapes = peakshapes[:, ppm_bool_index]
+        summed_peaks = peakshapes.sum(0)
+        residual = data-summed_peaks
+
+        self.fig = pylab.figure(figsize=[10,5])
+        ax = self.fig.add_subplot(111)
+        ax.plot(ppm, residual, color=residual_colour, lw=lw)
+        ax.plot(ppm, data, color=colour, lw=lw)
+        ax.plot(ppm, summed_peaks, '-', color=summed_peak_colour, lw=lw)
+        for peak in peakshapes:
+            ax.plot(ppm, peak, '-', color=peak_colour, lw=lw)
         ax.invert_xaxis()
         ax.set_xlim([upper_ppm, lower_ppm])
         ax.grid()

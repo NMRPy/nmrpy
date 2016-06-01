@@ -784,7 +784,7 @@ class Fid(Base):
             fit.append(f)
         return fit
 
-    def deconv(self, method='leastsq', frac_gauss=None):
+    def deconv(self, method='leastsq', frac_gauss=0.0):
         """
         Deconvolute spectrum.
 
@@ -811,11 +811,34 @@ class Fid(Base):
 
 
     def plot_ppm(self, **kwargs):
+        """
+        Plot FID data. Possible keyword arguments are:
+            upper_ppm=None: upper spectral bound in ppm
+            lower_ppm=None: lower spectral bound in ppm
+            lw=1.0: linewidth of plot 
+            colour='k': colour of the plot
+        """
         plt = Plot()
         plt._plot_ppm(self.data, self._params, **kwargs)
         setattr(self, plt.id, plt)
         plt.fig.show()
 
+    def plot_deconv(self, **kwargs):
+        """
+        Plot FID data with deconvoluted peaks overlaid. Possible keyword arguments are:
+            upper_ppm=None: upper spectral bound in ppm
+            lower_ppm=None: lower spectral bound in ppm
+            lw=1.0: linewidth of plot 
+            colour='k': colour of the plot
+            peak_colour='r': colour of the deconvoluted peaks
+            residual_colour='g': colour of the residual signal after subtracting deconvoluted p1s
+        """
+        x = numpy.arange(len(self.data))
+        peakshapes = numpy.array([Fid._f_pk(x, *peak) for peak in self._deconvoluted_peaks])
+        plt = Plot()
+        plt._plot_deconv(self.data, self._params, peakshapes, **kwargs)
+        setattr(self, plt.id, plt)
+        plt.fig.show()
  
 class FidArray(Base):
     '''
