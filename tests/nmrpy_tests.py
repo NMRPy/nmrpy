@@ -646,6 +646,18 @@ class TestPlottingUtils(unittest.TestCase):
         self.fid_array_varian.plot_array()
         self.fid_array_varian.plot_array(filled=True)
         
+    def test_phaser(self):
+        self.fid_varian.emhz()
+        self.fid_varian.ft()
+        self.fid_varian.phaser()
+
+    def test_peakpicker(self):
+        self.fid_varian.emhz()
+        self.fid_varian.ft()
+        self.fid_varian.phase_correct()
+        self.fid_varian.peakpicker()
+        
+        
 
 if __name__ == '__main__':
     unittest.main()
