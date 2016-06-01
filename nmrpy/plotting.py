@@ -7,6 +7,12 @@ from matplotlib.figure import Figure
 from mpl_toolkits.mplot3d import Axes3D
 from matplotlib.collections import PolyCollection
 
+from matplotlib.mlab import dist
+from matplotlib.patches import Circle, Rectangle
+from matplotlib.lines import Line2D
+from matplotlib.transforms import blended_transform_factory
+from matplotlib.widgets import Cursor
+
 class Plot():
 
     _plot_id_num = 0
@@ -224,6 +230,73 @@ class Plot():
         elif cls._is_iter(i) and not any(cls._is_iter(j) for j in i):
             return True
         return False
+
+class Phaser(object):
+
+    def __init__(self, fid):
+        if not Plot._is_flat_iter(fid.data): 
+            raise ValueError('data must be flat iterable.')
+        if fid.data == [] or fid.data == None:
+            raise ValueError('data must exist.')
+        self.fid = fid
+        self.fig = pylab.figure(figsize=[15, 7.5])
+        self.phases = numpy.array([0.0, 0.0])
+        self.y = 0.0
+        self.ax = self.fig.add_subplot(111)
+        self.ax.plot(self.fid.data, color='k', linewidth=1.0)
+        self.ax.hlines(0, 0, len(self.fid.data)-1)
+        self.ax.set_xlim([0, len(self.fid.data)])
+        xtcks = numpy.linspace(0,1,10)*len(self.fid.data)
+        xtcks[-1] = xtcks[-1]-1
+        self.ax.set_xticks(xtcks)
+        self.ax.set_xlabel('PPM (%.2f MHz)'%(self.fid._params['reffrq']))
+        self.ax.set_xticklabels([numpy.round(self.fid._ppm[int(i)], 1) for i in xtcks])
+        ylims = numpy.array([-1, 1])*numpy.array([max(self.ax.get_ylim())]*2)
+        self.ax.set_ylim(ylims)
+        self.ax.grid()
+        self.visible = True
+        self.canvas = self.ax.figure.canvas
+        self.canvas.mpl_connect('motion_notify_event', self.onmove)
+        self.canvas.mpl_connect('button_press_event', self.press)
+        self.canvas.mpl_connect('button_release_event', self.release)
+        self.pressv = None
+        self.buttonDown = False
+        self.prev = (0, 0)
+        self.ax.text(0.05 *self.ax.get_xlim()[1],0.7 *self.ax.get_ylim()[1],'phasing\nleft - zero-order\nright - first order')
+        cursor = Cursor(self.ax, useblit=True, color='k', linewidth=0.5)
+        cursor.horizOn = False
+        self.fig.show()
+
+    def press(self, event):
+        tb = pylab.get_current_fig_manager().toolbar
+        if tb.mode == '':
+            x, y = event.xdata, event.ydata
+            if event.inaxes is not None:
+                self.buttonDown = True
+                self.button = event.button
+                self.y = y
+
+    def release(self, event):
+        self.buttonDown = False
+        print('p0: {} p1: {}'.format(*self.phases))
+        return False
+
+    def onmove(self, event):
+        if self.buttonDown is False or event.inaxes is None:
+                return
+        x = event.xdata
+        y = event.ydata
+        dy = y-self.y
+        self.y = y
+        if self.button == 1:
+                self.phases[0] = 100*dy/self.ax.get_ylim()[1]
+        if self.button == 3:
+                self.phases[1] = 100*dy/self.ax.get_ylim()[1]
+        self.fid.ps(p0=self.phases[0], p1=self.phases[1])
+        self.ax.lines[0].set_data(numpy.array([numpy.arange(len(self.fid.data)), self.fid.data]))
+        self.canvas.draw()  # _idle()
+        return False
+
 
 if __name__ == '__main__':
     pass

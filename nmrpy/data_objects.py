@@ -865,6 +865,13 @@ class FidArray(Base):
         data = numpy.array([fid.data for fid in self.get_fids()])
         return data
 
+    @property
+    def _deconvoluted_integrals(self):
+        deconvoluted_integrals = []
+        for fid in self.get_fids():
+            deconvoluted_integrals.append(fid._deconvoluted_integrals)
+        return numpy.array(deconvoluted_integrals)
+
     def add_fid(self, fid):
         if isinstance(fid, Fid):
             setattr(self, fid.id, fid)
