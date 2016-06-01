@@ -505,6 +505,20 @@ class Fid(Base):
         ph = numpy.exp(1.0j*(p0+(p1*numpy.arange(size)/size)))
         self.data = ph*self.data
 
+    def phaser(self):
+        self._phaser_widget = Phaser(self)
+        
+    def peakpicker(self):
+        self._peakpicker_widget = PeakPicker(self.data, self._params)
+        if self._peakpicker_widget.ranges is not None:
+            self.ranges = self._peakpicker_widget.ranges
+        if self._peakpicker_widget.peaks is not None:
+            peaks = []
+            for peak in self._peakpicker_widget.peaks:
+                for rng in self.ranges:
+                    if peak >= rng[1] and peak <= rng[0]:
+                        peaks.append(peak)
+            self.peaks = peaks
 
     @classmethod
     def _f_gauss(cls, offset, amplitude, gauss_sigma, x):
@@ -1029,6 +1043,8 @@ class FidArray(Base):
 
     @staticmethod
     def _generic_mp(fcn, iterable, cpus):
+        if cpus is None:
+            cpus = cpu_count()-1
         proc_pool = Pool(cpus)
         result = proc_pool.map(fcn, iterable)
         proc_pool.close()
@@ -1056,6 +1072,22 @@ class FidArray(Base):
         plt._plot_array(self.data, self._params, **kwargs)
         setattr(self, plt.id, plt)
         plt.fig.show()
+
+    def peakpicker(self, fid_number=0):
+        fids = self.get_fids()
+        fid = fids[0]
+        fid._peakpicker_widget = PeakPicker(fid.data, fid._params)
+        if fid._peakpicker_widget.ranges is not None:
+            ranges = fid._peakpicker_widget.ranges
+        if fid._peakpicker_widget.peaks is not None:
+            peaks = []
+            for peak in fid._peakpicker_widget.peaks:
+                for rng in ranges:
+                    if peak >= rng[1] and peak <= rng[0]:
+                        peaks.append(peak)
+        for fid in fids:
+            fid.peaks = peaks
+            fid.ranges = ranges
 
 class Importer(Base):
 
