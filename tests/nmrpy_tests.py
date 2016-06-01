@@ -631,6 +631,14 @@ class TestPlottingUtils(unittest.TestCase):
         self.fid_bruker.phase_correct()
         self.fid_bruker.plot_ppm()
 
+    def test_plot_deconv(self):
+        self.fid_varian.emhz()
+        self.fid_varian.ft()
+        self.fid_varian.phase_correct()
+        self.fid_varian.real()
+        self.fid_varian.deconv()
+        self.fid_varian.plot_deconv()
+
     def test_plot_array(self):
         self.fid_array_varian.emhz_fids()
         self.fid_array_varian.ft_fids()
