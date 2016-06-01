@@ -316,6 +316,17 @@ class Fid(Base):
          """
         self.__deconvoluted_peaks = deconvoluted_peaks 
 
+    @property
+    def _deconvoluted_integrals(self):
+        if self._deconvoluted_peaks is not None:
+            integrals = []
+            for peak in self._deconvoluted_peaks:
+                int_gauss = peak[-1]*Fid._f_gauss_int(peak[3], peak[1])
+                int_lorentz = (1-peak[-1])*Fid._f_lorentz_int(peak[3], peak[2])
+                integrals.append(int_gauss+int_lorentz)
+            return numpy.array(integrals)
+            
+
     @classmethod
     def _is_valid_dataset(cls, data):
         if isinstance(data, str):
@@ -510,9 +521,10 @@ class Fid(Base):
 
     @classmethod
     def _f_lorentz_int(cls, amplitude, lorentz_hwhm):
-        #make this algebraic!
+        #empirical integral commented out
         #x = numpy.arange(1000*lorentz_hwhm)
         #return numpy.sum(amplitude*lorentz_hwhm**2.0/(lorentz_hwhm**2.0+(x-len(x)/2)**2.0))
+        #this integral forumula from http://magicplot.com/wiki/fit_equations
         return amplitude*lorentz_hwhm*numpy.pi
 
     @classmethod
@@ -995,6 +1007,21 @@ class FidArray(Base):
 
 
     def plot_array(self, **kwargs):
+        """
+        Plot array of FIDs. The following keyword arguments are accepted: 
+            upper_index=None: upper index of array
+            lower_index=None: lower index of array
+            upper_ppm=None: upper spectral bound in ppm
+            lower_ppm=None: lower spectral bound in ppm
+            lw=0.5: linewidth of plot 
+            azim=-90: starting azimuth of plot 
+            elev=40: starting elevation of plot 
+            filled=False: True=filled vertices, False=lines
+            show_zticks=False: show labels on z axis 
+            labels=None: tbc 
+            colour=True: plot FIDs with colour spectrum (False=black)
+            filename=None: save plot to .pdf file
+        """
         plt = Plot()
         plt._plot_array(self.data, self._params, **kwargs)
         setattr(self, plt.id, plt)

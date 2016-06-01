@@ -36,22 +36,49 @@ class Plot():
         else:
             raise AttributeError('fig must be of type matplotlib.figure.Figure.')
 
-    def _plot_ppm(self, data, params, color='k', lw=0.5):
+    def _plot_ppm(self, data, params, upper_ppm=None, lower_ppm=None, color='k', lw=0.5):
         if not Plot._is_flat_iter(data): 
             raise AttributeError('data must be flat iterable.')
+        if upper_ppm is not None and lower_ppm is not None:
+            if upper_ppm == lower_ppm or upper_ppm < lower_ppm:
+                raise ValueError('ppm range specified is invalid.')
         sw_left = params['sw_left']
         sw = params['sw']
+
+        if upper_ppm is None:
+            upper_ppm = sw_left
+        if lower_ppm is None:
+            lower_ppm = sw_left-sw
+
         ppm = numpy.linspace(sw_left-sw, sw_left, len(data))[::-1]
+        ppm_bool_index = (ppm < upper_ppm) * (ppm > lower_ppm)
+        ppm = ppm[ppm_bool_index]
+        data = data[ppm_bool_index]
+
         self.fig = pylab.figure(figsize=[10,5])
         ax = self.fig.add_subplot(111)
         ax.plot(ppm, data, color=color, lw=lw)
         ax.invert_xaxis()
-        ax.set_xlim([sw_left, sw_left-sw])
+        ax.set_xlim([upper_ppm, lower_ppm])
         ax.grid()
         ax.set_xlabel('PPM (%.2f MHz)'%(params['reffrq']))
         #self.fig.show()
         
-    def _plot_array(self, data, params, upper_index=None, lower_index=None, upper_ppm=None, lower_ppm=None, lw=0.3, azim=-90, elev=40, filled=False, show_zticks=False, labels=None, filename=None):
+    def _plot_array(self, data, params, 
+                upper_index=None, 
+                lower_index=None, 
+                upper_ppm=None, 
+                lower_ppm=None, 
+                lw=0.3, 
+                azim=-90, 
+                elev=40, 
+                filled=False, 
+                show_zticks=False, 
+                labels=None, 
+                colour=True,
+                filename=None,
+                ):
+
         if not Plot._is_iter_of_iters(data): 
             raise AttributeError('data must be 2D.')
         if upper_ppm is not None and lower_ppm is not None:
@@ -80,6 +107,8 @@ class Plot():
         ppm = ppm[ppm_bool_index]
         data = data[lower_index:upper_index, ppm_bool_index]
 
+        if colour:
+            cl = pylab.cm.viridis(numpy.linspace(0, 1, len(data)))
         bh = abs(data.min()) 
 
         acqtime = params['acqtime'][0]
@@ -88,16 +117,28 @@ class Plot():
         ax = self.fig.add_subplot(111, projection='3d', azim=azim, elev=elev)
 
         if not filled:
-            for datum, minute in zip(data, minutes):
-                ax.plot(ppm, len(datum)*[minute], datum, color='k', lw=lw)
+            #spectra are plotted in reverse for zorder
+            for n in range(len(data))[::-1]:
+                datum = data[n]
+                minute = minutes[n]
+                clr = 'k' 
+                if colour:
+                    clr = cl[n]
+                ax.plot(ppm, len(datum)*[minute], datum, color=clr, lw=lw)
         if filled:
             verts = []
             plot_data = data+bh 
             for datum in plot_data:
                 datum[0], datum[-1] = 0, 0
                 verts.append(list(zip(ppm, datum)))
-            
-            poly = PolyCollection(verts, facecolors=['w']*len(verts), linewidths=[lw]*len(verts))
+             
+            fclr, eclr = ['w']*len(data), ['k']*len(data)
+            if colour:
+                fclr = cl
+            poly = PolyCollection(verts, 
+                facecolors=fclr,
+                edgecolors=eclr,
+                linewidths=[lw]*len(verts))
             ax.add_collection3d(poly, zs=minutes, zdir='y')
             ax.set_zlim([0, 1.1*plot_data.max()])
 
@@ -109,6 +150,8 @@ class Plot():
         if not show_zticks:
             ax.set_zticklabels([])
         #self.fig.show()
+        if filename is not None:
+            self.fig.savefig(filename, format='pdf')
 
     @classmethod
     def _is_iter(cls, i):
