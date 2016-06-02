@@ -1078,18 +1078,15 @@ class FidArray(Base):
     def peakpicker(self, fid_number=0):
         fids = self.get_fids()
         fid = fids[0]
-        fid._peakpicker_widget = PeakPicker(fid.data, fid._params)
-        if len(fid._peakpicker_widget.ranges) > 0 and len(fid._peakpicker_widget.peaks) > 0:
-            ranges = fid._peakpicker_widget.ranges
-            peaks = []
-            for peak in fid._peakpicker_widget.peaks:
-                for rng in ranges:
-                    if peak >= rng[1] and peak <= rng[0]:
-                        peaks.append(peak)
+        fid.peakpicker()
+        #fid._peakpicker_widget = PeakPicker(fid.data, fid._params)
+        if fid.ranges is not None and fid.peaks is not None:
+            peaks = fid.peaks
+            ranges = fid.ranges
             for fid in fids:
                 fid.peaks = peaks
                 fid.ranges = ranges
-        delattr(fid, '_peakpicker_widget')
+
 
     def save_to_file(self, filename=None):
         """
