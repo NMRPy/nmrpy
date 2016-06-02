@@ -1,0 +1,11 @@
+setup.py
+nmrpy/__init__.py
+nmrpy/data_objects.py
+nmrpy/plotting.py
+nmrpy.egg-info/PKG-INFO
+nmrpy.egg-info/SOURCES.txt
+nmrpy.egg-info/dependency_links.txt
+nmrpy.egg-info/requires.txt
+nmrpy.egg-info/top_level.txt
+tests/__init__.py
+tests/nmrpy_tests.py
