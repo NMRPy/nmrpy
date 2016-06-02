@@ -15,6 +15,7 @@ config = {
     'version': '1.0',
     'install_requires': requirements,
     'packages': ['nmrpy', 'tests'],
+    'license': 'New BSD',
     #'scripts': [],
     'name': 'nmrpy'
 }
