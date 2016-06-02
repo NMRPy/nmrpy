@@ -46,7 +46,8 @@ class Plot():
             upper_ppm=None, 
             lower_ppm=None, 
             color='k', 
-            lw=1):
+            lw=1,
+            filename=None):
         if not Plot._is_flat_iter(data): 
             raise AttributeError('data must be flat iterable.')
         if upper_ppm is not None and lower_ppm is not None:
@@ -73,6 +74,8 @@ class Plot():
         ax.grid()
         ax.set_xlabel('PPM (%.2f MHz)'%(params['reffrq']))
         #self.fig.show()
+        if filename is not None:
+            self.fig.savefig(filename, format='pdf')
         
     def _plot_deconv(self, data, params, peakshapes,
             upper_ppm=None, 

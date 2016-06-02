@@ -507,20 +507,20 @@ class Fid(Base):
         self.data = ph*self.data
 
     def phaser(self):
-        self._phaser_widget = Phaser(self)
-        delattr(self, '_phaser_widget')
+        global _phaser_widget
+        _phaser_widget = Phaser(self)
         
     def peakpicker(self):
-        self._peakpicker_widget = PeakPicker(self.data, self._params)
-        if len(self._peakpicker_widget.ranges) > 0 and len(self._peakpicker_widget.peaks) > 0:
-            self.ranges = self._peakpicker_widget.ranges
+        global _peakpicker_widget
+        _peakpicker_widget = PeakPicker(self.data, self._params)
+        if len(_peakpicker_widget.ranges) > 0 and len(_peakpicker_widget.peaks) > 0:
+            self.ranges = _peakpicker_widget.ranges
             peaks = []
-            for peak in self._peakpicker_widget.peaks:
+            for peak in _peakpicker_widget.peaks:
                 for rng in self.ranges:
                     if peak >= rng[1] and peak <= rng[0]:
                         peaks.append(peak)
             self.peaks = peaks
-        delattr(self, '_peakpicker_widget')
 
     @classmethod
     def _f_gauss(cls, offset, amplitude, gauss_sigma, x):
