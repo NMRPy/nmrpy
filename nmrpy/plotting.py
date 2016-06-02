@@ -40,7 +40,7 @@ class Plot():
         if fig is None or isinstance(fig, Figure):
             self._fig = fig
         else:
-            raise AttributeError('fig must be of type matplotlib.figure.Figure.')
+            raise TypeError('fig must be of type matplotlib.figure.Figure.')
 
     def _plot_ppm(self, data, params, 
             upper_ppm=None, 

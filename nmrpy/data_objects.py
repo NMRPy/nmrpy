@@ -7,6 +7,7 @@ import numbers
 from scipy.optimize import leastsq
 from multiprocessing import Pool, cpu_count
 from nmrpy.plotting import *
+import pickle
 
 class Base():
     """
@@ -507,18 +508,19 @@ class Fid(Base):
 
     def phaser(self):
         self._phaser_widget = Phaser(self)
+        delattr(self, '_phaser_widget')
         
     def peakpicker(self):
         self._peakpicker_widget = PeakPicker(self.data, self._params)
-        if self._peakpicker_widget.ranges is not None:
+        if len(self._peakpicker_widget.ranges) > 0 and len(self._peakpicker_widget.peaks) > 0:
             self.ranges = self._peakpicker_widget.ranges
-        if self._peakpicker_widget.peaks is not None:
             peaks = []
             for peak in self._peakpicker_widget.peaks:
                 for rng in self.ranges:
                     if peak >= rng[1] and peak <= rng[0]:
                         peaks.append(peak)
             self.peaks = peaks
+        delattr(self, '_peakpicker_widget')
 
     @classmethod
     def _f_gauss(cls, offset, amplitude, gauss_sigma, x):
@@ -1077,17 +1079,32 @@ class FidArray(Base):
         fids = self.get_fids()
         fid = fids[0]
         fid._peakpicker_widget = PeakPicker(fid.data, fid._params)
-        if fid._peakpicker_widget.ranges is not None:
+        if len(fid._peakpicker_widget.ranges) > 0 and len(fid._peakpicker_widget.peaks) > 0:
             ranges = fid._peakpicker_widget.ranges
-        if fid._peakpicker_widget.peaks is not None:
             peaks = []
             for peak in fid._peakpicker_widget.peaks:
                 for rng in ranges:
                     if peak >= rng[1] and peak <= rng[0]:
                         peaks.append(peak)
-        for fid in fids:
-            fid.peaks = peaks
-            fid.ranges = ranges
+            for fid in fids:
+                fid.peaks = peaks
+                fid.ranges = ranges
+        delattr(fid, '_peakpicker_widget')
+
+    def save_to_file(self, filename=None):
+        """
+        Save FidArray object to file.
+        """
+        if filename is None:
+            filename = 'data.nmrpy'
+        if not isinstance(filename, str):
+            raise TypeError('filename must be a string.')
+        #try:
+        with open(filename, 'wb') as f:
+            pickle.dump(self, f)
+        #except OsError:
+        #    print('invalid filename.')
+  
 
 class Importer(Base):
 
