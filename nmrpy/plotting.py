@@ -113,8 +113,11 @@ class Plot():
         ax.plot(ppm, residual, color=residual_colour, lw=lw)
         ax.plot(ppm, data, color=colour, lw=lw)
         ax.plot(ppm, summed_peaks, '--', color=summed_peak_colour, lw=lw)
-        for peak in peakshapes:
+        label_pad = 0.02*peakshapes.max()
+        for n in range(len(peakshapes)):
+            peak = peakshapes[n]
             ax.plot(ppm, peak, '-', color=peak_colour, lw=lw)
+            ax.text(ppm[numpy.argmax(peak)], label_pad+peak.max(), str(n), ha='center')
         ax.invert_xaxis()
         ax.set_xlim([upper_ppm, lower_ppm])
         ax.grid()
