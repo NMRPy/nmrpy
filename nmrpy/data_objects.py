@@ -932,14 +932,22 @@ class FidArray(Base):
     @classmethod
     def from_path(cls, fid_path='.', file_format=None):
         if not file_format:
-            importer = Importer(fid_path=fid_path)
-            importer.import_fid()
+            try:
+                with open(fid_path, 'rb') as f:
+                    return pickle.load(f)
+            except:
+                print('Not NMRPy data file.')
+                importer = Importer(fid_path=fid_path)
+                importer.import_fid()
         elif file_format == 'varian':
             importer = VarianImporter(fid_path=fid_path)
             importer.import_fid()
         elif file_format == 'bruker':
             importer = BrukerImporter(fid_path=fid_path)
             importer.import_fid()
+        elif file_format == 'nmrpy':
+            with open(fid_path, 'rb') as f:
+                return pickle.load(f)
        
         if cls._is_iter(importer.data):
             fid_array = cls.from_data(importer.data)
@@ -1099,8 +1107,6 @@ class FidArray(Base):
         #try:
         with open(filename, 'wb') as f:
             pickle.dump(self, f)
-        #except OsError:
-        #    print('invalid filename.')
   
 
 class Importer(Base):
