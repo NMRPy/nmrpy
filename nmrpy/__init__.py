@@ -1,1 +1,1 @@
-import data_objects
+import nmrpy.data_objects
