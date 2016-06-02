@@ -12,7 +12,7 @@ config = {
     'author_email': 'johanneicher@gmail.com',
     'url': 'fake.address.com',
     #'download_url': 'Where to download it.',
-    'version': '1.0',
+    'version': '0.1',
     'install_requires': requirements,
     'packages': ['nmrpy', 'tests'],
     'license': 'New BSD',
