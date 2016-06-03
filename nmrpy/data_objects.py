@@ -1003,6 +1003,15 @@ class FidArray(Base):
         for fid in self.get_fids():
             fid.real()
 
+    def norm_fids(self):
+        """ 
+        Normalise FIDs by maximum data value in array.
+
+        """
+        dmax = self.data.max()
+        for fid in self.get_fids():
+            fid.data = fid.data/dmax
+
     def phase_correct_fids(self, method='leastsq', mp=True, cpus=None):
         """ 
         Apply phase-correction to all FIDs.
