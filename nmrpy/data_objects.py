@@ -605,7 +605,7 @@ class Fid(Base):
         
         p = []
         for i in peaks:
-                single_peak = [i, 10, 10, data.max()/2, frac_gauss]
+                single_peak = [i, 1.0, 1.0, 0.9*data[i], frac_gauss]
                 p.append(single_peak)
         return numpy.array(p)
 
@@ -754,6 +754,9 @@ class Fid(Base):
                     params[par_name].max = 1.0
                     if frac_gauss is not None:
                         params[par_name].vary = False
+                #if 'sigma' in par_name or 'hwhm' in par_name:
+                #    params[par_name].max = 1e-1*len(data)
+                    
         try:
             mz = lmfit.minimize(cls._f_res, params, args=([data]), method=method)
             fits = Fid._parameters_to_list(mz.params)

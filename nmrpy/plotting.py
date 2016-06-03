@@ -430,7 +430,5 @@ class PeakPicker:
         self.canvas.draw_idle()
         return False
 
-
-
 if __name__ == '__main__':
     pass
