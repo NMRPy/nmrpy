@@ -308,6 +308,7 @@ class PeakPicker:
     def __init__(self, data, params):
         self.fig = pylab.figure(figsize=[15, 7.5])
         self.data = numpy.array(data)
+        self.peaklines = []
         self.ax = self.fig.add_subplot(111)
         if len(self.data.shape)==1:
             ppm = numpy.mgrid[params['sw_left']-params['sw']:params['sw_left']:complex(data.shape[0])]
@@ -364,14 +365,16 @@ class PeakPicker:
         if tb.mode == '':
             x = numpy.round(event.xdata, 2)
             if event.button == 2:
-                self.peaks = self.peaks[:-1]
-                self.ax.lines = self.ax.lines[:-1]
+                if len(self.peaks) > 0:
+                    self.peaks.pop(-1)
+                    peakline = self.peaklines.pop(-1)
+                    peakline.remove()
             if event.button == 3:
                 self.buttonDown = True
                 self.pressv = event.xdata
             if event.button == 1 and (x >= self.xlims[1]) and (x <= self.xlims[0]):
                 self.peaks.append(x)
-                self.ax.vlines(x,self.ax_lims[0],self.ax_lims[1], color='#CC0000',lw=0.5)
+                self.peaklines.append(self.ax.vlines(x, self.ax_lims[0], self.ax_lims[1], color='#CC0000', lw=1))
                 print(x)
                 self.peaks = sorted(self.peaks)[::-1]
             self.canvas.draw()
