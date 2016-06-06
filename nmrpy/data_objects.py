@@ -1206,7 +1206,6 @@ class FidArray(Base):
         with open(filename, 'wb') as f:
             pickle.dump(self, f)
   
-
 class Importer(Base):
 
     def __init__(self, *args, **kwargs):
