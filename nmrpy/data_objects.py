@@ -259,6 +259,21 @@ class Fid(Base):
         self._ranges = ranges
 
     @property
+    def _bl_indices(self):
+        return self.__bl_indices
+    
+    @_bl_indices.setter    
+    def _bl_indices(self, bl_indices):
+        if bl_indices is not None:
+            if not Fid._is_flat_iter(bl_indices):
+                raise AttributeError('baseline indices must be a flat iterable')
+            if not all(isinstance(i, numbers.Number) for i in bl_indices):
+                raise AttributeError('baseline indices must be numbers')
+            self.__bl_indices = numpy.sort(list(set(bl_indices)))[::-1]
+        else:
+            self.__bl_indices = bl_indices
+
+    @property
     def _index_peaks(self):
         """
         self.peaks converted to indices rather than ppm
@@ -512,7 +527,8 @@ class Fid(Base):
         
     def peakpicker(self):
         global _peakpicker_widget
-        _peakpicker_widget = PeakPicker(self.data, self._params)
+        plot_label = 'Left - select peak\nMiddle - delete last selection\nDrag Right - select range'
+        _peakpicker_widget = DataSelector(self.data, self._params, title="Peak-picking", label=plot_label)
         if len(_peakpicker_widget.ranges) > 0 and len(_peakpicker_widget.peaks) > 0:
             self.ranges = _peakpicker_widget.ranges
             peaks = []
@@ -521,6 +537,22 @@ class Fid(Base):
                     if peak >= rng[1] and peak <= rng[0]:
                         peaks.append(peak)
             self.peaks = peaks
+
+    def baseliner(self):
+        global _baseliner_widget
+        plot_label = 'Left - select datum\nMiddle - delete last selection\nDrag Right - select range'
+        plot_title = 'Select data for baseline-correction'
+        _baseliner_widget = DataSelector(self.data, self._params, title=plot_title, label=plot_label)
+        bl_indices = []
+        for rng in _baseliner_widget.ranges:
+            peak_ind = (self._ppm > rng[1]) * (self._ppm < rng[0])
+            cur_peaks = self._ppm[peak_ind]
+            bl_indices.append(cur_peaks)
+        if len(_baseliner_widget.peaks) > 0:
+            bl_indices.append(_baseliner_widget.peaks)
+        bl_indices = numpy.array([j for i in bl_indices for j in i])
+        self._bl_indices = bl_indices
+  
 
     @classmethod
     def _f_gauss(cls, offset, amplitude, gauss_sigma, x):

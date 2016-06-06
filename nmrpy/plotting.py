@@ -303,9 +303,10 @@ class Phaser(object):
         self.canvas.draw()  # _idle()
         return False
 
-class PeakPicker:
-    """Interactive peak-picking widget"""
-    def __init__(self, data, params):
+
+class DataSelector:
+    """Interactive selector widget"""
+    def __init__(self, data, params, title=None, label=None):
         self.fig = pylab.figure(figsize=[15, 7.5])
         self.data = numpy.array(data)
         self.peaklines = []
@@ -350,14 +351,15 @@ class PeakPicker:
         self.ax_lims = self.ax.get_ylim()
         self.xlims = [ppm[-1], ppm[0]]
         self.ax.set_xlim(self.xlims)
+        cursor = Cursor(self.ax, useblit=True, color='k', linewidth=0.5)
+        cursor.horizOn = False
+        self.fig.suptitle(title, size=20)
         self.ax.text(
             0.95 *
             self.ax.get_xlim()[0],
             0.7 *
             self.ax.get_ylim()[1],
-            'Peak picking\nLeft - select peak\nMiddle - delete last peak\nDrag Right - select range')
-        cursor = Cursor(self.ax, useblit=True, color='k', linewidth=0.5)
-        cursor.horizOn = False
+            label),
         pylab.show()
 
     def press(self, event):
@@ -429,6 +431,9 @@ class PeakPicker:
                 vmin, vmax = vmax, vmin
         self.canvas.draw_idle()
         return False
+
+
+
 
 if __name__ == '__main__':
     pass
