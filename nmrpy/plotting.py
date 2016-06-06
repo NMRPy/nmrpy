@@ -14,6 +14,9 @@ from matplotlib.transforms import blended_transform_factory
 from matplotlib.widgets import Cursor
 
 class Plot():
+    """
+    Basic 'plot' class containing functions for various types of plots.
+    """
 
     _plot_id_num = 0
 

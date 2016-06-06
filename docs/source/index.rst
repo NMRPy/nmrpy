@@ -13,6 +13,8 @@ Contents:
 
     intro
     quickstart
+    data_objects
+    plotting_objects
 
 Indices and tables
 ==================
