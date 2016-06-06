@@ -1120,6 +1120,17 @@ class FidArray(Base):
                 fid.phase_correct(method=method)
         print('phase-correction completed')
 
+    def baseline_correct_fids(self, deg=2):
+        """ 
+        Apply baseline-correction to all FIDs.
+
+        Keyword arguments:
+        deg -- degree of the baseline polynomial (see Fid.baseline_correct)
+        """
+        for fid in self.get_fids():
+            fid.baseline_correct(deg=deg)
+        print('baseline-correction completed')
+
     def deconv_fids(self, mp=True, cpus=None, method='leastsq', frac_gauss=0.0):
         """ 
         Apply phase-correction to all FIDs.
