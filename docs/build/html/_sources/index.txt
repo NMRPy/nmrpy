@@ -9,9 +9,9 @@ Welcome to NMRPy's documentation!
 Contents:
 
 .. toctree::
-   :maxdepth: 2
+    :maxdepth: 2
 
-
+    intro
 
 Indices and tables
 ==================
