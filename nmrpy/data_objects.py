@@ -267,15 +267,21 @@ class Fid(Base):
         if bl_ppm is not None:
             if not Fid._is_flat_iter(bl_ppm):
                 raise AttributeError('baseline indices must be a flat iterable')
-            if not all(isinstance(i, numbers.Number) for i in bl_ppm):
-                raise AttributeError('baseline indices must be numbers')
-            self.__bl_ppm = numpy.sort(list(set(bl_ppm)))[::-1]
+            if len(bl_ppm) > 0:
+                if not all(isinstance(i, numbers.Number) for i in bl_ppm):
+                    raise AttributeError('baseline indices must be numbers')
+                self.__bl_ppm = numpy.sort(list(set(bl_ppm)))[::-1]
+            else:
+                self.__bl_ppm = None
         else:
             self.__bl_ppm = bl_ppm
 
     @property
     def _bl_indices(self):
-        return self._conv_to_index(self.data, self._bl_ppm, self._params['sw_left'], self._params['sw'])
+        if self._bl_ppm is not None:
+            return self._conv_to_index(self.data, self._bl_ppm, self._params['sw_left'], self._params['sw'])
+        else:
+            return None
 
     @property
     def _bl_poly(self):

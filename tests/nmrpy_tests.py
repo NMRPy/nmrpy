@@ -657,6 +657,13 @@ class TestPlottingUtils(unittest.TestCase):
         self.fid_varian.phase_correct()
         self.fid_varian.peakpicker()
         
+    def test_peakpicker(self):
+        self.fid_varian.emhz()
+        self.fid_varian.ft()
+        self.fid_varian.phase_correct()
+        self.fid_varian.real()
+        self.fid_varian.baseliner()
+        self.fid_varian.baseline_correct()
         
 
 if __name__ == '__main__':
