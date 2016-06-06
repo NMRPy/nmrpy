@@ -10,9 +10,6 @@ from nmrpy.plotting import *
 import pickle
 
 class Base():
-    """
-    The base class for several classes. This is a collection of useful properties/setters and parsing functions.
-    """
     _complex_dtypes = [
                     numpy.dtype('complex64'),
                     numpy.dtype('complex128'),
@@ -190,7 +187,7 @@ class Base():
 
 class Fid(Base):
     '''
-    The basic FID class contains all the data for a single spectrum, and the
+    The basic FID (Free Induction Decay) class contains all the data for a single spectrum (:attr:`~nmrpy.data_objects.Fid.data`), and the
     necessary methods to process these data.
     '''    
 
@@ -210,6 +207,9 @@ class Fid(Base):
 
     @property
     def data(self):
+        """
+        The spectral data. This is the primary object upon which the processing and analysis functions work.
+        """
         return self.__data
     
     @data.setter    
@@ -219,6 +219,9 @@ class Fid(Base):
 
     @property
     def _ppm(self):
+        """
+        Index of :attr:`~nmrpy.data_objects.Fid.data` in ppm (parts per million).
+        """
         if self._params is not None and self.data is not None:
             return numpy.linspace(self._params['sw_left']-self._params['sw'], self._params['sw_left'], len(self.data))[::-1]
         else:
@@ -226,6 +229,9 @@ class Fid(Base):
 
     @property
     def peaks(self):
+        """
+        Picked peaks for deconvolution of :attr:`~nmrpy.data_objects.Fid.data`.
+        """
         return self._peaks
     
     @peaks.setter    
@@ -241,6 +247,9 @@ class Fid(Base):
 
     @property
     def ranges(self):
+        """
+        Picked ranges for deconvolution of :attr:`~nmrpy.data_objects.Fid.data`.
+        """
         return self._ranges
     
     @ranges.setter    
@@ -301,7 +310,7 @@ class Fid(Base):
     @property
     def _index_peaks(self):
         """
-        self.peaks converted to indices rather than ppm
+        :attr:`~nmrpy.data_objects.Fid.peaks` converted to indices rather than ppm
         """
         if self.peaks is not None:
             return self._conv_to_index(self.data, self.peaks, self._params['sw_left'], self._params['sw'])
@@ -311,7 +320,7 @@ class Fid(Base):
     @property
     def _index_ranges(self):
         """
-        self.peaks converted to indices rather than ppm
+        :attr:`~nmrpy.data_objects.Fid.ranges` converted to indices rather than ppm
         """
         if self.ranges is not None:
             shp = self.ranges.shape
@@ -323,7 +332,7 @@ class Fid(Base):
     @property
     def _grouped_peaklist(self):
         """
-        self.peaks arranged according to self.ranges
+        :attr:`~nmrpy.data_objects.Fid.peaks` grouped according to :attr:`~nmrpy.data_objects.Fid.ranges`
         """
         if self.ranges is not None:
             return numpy.array([[peak for peak in self.peaks if peak > min(peak_range) and peak < max(peak_range)]
@@ -333,7 +342,7 @@ class Fid(Base):
     @property
     def _grouped_index_peaklist(self):
         """
-        self.peaks arranged according to self.ranges
+        :attr:`~nmrpy.data_objects.Fid._index_peaks` grouped according to :attr:`~nmrpy.data_objects.Fid._index_ranges`
         """
         if self._index_ranges is not None:
             return numpy.array([[peak for peak in self._index_peaks if peak > min(peak_range) and peak < max(peak_range)]
@@ -347,18 +356,25 @@ class Fid(Base):
 
     @_deconvoluted_peaks.setter
     def _deconvoluted_peaks(self, deconvoluted_peaks):
-        """This is a list of lists of peak parameters with the order:
-            [offset, gauss_sigma, lorentz_hwhm, amplitude, frac_gauss]
+        """This is a list of lists of peak parameters with the order [offset, gauss_sigma, lorentz_hwhm, amplitude, frac_gauss]:
+
             offset: spectral offset
+
             gauss_sigma: Gaussian sigma
+
             lorentz_hwhm: Lorentzian half-width-at-half-maximum
+
             amplitude: height of peak
+
             frac_gauss: fraction of peak to be Gaussian (Lorentzian fraction is 1-frac_gauss)
          """
         self.__deconvoluted_peaks = deconvoluted_peaks 
 
     @property
-    def _deconvoluted_integrals(self):
+    def deconvoluted_integrals(self):
+        """
+        An array of integrals for each deconvoluted peak.
+        """
         if self._deconvoluted_peaks is not None:
             integrals = []
             for peak in self._deconvoluted_peaks:
@@ -383,37 +399,57 @@ class Fid(Base):
 
     @classmethod
     def from_data(cls, data):
-       new_instance = cls()
-       new_instance.data = data
-       return new_instance  
+        """
+
+        Instantiate a new :class:`~nmrpy.data_objects.Fid` object by providing a
+        spectral data object as argument. Eg. ::
+
+            fid = Fid.from_data(data) 
+        """
+        new_instance = cls()
+        new_instance.data = data
+        return new_instance  
 
     def zf(self):
-        """Apply a single degree of zero-filling.
+        """
 
-        Note: extends data to double length by appending zeroes.
+        Apply a single degree of zero-filling to data array
+        :attr:`~nmrpy.data_objects.Fid.data`.
+
+        Note: extends data to double length by appending zeroes. This results
+        in an artificially increased resolution once Fourier-transformed.
 
         """
         self.data = numpy.append(self.data, 0*self.data)
 
     def emhz(self, lb=5.0):
-        """Apply exponential line-broadening.
+        """
 
-        lb -- degree of line-broadening in Hz.
+        Apply exponential line-broadening to data array
+        :attr:`~nmrpy.data_objects.Fid.data`.
+
+        Keyword arguments:
+
+            lb: degree of line-broadening in Hz.
 
         """
         self.data = numpy.exp(-numpy.pi*numpy.arange(len(self.data)) * (lb/self._params['sw_hz'])) * self.data
 
     def real(self):
-            """Discard imaginary component of data."""
-            self.data = numpy.real(self.data)
+        """
+        Discard imaginary component of :attr:`~nmrpy.data_objects.Fid.data`.
+        """
+        self.data = numpy.real(self.data)
 
     # GENERAL FUNCTIONS
     def ft(self):
-        """Fourier Transform the FID array.
+        """
+        Fourier Transform the data array :attr:`~nmrpy.data_objects.Fid.data`.
 
-        Note: calculates the Discrete Fourier Transform using the Fast Fourier Transform algorithm as implemented in NumPy [1].
-
-        [1] Cooley, James W., and John W. Tukey, 1965, 'An algorithm for the machine calculation of complex Fourier series,' Math. Comput. 19: 297-301.
+        Calculates the Discrete Fourier Transform using the Fast Fourier
+        Transform algorithm as implemented in NumPy (*Cooley, James W., and John W.
+        Tukey, 1965, 'An algorithm for the machine calculation of complex Fourier
+        series,' Math. Comput. 19: 297-301.*)
 
         """
         if self._flags['ft']:
@@ -444,6 +480,9 @@ class Fid(Base):
 
     @staticmethod
     def _conv_to_ppm(data, index, sw_left, sw):
+            """
+            Convert index array to ppm. 
+            """
             if isinstance(index, list):
                     index = numpy.array(index)
             frc_sw = index/float(len(data))
@@ -455,6 +494,9 @@ class Fid(Base):
 
     @staticmethod
     def _conv_to_index(data, ppm, sw_left, sw):
+            """
+            Convert ppm array to index. 
+            """
             conv_to_int = False
             if not Fid._is_iter(ppm):
                 ppm = [ppm]
@@ -470,7 +512,25 @@ class Fid(Base):
     
     def phase_correct(self, method='leastsq'):
             """
-            Phase-correct a single fid by minimising total area.
+
+            Automatically phase-correct :attr:`~nmrpy.data_objects.Fid.data` by minimising
+            total absolute area.
+
+            Keyword arguments:
+
+                method: The fitting method to use. Default is 'leastsq', the
+                Levenberg-Marquardt algorithm, which is usually sufficient. Additional options
+                include:
+                    
+                    Nelder-Mead (nelder)
+
+                    L-BFGS-B (l-bfgs-b)
+
+                    Conjugate Gradient (cg)
+
+                    Powell (powell)
+
+                    Newton-CG  (newton)
             """
             if self.data.dtype not in self._complex_dtypes:
                 raise TypeError('Only complex data can be phase-corrected.')
@@ -506,12 +566,13 @@ class Fid(Base):
     @classmethod
     def _ps(cls, data, p0=0.0, p1=0.0):
             """
-            Linear Phase Correction
-
-            Parameters:
-
-            * p0    Zero order phase in degrees.
-            * p1    First order phase in degrees.
+            Linear phase correction
+            
+            Keyword arguments: 
+    
+                p0: Zero order phase in degrees.
+    
+                p1: First order phase in degrees.
 
             """
             if not all(isinstance(i, (float, int)) for i in [p0, p1]):
@@ -527,12 +588,13 @@ class Fid(Base):
 
     def ps(self, p0=0.0, p1=0.0):
         """
-        Linear Phase Correction
+        Linear phase correction of :attr:`~nmrpy.data_objects.Fid.data`
         
-        Parameters:
-        
-        * p0    Zero order phase in degrees.
-        * p1    First order phase in degrees.
+        Keyword arguments:
+
+            p0: Zero order phase in degrees
+
+            p1: First order phase in degrees
         
         """
         if not all(isinstance(i, (float, int)) for i in [p0, p1]):
@@ -547,17 +609,29 @@ class Fid(Base):
         self.data = ph*self.data
 
     def phaser(self):
+        """
+        Instantiate a phase-correction GUI widget which applies to :attr:`~nmrpy.data_objects.Fid.data`.
+        """
+        if not len(self.data):
+            raise AttributeError('data does not exist.')
+        if self.data.dtype not in self._complex_dtypes:
+            raise TypeError('data must be complex.')
+        if not Fid._is_flat_iter(self.data):
+            raise AttributeError('data must be 1 dimensional.')
         global _phaser_widget
         _phaser_widget = Phaser(self)
 
     def baseline_correct(self, deg=2):
         """
-        Perform baseline correction by fitting specified baseline
-        points (stored in self._bl_ppm) with polynomial of specified degree (stored
-        in self._bl_polu) and subtract this polynomial from Fid.data.
+
+        Perform baseline correction by fitting specified baseline points
+        (stored in :attr:`~nmrpy.data_objects.Fid._bl_ppm`) with polynomial of specified
+        degree (stored in :attr:`~nmrpy.data_objects.Fid._bl_ppm`) and subtract this
+        polynomial from :attr:`~nmrpy.data_objects.Fid.data`.
         
         Keyword arguments:
-        deg -- degree of fitted polynomial
+
+            deg: degree of fitted polynomial
         """
 
         if self._bl_indices is None:
@@ -584,6 +658,15 @@ class Fid(Base):
 
 
     def peakpicker(self):
+        """
+
+        Instantiate a peak-picking GUI widget. Left-clicking selects a peak.
+        Right-click-dragging defines a range. Middle-clicking deletes previously
+        selected peak. Peaks are stored in :attr:`~nmrpy.data_objects.Fid.peaks`; ranges
+        are stored in :attr:`~nmrpy.data_objects.Fid.ranges`: both are used for
+        deconvolution (see :meth:`~nmrpy.data_objects.Fid.deconv`).
+
+        """
         global _peakpicker_widget
         plot_label = 'Left - select peak\nMiddle - delete last selection\nDrag Right - select range'
         _peakpicker_widget = DataSelector(self.data, self._params, title="Peak-picking", label=plot_label)
@@ -597,6 +680,15 @@ class Fid(Base):
             self.peaks = peaks
 
     def baseliner(self):
+        """
+        Instantiate a baseline-correction GUI widget. Left-clicking selects an
+        index. Right-click-dragging defines a range. Middle-clicking deletes previously
+        selected peak. Indices selected either as individual selections (left-click) or
+        in ranges (right-click) are combined and stored in
+        :attr:`~nmrpy.data_objects.Fid._bl_ppm`, which is used for baseline-correction
+        (see :meth:`~nmrpy.data_objects.Fid.baseline_correction`).
+
+        """
         global _baseliner_widget
         plot_label = 'Left - select datum\nMiddle - delete last selection\nDrag Right - select range'
         plot_title = 'Select data for baseline-correction'
@@ -636,18 +728,25 @@ class Fid(Base):
     @classmethod
     def _f_pk(cls, x, offset=0.0, gauss_sigma=1.0, lorentz_hwhm=1.0, amplitude=1.0, frac_gauss=0.0):
         """
-        Return the evaluation of a combined Gaussian/3-parameter Lorentzian function for deconvolution.
+
+        Return the a combined Gaussian/Lorentzian peakshape for deconvolution
+        of :attr:`~nmrpy.data_objects.Fid.data`.
         
-        x -- array of equal length to FID
+            x: array of equal length to :attr:`~nmrpy.data_objects.Fid.data`
         
         Keyword arguments:
-        offset -- spectral offset in x
-        gauss sigma -- 2*sigma**2
-        lorentz_hwhm -- lorentzian half width at half maximum height
-        amplitude -- amplitude of peak
-        frac_gauss: fraction of function to be Gaussian (0 -> 1)
-        Note: specifying a Gaussian fraction of 0 will produce a pure Lorentzian and vice versa.
-        """
+
+            offset: spectral offset in x
+
+            gauss_sigma: 2*sigma**2 specifying the width of the Gaussian peakshape
+
+            lorentz_hwhm: Lorentzian half width at half maximum height
+
+            amplitude: amplitude of peak
+
+            frac_gauss: fraction of function to be Gaussian (0 -> 1). Note:
+            specifying a Gaussian fraction of 0 will produce a pure Lorentzian and vice
+            versa.  """
         
         #validation
         parameters = [offset, gauss_sigma, lorentz_hwhm, amplitude, frac_gauss]
@@ -676,15 +775,22 @@ class Fid(Base):
         Make a set of initial peak parameters for deconvolution.
         
         Keyword arguments:
-        data -- data to be fitted
-        peaks -- selected peak positions (see peakpicker())
+
+            data: data to be fitted
+
+            peaks: selected peak positions (see peakpicker())
        
         returns: an array of peaks, each consisting of the following parameters:
-                    [[spectral offset (x), 
-                    gauss: 2*sigma**2, 
-                    lorentz: scale (HWHM), 
-                    amplitude: amplitude of peak,
-                    frac_gauss: fraction of function to be Gaussian (0 -> 1)]]
+
+                    spectral offset (x)
+
+                    gauss: 2*sigma**2
+
+                    lorentz: scale (HWHM)
+
+                    amplitude: amplitude of peak
+
+                    frac_gauss: fraction of function to be Gaussian (0 -> 1)
         """
         if not cls._is_flat_iter(data):
             raise TypeError('data must be a flat iterable') 
@@ -897,13 +1003,28 @@ class Fid(Base):
 
     def deconv(self, method='leastsq', frac_gauss=0.0):
         """
-        Deconvolute spectrum.
 
-        The 'data' attribute of the Fid object with be deconvoluted by fitting
-        a series of peaks. These peaks are generated using the parameters in 'peaks',
-        and 'ranges'. frac_gauss (0-1) determines the fraction of each peak to be
-        Lorentzian or Gaussian (1-frac_gauss) in shape. Setting frac_gauss to None
-        will fit this parameter as well.
+        Deconvolute :attr:`~nmrpy.data_obects.Fid.data` object by fitting a
+        series of peaks to the spectrum. These peaks are generated using the parameters
+        in :attr:`~nmrpy.data_objects.Fid.peaks`. :attr:`~nmrpy.data_objects.Fid.ranges`
+        splits :attr:`~nmrpy.data_objects.Fid.data` up into smaller portions. This
+        significantly speeds up deconvolution time.
+
+        Keyword arguments:
+
+        frac_gauss: (0-1) determines the Gaussian fraction of the peaks. Setting this argument to None will fit this parameter as well.
+
+        method: The fitting method to use. Default is 'leastsq', the Levenberg-Marquardt algorithm, which is usually sufficient. Additional options include:
+            
+            Nelder-Mead (nelder)
+        
+            L-BFGS-B (l-bfgs-b)
+        
+            Conjugate Gradient (cg)
+        
+            Powell (powell)
+        
+            Newton-CG  (newton)
         
         """
 
@@ -923,10 +1044,16 @@ class Fid(Base):
 
     def plot_ppm(self, **kwargs):
         """
-        Plot FID data. Possible keyword arguments are:
+        Plot :attr:`~nmrpy.data_objects.Fid.data`.
+
+        Keyword arguments:
+
             upper_ppm=None: upper spectral bound in ppm
+
             lower_ppm=None: lower spectral bound in ppm
+
             lw=1.0: linewidth of plot 
+
             colour='k': colour of the plot
         """
         plt = Plot()
@@ -936,13 +1063,21 @@ class Fid(Base):
 
     def plot_deconv(self, **kwargs):
         """
-        Plot FID data with deconvoluted peaks overlaid. Possible keyword arguments are:
+        Plot :attr:`~nmrpy.data_objects.Fid.data` with deconvoluted peaks overlaid.
+
+        Keyword arguments:
+
             upper_ppm=None: upper spectral bound in ppm
+
             lower_ppm=None: lower spectral bound in ppm
+
             lw=1.0: linewidth of plot 
+
             colour='k': colour of the plot
+
             peak_colour='r': colour of the deconvoluted peaks
-            residual_colour='g': colour of the residual signal after subtracting deconvoluted p1s
+
+            residual_colour='g': colour of the residual signal after subtracting deconvoluted peaks
         """
         x = numpy.arange(len(self.data))
         peakshapes = numpy.array([Fid._f_pk(x, *peak) for peak in self._deconvoluted_peaks])
@@ -953,43 +1088,68 @@ class Fid(Base):
  
 class FidArray(Base):
     '''
-    This object collects several FIDs into an array and contains all the
-    processing methods necessary for bulk processing of these FIDs. The class
-    methods '.from_path' and '.from_data' will instantiate a new FidArray object
-    from a Varian/Bruker .fid path or an iterable of data respectively.
+
+    This object collects several :class:`~nmrpy.data_objects.Fid` objects into
+    an array, and it contains all the processing methods necessary for bulk
+    processing of these FIDs. It should be considered the parent object for any
+    project. The class methods :meth:`~nmrpy.data_objects.FidArray.from_path` and
+    :meth:`~nmrpy.data_objects.FidArray.from_data` will instantiate a new
+    :class:`~nmrpy.data_objects.FidArray` object from a Varian/Bruker .fid path or
+    an iterable of data respectively. Each :class:`~nmrpy.data_objects.Fid` object
+    in the array will appear as an attribute of
+    :class:`~nmrpy.data_objects.FidArray` with a unique ID of the form 'fidXX',
+    where 'XX' is an increasing integer .
+
     '''
     def __str__(self):
         return 'FidArray of {} FID(s)'.format(len(self.data))
 
     def get_fid(self, id):
+        """
+        Return an :class:`~nmrpy.data_objects.Fid` object owned by this object, identified by unique ID. Eg.::
+
+            fid12 = fid_array.get_fid('fid12')
+        """
         try:
             return getattr(self, id)
         except AttributeError:
             print('{} does not exist.'.format(id))
 
     def get_fids(self):
+        """
+        Return a list of all :class:`~nmrpy.data_objects.Fid` objects owned by this :class:`~nmrpy.data_objects.FidArray`.
+        """
         fids = [self.__dict__[id] for id in sorted(self.__dict__) if isinstance(self.__dict__[id], Fid)]
         return fids
 
     @property
     def data(self):
+        """
+        An array of all :attr:`~nmrpy.data_objects.Fid.data` objects belonging to the :class:`~nmrpy.data_objects.Fid` objects owned by this :class:`~nmrpy.data_objects.FidArray`.
+        """
         data = numpy.array([fid.data for fid in self.get_fids()])
         return data
 
     @property
-    def _deconvoluted_integrals(self):
+    def deconvoluted_integrals(self):
         deconvoluted_integrals = []
         for fid in self.get_fids():
-            deconvoluted_integrals.append(fid._deconvoluted_integrals)
+            deconvoluted_integrals.append(fid.deconvoluted_integrals)
         return numpy.array(deconvoluted_integrals)
 
     def add_fid(self, fid):
+        """
+        Add an :class:`~nmrpy.data_objects.Fid` object to this :class:`~nmrpy.data_objects.FidArray`, using a unique id.
+        """
         if isinstance(fid, Fid):
             setattr(self, fid.id, fid)
         else:
             raise AttributeError('FidArray requires Fid object.')
 
     def del_fid(self, fid_id):
+        """
+        Delete an :class:`~nmrpy.data_objects.Fid` object belonging to this :class:`~nmrpy.data_objects.FidArray`, using a unique id.
+        """
         if hasattr(self, fid_id):
             if isinstance(getattr(self, fid_id), Fid):
                 delattr(self, fid_id)
@@ -999,6 +1159,9 @@ class FidArray(Base):
             raise AttributeError('FID {} does not exist.'.format(fid_id))
 
     def add_fids(self, fids):
+        """
+        Add a list of :class:`~nmrpy.data_objects.Fid` objects to this :class:`~nmrpy.data_objects.FidArray`.
+        """
         if FidArray._is_iter(fids):
             num_fids = len(fids)
             zero_fill = str(len(str(num_fids)))
@@ -1013,6 +1176,9 @@ class FidArray(Base):
 
     @classmethod
     def from_data(cls, data):
+        """
+        Instantiate a new :class:`~nmrpy.data_objects.FidArray` object from a 2D data set of spectral arrays.
+        """
         if not cls._is_iter_of_iters(data):
             raise TypeError('data must be an iterable of iterables.')
         fid_array = cls()
@@ -1026,6 +1192,16 @@ class FidArray(Base):
 
     @classmethod
     def from_path(cls, fid_path='.', file_format=None):
+        """
+        Instantiate a new :class:`~nmrpy.data_objects.FidArray` object from a .fid directory.
+
+        Keyword arguments:
+
+            fidpath: filepath to .fid directory
+
+            file_path: 'varian' or 'bruker', usually unnecessary
+
+        """
         if not file_format:
             try:
                 with open(fid_path, 'rb') as f:
@@ -1058,10 +1234,16 @@ class FidArray(Base):
             raise IOError('Data could not be imported.')
 
     def zf_fids(self):
+        """ 
+        Zero-fill all :class:`~nmrpy.data_objects.Fid` objects owned by this :class:`~nmrpy.data_objects.FidArray`
+        """
         for fid in self.get_fids():
             fid.zf()
 
     def emhz_fids(self, lb=5.0):
+        """ 
+        Apply line-broadening (apodisation) to all :class:`nmrpy.~data_objects.Fid` objects owned by this :class:`~nmrpy.data_objects.FidArray`
+        """
         for fid in self.get_fids():
             fid.emhz(lb=lb)
 
@@ -1070,8 +1252,10 @@ class FidArray(Base):
         Fourier-transform all FIDs.
 
         Keyword arguments:
-        mp     -- parallelise over multiple processors, significantly reduces computation time
-        cpus  -- defines number of CPUs to utilise if 'mp' is set to True
+
+            mp: parallelise over multiple processors, significantly reducing computation time
+
+            cpus: defines number of CPUs to utilise if 'mp' is set to True
         """
         if mp:
             fids = self.get_fids()
@@ -1095,7 +1279,7 @@ class FidArray(Base):
 
     def norm_fids(self):
         """ 
-        Normalise FIDs by maximum data value in array.
+        Normalise FIDs by maximum data value in :attr:`~nmrpy.data_objects.FidArray.data`.
 
         """
         dmax = self.data.max()
@@ -1104,12 +1288,15 @@ class FidArray(Base):
 
     def phase_correct_fids(self, method='leastsq', mp=True, cpus=None):
         """ 
-        Apply phase-correction to all FIDs.
+        Apply automatic phase-correction to all :class:`~nmrpy.data_objects.Fid` objects owned by this :class:`~nmrpy.data_objects.FidArray`
 
         Keyword arguments:
-        method -- see Fid.phase_correct()
-        mp     -- parallelise the phasing process over multiple processors, significantly reduces computation time
-        cores  -- defines number of CPUs to utilise if 'mp' is set to True
+
+            method: see :meth:`~nmrpy.data_objects.Fid.phase_correct`
+
+            mp: parallelise the phasing process over multiple processors, significantly reducing computation time
+
+            cores: defines number of CPUs to utilise if 'mp' is set to True
         """
         if mp: 
             fids = self.get_fids()
@@ -1128,10 +1315,11 @@ class FidArray(Base):
 
     def baseline_correct_fids(self, deg=2):
         """ 
-        Apply baseline-correction to all FIDs.
+        Apply baseline-correction to all :class:`~nmrpy.data_objects.Fid` objects owned by this :class:`~nmrpy.data_objects.FidArray`
 
         Keyword arguments:
-        deg -- degree of the baseline polynomial (see Fid.baseline_correct)
+
+            deg: degree of the baseline polynomial (see :meth:`~nmrpy.data_objects.Fid.baseline_correct`)
         """
         for fid in self.get_fids():
             fid.baseline_correct(deg=deg)
@@ -1139,12 +1327,15 @@ class FidArray(Base):
 
     def deconv_fids(self, mp=True, cpus=None, method='leastsq', frac_gauss=0.0):
         """ 
-        Apply phase-correction to all FIDs.
+        Apply deconvolution to all :class:`~nmrpy.data_objects.Fid` objects owned by this :class:`~nmrpy.data_objects.FidArray`, using the :attr:`~nmrpy.data_objects.Fid.peaks` and  :attr:`~nmrpy.data_objects.Fid.ranges` attribute of each respective :class:`~nmrpy.data_objects.Fid`.
 
         Keyword arguments:
-        method -- see Fid.phase_correct()
-        mp     -- parallelise the phasing process over multiple processors, significantly reduces computation time
-        cores  -- defines number of CPUs to utilise if 'mp' is set to True
+
+            method: see :meth:`~nmrpy.data_objects.Fid.phase_correct`
+
+            mp: parallelise the phasing process over multiple processors, significantly reduces computation time
+
+            cores: defines number of CPUs to utilise if 'mp' is set to True, default is n-1 cores
         """
         if mp: 
             fids = self.get_fids()
@@ -1161,7 +1352,7 @@ class FidArray(Base):
 
     def ps_fids(self, p0=0.0, p1=0.0):
         """
-        Apply phase-correction to all FIDs.
+        Apply manual phase-correction to all :class:`~nmrpy.data_objects.Fid` objects owned by this :class:`~nmrpy.data_objects.FidArray`
         """
         for fid in self.get_fids():
             fid.ps(p0=p0, p1=p1)  
@@ -1179,18 +1370,32 @@ class FidArray(Base):
 
     def plot_array(self, **kwargs):
         """
-        Plot array of FIDs. The following keyword arguments are accepted: 
+        Plot :attr:`~nmrpy.data_objects.FidArray.data`.
+
+        Keyword arguments:
+
             upper_index=None: upper index of array
+
             lower_index=None: lower index of array
+
             upper_ppm=None: upper spectral bound in ppm
+
             lower_ppm=None: lower spectral bound in ppm
+
             lw=0.5: linewidth of plot 
+
             azim=-90: starting azimuth of plot 
+
             elev=40: starting elevation of plot 
+
             filled=False: True=filled vertices, False=lines
+
             show_zticks=False: show labels on z axis 
-            labels=None: tbc 
-            colour=True: plot FIDs with colour spectrum (False=black)
+
+            labels=None: under development
+
+            colour=True: plot spectra with colour spectrum (False=black)
+
             filename=None: save plot to .pdf file
         """
         plt = Plot()
@@ -1199,8 +1404,22 @@ class FidArray(Base):
         plt.fig.show()
 
     def peakpicker(self, fid_number=0):
+        """
+
+        Instantiate peak-picker GUI widget for a single
+        :attr:`~nmrpy.data_objects.Fid.data`, and apply selected
+        :attr:`~nmrpy.data_objects.Fid.peaks` and
+        :attr:`~nmrpy.data_objects.Fid.ranges` to all :class:`~nmrpy.data_objects.Fid`
+        objects owned by this :class:`~nmrpy.data_objects.FidArray`. See
+        :meth:`~nmrpy.data_objects.Fid.peakpicker`.
+
+        Keyword arguments:
+
+            fid_number: index of :class:`~nmrpy.data_objects.Fid` to use for peak-picking.
+
+        """
         fids = self.get_fids()
-        fid = fids[0]
+        fid = fids[fid_number]
         fid.peakpicker()
         #fid._peakpicker_widget = PeakPicker(fid.data, fid._params)
         if fid.ranges is not None and fid.peaks is not None:
@@ -1213,7 +1432,12 @@ class FidArray(Base):
 
     def save_to_file(self, filename=None):
         """
-        Save FidArray object to file.
+        Save :class:`~nmrpy.data_objects.FidArray` object to file, including all objects owned.
+
+        Keyword arguments:
+
+            filename: filename to save :class:`~nmrpy.data_objects.FidArray` to
+
         """
         if filename is None:
             filename = 'data.nmrpy'
