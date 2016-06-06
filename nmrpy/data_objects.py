@@ -259,19 +259,38 @@ class Fid(Base):
         self._ranges = ranges
 
     @property
-    def _bl_indices(self):
-        return self.__bl_indices
+    def _bl_ppm(self):
+        return self.__bl_ppm
     
-    @_bl_indices.setter    
-    def _bl_indices(self, bl_indices):
-        if bl_indices is not None:
-            if not Fid._is_flat_iter(bl_indices):
+    @_bl_ppm.setter    
+    def _bl_ppm(self, bl_ppm):
+        if bl_ppm is not None:
+            if not Fid._is_flat_iter(bl_ppm):
                 raise AttributeError('baseline indices must be a flat iterable')
-            if not all(isinstance(i, numbers.Number) for i in bl_indices):
+            if not all(isinstance(i, numbers.Number) for i in bl_ppm):
                 raise AttributeError('baseline indices must be numbers')
-            self.__bl_indices = numpy.sort(list(set(bl_indices)))[::-1]
+            self.__bl_ppm = numpy.sort(list(set(bl_ppm)))[::-1]
         else:
-            self.__bl_indices = bl_indices
+            self.__bl_ppm = bl_ppm
+
+    @property
+    def _bl_indices(self):
+        return self._conv_to_index(self.data, self._bl_ppm, self._params['sw_left'], self._params['sw'])
+
+    @property
+    def _bl_poly(self):
+        return self.__bl_poly
+    
+    @_bl_poly.setter    
+    def _bl_poly(self, bl_poly):
+        if bl_poly is not None:
+            if not Fid._is_flat_iter(bl_poly):
+                raise AttributeError('baseline polynomial must be a flat iterable')
+            if not all(isinstance(i, numbers.Number) for i in bl_poly):
+                raise AttributeError('baseline polynomial must be numbers')
+            self.__bl_poly = numpy.array(bl_poly)
+        else:
+            self.__bl_ppm = bl_poly
 
     @property
     def _index_peaks(self):
@@ -524,7 +543,40 @@ class Fid(Base):
     def phaser(self):
         global _phaser_widget
         _phaser_widget = Phaser(self)
+
+    def baseline_correct(self, deg=2):
+        """
+        Perform baseline correction by fitting specified baseline
+        points (stored in self._bl_ppm) with polynomial of specified degree (stored
+        in self._bl_polu) and subtract this polynomial from Fid.data.
         
+        Keyword arguments:
+        deg -- degree of fitted polynomial
+        """
+
+        if self._bl_indices is None:
+            raise AttributeError('No points selected for baseline correction. Run fid.baseliner()')
+        if not len(self.data):
+            raise AttributeError('data does not exist.')
+        if self.data.dtype in self._complex_dtypes:
+            raise TypeError('data must be not be complex.')
+        if not Fid._is_flat_iter(self.data):
+            raise AttributeError('data must be 1 dimensional.')
+        
+        data = self.data
+        x = numpy.arange(len(data))
+        m = numpy.ones_like(x)
+        m[self._bl_indices] = 0
+        self._bl_poly = []
+        ym = numpy.ma.masked_array(data, m)
+        xm = numpy.ma.masked_array(x, m)
+        p = numpy.ma.polyfit(xm, ym, deg)
+        yp = scipy.polyval(p, x)
+        self._bl_poly = yp
+        data_bl = data-yp
+        self.data = numpy.array(data_bl)
+
+
     def peakpicker(self):
         global _peakpicker_widget
         plot_label = 'Left - select peak\nMiddle - delete last selection\nDrag Right - select range'
@@ -543,15 +595,15 @@ class Fid(Base):
         plot_label = 'Left - select datum\nMiddle - delete last selection\nDrag Right - select range'
         plot_title = 'Select data for baseline-correction'
         _baseliner_widget = DataSelector(self.data, self._params, title=plot_title, label=plot_label)
-        bl_indices = []
+        bl_ppm = []
         for rng in _baseliner_widget.ranges:
             peak_ind = (self._ppm > rng[1]) * (self._ppm < rng[0])
             cur_peaks = self._ppm[peak_ind]
-            bl_indices.append(cur_peaks)
+            bl_ppm.append(cur_peaks)
         if len(_baseliner_widget.peaks) > 0:
-            bl_indices.append(_baseliner_widget.peaks)
-        bl_indices = numpy.array([j for i in bl_indices for j in i])
-        self._bl_indices = bl_indices
+            bl_ppm.append(_baseliner_widget.peaks)
+        bl_ppm = numpy.array([j for i in bl_ppm for j in i])
+        self._bl_ppm = bl_ppm
   
 
     @classmethod
