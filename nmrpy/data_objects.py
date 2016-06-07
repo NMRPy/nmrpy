@@ -428,9 +428,7 @@ class Fid(Base):
         Apply exponential line-broadening to data array
         :attr:`~nmrpy.data_objects.Fid.data`.
 
-        Keyword arguments:
-
-            lb: degree of line-broadening in Hz.
+        :keyword lb: degree of line-broadening in Hz.
 
         """
         self.data = numpy.exp(-numpy.pi*numpy.arange(len(self.data)) * (lb/self._params['sw_hz'])) * self.data
@@ -516,11 +514,7 @@ class Fid(Base):
             Automatically phase-correct :attr:`~nmrpy.data_objects.Fid.data` by minimising
             total absolute area.
 
-            Keyword arguments:
-
-                method: The fitting method to use. Default is 'leastsq', the
-                Levenberg-Marquardt algorithm, which is usually sufficient. Additional options
-                include:
+            :keyword method: The fitting method to use. Default is 'leastsq', the Levenberg-Marquardt algorithm, which is usually sufficient. Additional options include:
                     
                     Nelder-Mead (nelder)
 
@@ -568,11 +562,9 @@ class Fid(Base):
             """
             Linear phase correction
             
-            Keyword arguments: 
+            :keyword p0: Zero order phase in degrees.
     
-                p0: Zero order phase in degrees.
-    
-                p1: First order phase in degrees.
+            :keyword p1: First order phase in degrees.
 
             """
             if not all(isinstance(i, (float, int)) for i in [p0, p1]):
@@ -590,11 +582,9 @@ class Fid(Base):
         """
         Linear phase correction of :attr:`~nmrpy.data_objects.Fid.data`
         
-        Keyword arguments:
+        :keyword p0: Zero order phase in degrees
 
-            p0: Zero order phase in degrees
-
-            p1: First order phase in degrees
+        :keyword p1: First order phase in degrees
         
         """
         if not all(isinstance(i, (float, int)) for i in [p0, p1]):
@@ -629,9 +619,8 @@ class Fid(Base):
         degree (stored in :attr:`~nmrpy.data_objects.Fid._bl_ppm`) and subtract this
         polynomial from :attr:`~nmrpy.data_objects.Fid.data`.
         
-        Keyword arguments:
 
-            deg: degree of fitted polynomial
+        :keyword deg: degree of fitted polynomial
         """
 
         if self._bl_indices is None:
@@ -732,19 +721,18 @@ class Fid(Base):
         Return the a combined Gaussian/Lorentzian peakshape for deconvolution
         of :attr:`~nmrpy.data_objects.Fid.data`.
         
-            x: array of equal length to :attr:`~nmrpy.data_objects.Fid.data`
+        :arg x: array of equal length to :attr:`~nmrpy.data_objects.Fid.data`
         
-        Keyword arguments:
 
-            offset: spectral offset in x
+        :keyword offset: spectral offset in x
 
-            gauss_sigma: 2*sigma**2 specifying the width of the Gaussian peakshape
+        :keyword gauss_sigma: 2*sigma**2 specifying the width of the Gaussian peakshape
 
-            lorentz_hwhm: Lorentzian half width at half maximum height
+        :keyword lorentz_hwhm: Lorentzian half width at half maximum height
 
-            amplitude: amplitude of peak
+        :keyword amplitude: amplitude of peak
 
-            frac_gauss: fraction of function to be Gaussian (0 -> 1). Note:
+        :keyword frac_gauss: fraction of function to be Gaussian (0 -> 1). Note:
             specifying a Gaussian fraction of 0 will produce a pure Lorentzian and vice
             versa.  """
         
@@ -774,13 +762,12 @@ class Fid(Base):
         """
         Make a set of initial peak parameters for deconvolution.
         
-        Keyword arguments:
 
-            data: data to be fitted
+        :arg data: data to be fitted
 
-            peaks: selected peak positions (see peakpicker())
+        :arg peaks: selected peak positions (see peakpicker())
        
-        returns: an array of peaks, each consisting of the following parameters:
+        :returns: an array of peaks, each consisting of the following parameters:
 
                     spectral offset (x)
 
@@ -1010,11 +997,9 @@ class Fid(Base):
         splits :attr:`~nmrpy.data_objects.Fid.data` up into smaller portions. This
         significantly speeds up deconvolution time.
 
-        Keyword arguments:
+        :keyword frac_gauss: (0-1) determines the Gaussian fraction of the peaks. Setting this argument to None will fit this parameter as well.
 
-        frac_gauss: (0-1) determines the Gaussian fraction of the peaks. Setting this argument to None will fit this parameter as well.
-
-        method: The fitting method to use. Default is 'leastsq', the Levenberg-Marquardt algorithm, which is usually sufficient. Additional options include:
+        :keyword method: The fitting method to use. Default is 'leastsq', the Levenberg-Marquardt algorithm, which is usually sufficient. Additional options include:
             
             Nelder-Mead (nelder)
         
@@ -1046,15 +1031,13 @@ class Fid(Base):
         """
         Plot :attr:`~nmrpy.data_objects.Fid.data`.
 
-        Keyword arguments:
+        :keyword upper_ppm: upper spectral bound in ppm
 
-            upper_ppm=None: upper spectral bound in ppm
+        :keyword lower_ppm: lower spectral bound in ppm
 
-            lower_ppm=None: lower spectral bound in ppm
+        :keyword lw: linewidth of plot 
 
-            lw=1.0: linewidth of plot 
-
-            colour='k': colour of the plot
+        :keyword colour: colour of the plot
         """
         plt = Plot()
         plt._plot_ppm(self.data, self._params, **kwargs)
@@ -1065,19 +1048,17 @@ class Fid(Base):
         """
         Plot :attr:`~nmrpy.data_objects.Fid.data` with deconvoluted peaks overlaid.
 
-        Keyword arguments:
+        :keyword upper_ppm: upper spectral bound in ppm
 
-            upper_ppm=None: upper spectral bound in ppm
+        :keyword lower_ppm: lower spectral bound in ppm
 
-            lower_ppm=None: lower spectral bound in ppm
+        :keyword lw: linewidth of plot 
 
-            lw=1.0: linewidth of plot 
+        :keyword colour: colour of the plot
 
-            colour='k': colour of the plot
+        :keyword peak_colour: colour of the deconvoluted peaks
 
-            peak_colour='r': colour of the deconvoluted peaks
-
-            residual_colour='g': colour of the residual signal after subtracting deconvoluted peaks
+        :keyword residual_colour: colour of the residual signal after subtracting deconvoluted peaks
         """
         x = numpy.arange(len(self.data))
         peakshapes = numpy.array([Fid._f_pk(x, *peak) for peak in self._deconvoluted_peaks])
@@ -1109,6 +1090,8 @@ class FidArray(Base):
         Return an :class:`~nmrpy.data_objects.Fid` object owned by this object, identified by unique ID. Eg.::
 
             fid12 = fid_array.get_fid('fid12')
+
+        :arg id: a string id for an :class:`~nmrpy.data_objects.Fid`
         """
         try:
             return getattr(self, id)
@@ -1140,6 +1123,8 @@ class FidArray(Base):
     def add_fid(self, fid):
         """
         Add an :class:`~nmrpy.data_objects.Fid` object to this :class:`~nmrpy.data_objects.FidArray`, using a unique id.
+
+        :arg fid: an :class:`~nmrpy.data_objects.Fid` instance
         """
         if isinstance(fid, Fid):
             setattr(self, fid.id, fid)
@@ -1149,6 +1134,8 @@ class FidArray(Base):
     def del_fid(self, fid_id):
         """
         Delete an :class:`~nmrpy.data_objects.Fid` object belonging to this :class:`~nmrpy.data_objects.FidArray`, using a unique id.
+
+        :arg fid_id: a string id for an :class:`~nmrpy.data_objects.Fid`
         """
         if hasattr(self, fid_id):
             if isinstance(getattr(self, fid_id), Fid):
@@ -1161,6 +1148,8 @@ class FidArray(Base):
     def add_fids(self, fids):
         """
         Add a list of :class:`~nmrpy.data_objects.Fid` objects to this :class:`~nmrpy.data_objects.FidArray`.
+        
+        :arg fid: a list of :class:`~nmrpy.data_objects.Fid` instances
         """
         if FidArray._is_iter(fids):
             num_fids = len(fids)
@@ -1178,6 +1167,8 @@ class FidArray(Base):
     def from_data(cls, data):
         """
         Instantiate a new :class:`~nmrpy.data_objects.FidArray` object from a 2D data set of spectral arrays.
+        
+        :arg data: a 2D data array 
         """
         if not cls._is_iter_of_iters(data):
             raise TypeError('data must be an iterable of iterables.')
@@ -1195,11 +1186,9 @@ class FidArray(Base):
         """
         Instantiate a new :class:`~nmrpy.data_objects.FidArray` object from a .fid directory.
 
-        Keyword arguments:
+        :keyword fidpath: filepath to .fid directory
 
-            fidpath: filepath to .fid directory
-
-            file_path: 'varian' or 'bruker', usually unnecessary
+        :keyword file_path: 'varian' or 'bruker', usually unnecessary
 
         """
         if not file_format:
@@ -1243,6 +1232,8 @@ class FidArray(Base):
     def emhz_fids(self, lb=5.0):
         """ 
         Apply line-broadening (apodisation) to all :class:`nmrpy.~data_objects.Fid` objects owned by this :class:`~nmrpy.data_objects.FidArray`
+
+        :keyword lb: degree of line-broadening in Hz.
         """
         for fid in self.get_fids():
             fid.emhz(lb=lb)
@@ -1251,11 +1242,9 @@ class FidArray(Base):
         """ 
         Fourier-transform all FIDs.
 
-        Keyword arguments:
+        :keyword mp: parallelise over multiple processors, significantly reducing computation time
 
-            mp: parallelise over multiple processors, significantly reducing computation time
-
-            cpus: defines number of CPUs to utilise if 'mp' is set to True
+        :keyword cpus: defines number of CPUs to utilise if 'mp' is set to True
         """
         if mp:
             fids = self.get_fids()
@@ -1290,13 +1279,11 @@ class FidArray(Base):
         """ 
         Apply automatic phase-correction to all :class:`~nmrpy.data_objects.Fid` objects owned by this :class:`~nmrpy.data_objects.FidArray`
 
-        Keyword arguments:
+        :keyword method: see :meth:`~nmrpy.data_objects.Fid.phase_correct`
 
-            method: see :meth:`~nmrpy.data_objects.Fid.phase_correct`
+        :keyword mp: parallelise the phasing process over multiple processors, significantly reducing computation time
 
-            mp: parallelise the phasing process over multiple processors, significantly reducing computation time
-
-            cores: defines number of CPUs to utilise if 'mp' is set to True
+        :keyword cores: defines number of CPUs to utilise if 'mp' is set to True
         """
         if mp: 
             fids = self.get_fids()
@@ -1317,9 +1304,7 @@ class FidArray(Base):
         """ 
         Apply baseline-correction to all :class:`~nmrpy.data_objects.Fid` objects owned by this :class:`~nmrpy.data_objects.FidArray`
 
-        Keyword arguments:
-
-            deg: degree of the baseline polynomial (see :meth:`~nmrpy.data_objects.Fid.baseline_correct`)
+        :keyword deg: degree of the baseline polynomial (see :meth:`~nmrpy.data_objects.Fid.baseline_correct`)
         """
         for fid in self.get_fids():
             fid.baseline_correct(deg=deg)
@@ -1329,13 +1314,11 @@ class FidArray(Base):
         """ 
         Apply deconvolution to all :class:`~nmrpy.data_objects.Fid` objects owned by this :class:`~nmrpy.data_objects.FidArray`, using the :attr:`~nmrpy.data_objects.Fid.peaks` and  :attr:`~nmrpy.data_objects.Fid.ranges` attribute of each respective :class:`~nmrpy.data_objects.Fid`.
 
-        Keyword arguments:
+        :keyword method: see :meth:`~nmrpy.data_objects.Fid.phase_correct`
 
-            method: see :meth:`~nmrpy.data_objects.Fid.phase_correct`
+        :keyword mp: parallelise the phasing process over multiple processors, significantly reduces computation time
 
-            mp: parallelise the phasing process over multiple processors, significantly reduces computation time
-
-            cores: defines number of CPUs to utilise if 'mp' is set to True, default is n-1 cores
+        :keyword cores: defines number of CPUs to utilise if 'mp' is set to True, default is n-1 cores
         """
         if mp: 
             fids = self.get_fids()
@@ -1353,6 +1336,10 @@ class FidArray(Base):
     def ps_fids(self, p0=0.0, p1=0.0):
         """
         Apply manual phase-correction to all :class:`~nmrpy.data_objects.Fid` objects owned by this :class:`~nmrpy.data_objects.FidArray`
+
+        :keyword p0: Zero order phase in degrees
+
+        :keyword p1: First order phase in degrees
         """
         for fid in self.get_fids():
             fid.ps(p0=p0, p1=p1)  
@@ -1372,31 +1359,29 @@ class FidArray(Base):
         """
         Plot :attr:`~nmrpy.data_objects.FidArray.data`.
 
-        Keyword arguments:
+        :keyword upper_index: upper index of array (None)
 
-            upper_index=None: upper index of array
+        :keyword lower_index: lower index of array (None)
 
-            lower_index=None: lower index of array
+        :keyword upper_ppm: upper spectral bound in ppm (None)
 
-            upper_ppm=None: upper spectral bound in ppm
+        :keyword lower_ppm: lower spectral bound in ppm (None)
 
-            lower_ppm=None: lower spectral bound in ppm
+        :keyword lw: linewidth of plot (0.5)
 
-            lw=0.5: linewidth of plot 
+        :keyword azim: starting azimuth of plot (-90)
 
-            azim=-90: starting azimuth of plot 
+        :keyword elev: starting elevation of plot (40)
 
-            elev=40: starting elevation of plot 
+        :keyword filled: True=filled vertices, False=lines (False)
 
-            filled=False: True=filled vertices, False=lines
+        :keyword show_zticks: show labels on z axis (False)
 
-            show_zticks=False: show labels on z axis 
+        :keyword labels: under development (None)
 
-            labels=None: under development
+        :keyword colour: plot spectra with colour spectrum, False=black (True)
 
-            colour=True: plot spectra with colour spectrum (False=black)
-
-            filename=None: save plot to .pdf file
+        :keyword filename: save plot to .pdf file (None)
         """
         plt = Plot()
         plt._plot_array(self.data, self._params, **kwargs)
@@ -1413,9 +1398,7 @@ class FidArray(Base):
         objects owned by this :class:`~nmrpy.data_objects.FidArray`. See
         :meth:`~nmrpy.data_objects.Fid.peakpicker`.
 
-        Keyword arguments:
-
-            fid_number: index of :class:`~nmrpy.data_objects.Fid` to use for peak-picking.
+        :keyword fid_number: index of :class:`~nmrpy.data_objects.Fid` to use for peak-picking.
 
         """
         fids = self.get_fids()
@@ -1434,9 +1417,7 @@ class FidArray(Base):
         """
         Save :class:`~nmrpy.data_objects.FidArray` object to file, including all objects owned.
 
-        Keyword arguments:
-
-            filename: filename to save :class:`~nmrpy.data_objects.FidArray` to
+        :keyword filename: filename to save :class:`~nmrpy.data_objects.FidArray` to
 
         """
         if filename is None:
