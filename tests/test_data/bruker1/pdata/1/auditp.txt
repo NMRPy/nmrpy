@@ -2,13 +2,13 @@
 ##JCAMPDX= 5.01
 ##ORIGIN= Bruker BioSpin GmbH
 ##OWNER= qiucui
-$$ C:/Bruker/XWIN-NMR/data/cui/nmr/expnmr_00001/1/pdata/1/auditp.txt
+$$ C:/Bruker/XWIN-NMR/data/cui/nmr/expnmr_00002/1/pdata/1/auditp.txt
 ##AUDIT TRAIL=  $$ (NUMBER, WHEN, WHO, WHERE, WHAT)
-(   1,<2007-04-09 14:18:13.96 -500>,<qiucui>,<CUI>,
-      <efp LB = 0.5 FT_mod = 6 PKNL = 1 PHC0 = 29.43856 PHC1 = -13.1336 SI = 32K 
+(   1,<2007-04-09 14:18:14.69 -500>,<qiucui>,<CUI>,
+      <efp LB = 0.5 FT_mod = 6 PKNL = 1 PHC0 = 44.53806 PHC1 = -22.69646 SI = 32K 
        data hash MD5: 32K
-       99 40 D7 E6 3A 91 21 B1 C7 79 44 D4 15 88 4C 8D>)
+       F4 5E 18 B8 D6 7B D4 BD 9F B3 4E 1F 8C 8B 11 A7>)
 ##END=
 
 $$ hash MD5
-$$ C4 38 1B FD CB B9 2B 2E F6 FA 9D E1 C9 B3 D4 D9
+$$ CA 25 FB 54 65 2E 45 69 15 23 3F 8C 83 56 61 9C

@@ -3,8 +3,8 @@
 ##DATATYPE= Parameter Values
 ##ORIGIN= UXNMR, Bruker Analytische Messtechnik GmbH
 ##OWNER= root
-$$ Thu Mar 29 21:29:49 2007 Central Daylight Time (UT-5h)  qiucui@CUI
-$$ C:/Bruker/XWIN-NMR/data/cui/nmr/expnmr_00001/1/pdata/1//proc
+$$ Thu Mar 29 21:29:50 2007 Central Daylight Time (UT-5h)  qiucui@CUI
+$$ C:/Bruker/XWIN-NMR/data/cui/nmr/expnmr_00002/1/pdata/1//proc
 ##$ABSF1= 10
 ##$ABSF2= 0
 ##$ABSG= 5
@@ -27,8 +27,8 @@ $$ C:/Bruker/XWIN-NMR/data/cui/nmr/expnmr_00001/1/pdata/1//proc
 ##$DC= 2
 ##$DFILT= <>
 ##$DTYPP= 0
-##$F1P= 3.29469426097566
-##$F2P= -0.405305647542249
+##$F1P= 4.70166673121629
+##$F2P= -0.398332998576005
 ##$FCOR= 0.5
 ##$FTSIZE= 0
 ##$FT_mod= 4
@@ -56,8 +56,8 @@ $$ C:/Bruker/XWIN-NMR/data/cui/nmr/expnmr_00001/1/pdata/1//proc
 ##$NZP= 0
 ##$OFFSET= 10.70616
 ##$PC= 3
-##$PHC0= 29.43856
-##$PHC1= -13.1336
+##$PHC0= 44.53806
+##$PHC1= -22.69646
 ##$PH_mod= 0
 ##$PKNL= yes
 ##$PPARMOD= 0

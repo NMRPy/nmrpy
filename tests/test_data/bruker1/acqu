@@ -3,8 +3,8 @@
 ##DATATYPE= Parameter Values
 ##ORIGIN= UXNMR, Bruker Analytische Messtechnik GmbH
 ##OWNER= root
-$$ Wed Jun 15 16:07:54 2005 CDT (UT-5h)  cui@pisa
-$$ /u/data/cui/nmr/96/1//acqu
+$$ Wed May  4 11:28:09 2005 CDT (UT-5h)  cui@pisa
+$$ /u/data/cui/nmr/cqtmp/1//acqu
 ##$AQSEQ= 0
 ##$AQ_mod= 3
 ##$AUNM= <au_zg>
@@ -199,7 +199,7 @@ $$ /u/data/cui/nmr/96/1//acqu
 0 0 0 0 0 0 0 0 0 0 
 ##$OVERFLW= 0
 ##$P= (0..31)
-7.5 14.8 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 26 0 0 0 0 0 0 0 0 0 0 0 
+7.5 13.8 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 26 0 0 0 0 0 0 0 0 0 0 0 
 ##$PAPS= 2
 ##$PARMODE= 0
 ##$PCPD= (0..9)

@@ -1482,6 +1482,7 @@ class Importer(Base):
             self.data = data
             self._procpar = procpar['acqus']
             self._file_format = 'bruker'
+            self.data = nmrglue.bruker.remove_digital_filter(procpar, self.data)
             return
         except (FileNotFoundError, OSError):
             print('fid_path does not specify a valid .fid directory.')
@@ -1516,9 +1517,10 @@ class BrukerImporter(Importer):
     def import_fid(self):
         try:
             procpar, data = nmrglue.bruker.read(self.fid_path)
-            self.data = data 
+            self.data = data
             self._procpar = procpar['acqus']
             self._file_format = 'bruker'
+            self.data = nmrglue.bruker.remove_digital_filter(procpar, self.data)
         except FileNotFoundError:
             print('fid_path does not specify a valid .fid directory.')
         except OSError:

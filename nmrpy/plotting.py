@@ -168,7 +168,10 @@ class Plot():
         ppm = numpy.linspace(sw_left-sw, sw_left, data.shape[1])[::-1]
         ppm_bool_index = (ppm < upper_ppm) * (ppm > lower_ppm)
         ppm = ppm[ppm_bool_index]
-        data = data[lower_index:upper_index, ppm_bool_index]
+        if len(data) > 1:
+            data = data[lower_index:upper_index, ppm_bool_index]
+        else:
+            data = data[:, ppm_bool_index]
 
         if colour:
             cl = pylab.cm.viridis(numpy.linspace(0, 1, len(data)))
