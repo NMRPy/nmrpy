@@ -105,7 +105,7 @@ And plot an array of the phase-corrected data: ::
 
 Zooming in on the relevant peaks, and filling the spectra produces a more interesting plot: ::
 
-    fid_array.plot_array(upper_ppm=7, lower_ppm=-1, filled=True)
+    fid_array.plot_array(upper_ppm=7, lower_ppm=-1, filled=True, azim=-76, elev=23)
 
 .. image:: images/quickstart_7.png
 
