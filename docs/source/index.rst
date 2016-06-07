@@ -12,6 +12,7 @@ Contents:
     :maxdepth: 2
 
     intro
+    installation
     quickstart
     data_objects
     plotting_objects
