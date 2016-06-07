@@ -92,5 +92,5 @@ more appropriate. It can be installed as follows: ::
 
 And launched with: ::
 
-    $ 
+    $ jupyter-notebook
 
