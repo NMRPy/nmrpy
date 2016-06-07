@@ -9,7 +9,6 @@ This is a "quickstart" tutorial for NMRPy in which an Agilent (Varian) NMR datas
     * :ref:`quickstart_phasecorrection`
     * :ref:`quickstart_peakpicking`
     * :ref:`quickstart_deconvolution`
-    * :ref:`quickstart_plotting`
     * :ref:`quickstart_exporting`
 
 This tutorial will use the test data in the nmrpy install directory: ::
@@ -109,23 +108,104 @@ Zooming in on the relevant peaks, and filling the spectra produces a more intere
 
 .. image:: images/quickstart_7.png
 
+At this stage it is useful to discard the imaginary component of our data, and
+possibly normalise the data (by the maximum data value amongst the
+:class:`~nmrpy.data_objects.Fid` objects): ::
+
+    fid_array.real_fids()
+    fid_array.norm_fids()
+
 .. _quickstart_peakpicking:
 
 Peak-picking
 ============
+
+To begin the process of integrating peaks by deconvolution, we will need to
+pick some peaks. The :attr:`~nmrpy.data_objects.Fid.peaks` object is an array
+of peak positions, and :attr:`~nmrpy.data_objects.Fid.ranges` is an array of
+range boundaries. These two objects are used in deconvolution to integrate the
+data by fitting Lorentzian/Gaussian peakshapes to the spectra.
+:attr:`~nmrpy.data_objects.Fid.peaks` may be specified programatically, or
+picked using the interactive GUI widget: ::
+
+    fid_array.peakpicker(fid_number=10)
+
+.. image:: images/quickstart_8.png
+
+Left-clicking specifies a peak selection with a vertical red line. Dragging
+with a right-click specifies a range to fit independently with a grey
+rectangle:
+
+.. image:: images/quickstart_9.png
+
+Ranges divide the data into smaller portions, which significantly speeds up the
+process of fitting of peakshapes to the data. Range-specification also prevents
+incorrect peaks from being fitted by the fitting algorithm.
+
+Having used the :meth:`~nmrpy.data_objects.FidArray.peakpicker`
+:class:`~nmrpy.data_objects.FidArray` method (as opposed to the
+:meth:`~nmrpy.data_objects.Fid.peakpicker` on each individual
+:class:`~nmrpy.data_objects.Fid` instance), the peak and range selections have
+now been assigned to each :class:`~nmrpy.data_objects.Fid` in the array: ::
+
+    print(fid_array.fid00.peaks)
+    [ 4.73  4.63  4.15  0.55]
+    print(fid_array.fid00.ranges)
+    [[ 5.92  3.24]
+     [ 1.19 -0.01]]
+
 
 .. _quickstart_deconvolution:
 
 Deconvolution
 =============
 
-.. _quickstart_plotting:
+Individual :class:`~nmrpy.data_objects.Fid` objects can be deconvoluted with
+:meth:`~nmrpy.data_objects.Fid.deconv`. :class:`~nmrpy.data_objects.FidArray`
+objects can be deconvoluted with
+:meth:`~nmrpy.data_objects.FidArray.deconv_fids`. By default this is a
+multiprocessed method (*mp=True*), which will fit pure Lorentzian lineshapes
+(*frac_gauss=0.0*) to the :attr:`~nmrpy.data_objects.Fid.peaks` and
+:attr:`~nmrpy.data_objects.Fid.ranges` specified in each
+:class:`~nmrpy.data_objects.Fid`.
 
-Plotting
-========
+We shall fit the whole array at once: ::
+
+    fid_array.deconv_fids()
+
+And visualise the deconvoluted spectra: ::
+
+    fid_array.fid10.plot_deconv()
+
+.. image:: images/quickstart_10.png
+
+Zooming-in to a set of peaks makes clear the fitting result: ::
+
+    fid_array.fid10.plot_deconv(upper_ppm=5.5, lower_ppm=3.5)
+    fid_array.fid10.plot_deconv(upper_ppm=0.9, lower_ppm=0.2)
+
+.. figure:: images/quickstart_11.png
+
+.. figure:: images/quickstart_12.png
+
+    Black: original data; blue: individual peak shapes (and peak numbers
+    above); red: summed peak shapes; green: residual (original data - summed
+    peakshapes) 
+
+In this case, peaks 0 and 1 belong to glucose-6-phosphate, peak 2 belongs to
+fructose-6-phosphate, and peak 3 belongs to triethyl-phosphate. 
+
 
 .. _quickstart_exporting:
 
-Exporting
-=========
+Exporting/Importing
+===================
 
+The current state of any :class:`~nmrpy.data_objects.FidArray` object can be
+saved to file using the :meth:`~nmrpy.data_objects.FidArray.save_to_file` method: ::
+
+    fid_array.save_to_file(filename='fidarray.nmrpy')
+
+And reloaded using :meth:`~nmrpy.data_objects.FidArray.from_path`: ::
+
+    fid_array = nmrpy.data_objects.FidArray.from_path(fid_path='fidarray.nmrpy')
