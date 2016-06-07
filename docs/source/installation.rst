@@ -23,10 +23,10 @@ Virtual environments are a great way to keep package dependencies separate from
 your system files. There are several options for setting up your working
 environment. We will use *virtualenvwrapper*.
 
-You can install
-[virtualenvwrapper](http://virtualenvwrapper.readthedocs.org/en/latest/), which
-will take care of managing your virtual environments by maintaining a separate
-Python `site-directory` for you.
+You can install virtualenvwrapper
+(http://virtualenvwrapper.readthedocs.org/en/latest/), which will take care of
+managing your virtual environments by maintaining a separate Python
+`site-directory` for you.
 
 Install virtualenvwrapper using *apt*: ::
 
@@ -54,15 +54,15 @@ indicated in the shell prompt. Eg: ::
     (nmr) user@computer: 
 
 If you are not yet familiar with virtual environments we recommend you survey
-the [basic commands](https://virtualenvwrapper.readthedocs.io/en/latest/)
-before continuing.
+the basic commands (https://virtualenvwrapper.readthedocs.io/en/latest/) before
+continuing.
 
 Pip
 ===
 
-The NMRPy code and its dependencies can be installed directly from
-[Github](https://github.com/jeicher/nmrpy) into a virtual environment (if you
-are currently using one) using pip. ::
+The NMRPy code and its dependencies can be installed directly from Github
+(https://github.com/jeicher/nmrpy) into a virtual environment (if you are
+currently using one) using pip. ::
 
     $ pip install git+https://github.com/jeicher/nmrpy.git
 
