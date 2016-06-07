@@ -134,7 +134,7 @@ class Plot():
                 lower_ppm=None, 
                 lw=0.3, 
                 azim=-90, 
-                elev=40, 
+                elev=20, 
                 filled=False, 
                 show_zticks=False, 
                 labels=None, 
@@ -263,7 +263,7 @@ class Phaser(object):
         self.ax.set_xticks(xtcks)
         self.ax.set_xlabel('PPM (%.2f MHz)'%(self.fid._params['reffrq']))
         self.ax.set_xticklabels([numpy.round(self.fid._ppm[int(i)], 1) for i in xtcks])
-        ylims = numpy.array([-1, 1])*numpy.array([max(self.ax.get_ylim())]*2)
+        ylims = numpy.array([-6, 6])*numpy.array([max(self.ax.get_ylim())]*2)
         self.ax.set_ylim(ylims)
         self.ax.grid()
         self.visible = True

@@ -35,7 +35,7 @@ using the :meth:`~nmrpy.data_objects.FidArray.from_path` method, and specifying
 the path of the *.fid* directory: ::
 
     import nmrpy
-    fid_array = nmrpy.data_objects.FidArray.from_path('./tests/test_data/test1.fid')
+    fid_array = nmrpy.data_objects.FidArray.from_path(fid_path='./tests/test_data/test1.fid')
 
 You will notice that the *fid_array* object is instantiated and now owns
 several attributes, amongst others, which are of the form *fidXX* where *XX* is
@@ -50,7 +50,8 @@ Apodisation and Fourier-transformation
 ======================================
 
 To quickly visualise the imported data, we can use the plotting functions owned
-by each :class:`~nmrpy.data_objects.Fid` instance: ::
+by each :class:`~nmrpy.data_objects.Fid` instance. This will not display the
+imaginary portion of the data: ::
 
     fid_array.fid00.plot_ppm()
 
@@ -75,6 +76,38 @@ Finally, we Fourier-transform the data into the frequency domain: ::
 
 Phase-correction
 ================
+
+It is clear from the data visualisation that at this stage the spectra require
+phase-correction. NMRPy provides a number of GUI widgets for manual processing
+of data. In this case we will use the :meth:`~nmrpy.data_objects.Fid.phaser`
+method on *fid00*: ::
+
+    fid_array.fid00.phaser()
+
+.. image:: images/quickstart_4.png
+
+Dragging with the left mouse button and right mouse button will apply zero- and
+first-order phase-correction respectively.
+
+.. image:: images/quickstart_5.png
+
+Alternatively, automatic phase-correction can be applied at either the
+:class:`~nmrpy.data_objects.FidArray` or :class:`~nmrpy.data_objects.Fid`
+level. We will apply it to the whole array: ::
+
+    fid_array.phase_correct_fids()
+
+And plot an array of the phase-corrected data: ::
+
+    fid_array.plot_array()
+
+.. image:: images/quickstart_6.png
+
+Zooming in on the relevant peaks, and filling the spectra produces a more interesting plot: ::
+
+    fid_array.plot_array(upper_ppm=7, lower_ppm=-1, filled=True)
+
+.. image:: images/quickstart_7.png
 
 .. _quickstart_peakpicking:
 
