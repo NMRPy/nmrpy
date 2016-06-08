@@ -10,6 +10,7 @@ This is a "quickstart" tutorial for NMRPy in which an Agilent (Varian) NMR datas
     * :ref:`quickstart_peakpicking`
     * :ref:`quickstart_deconvolution`
     * :ref:`quickstart_exporting`
+    * :ref:`quickstart_script`
 
 This tutorial will use the test data in the nmrpy install directory: ::
     
@@ -250,6 +251,8 @@ And reloaded using :meth:`~nmrpy.data_objects.FidArray.from_path`: ::
 
     fid_array = nmrpy.data_objects.FidArray.from_path(fid_path='fidarray.nmrpy')
 
+
+.. _quickstart_script:
 
 Full tutorial script
 ====================
