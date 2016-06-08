@@ -249,3 +249,10 @@ saved to file using the :meth:`~nmrpy.data_objects.FidArray.save_to_file` method
 And reloaded using :meth:`~nmrpy.data_objects.FidArray.from_path`: ::
 
     fid_array = nmrpy.data_objects.FidArray.from_path(fid_path='fidarray.nmrpy')
+
+
+Full tutorial script
+====================
+
+.. include:: quickstart_script.rst
+
