@@ -1114,7 +1114,25 @@ class FidArray(Base):
         return data
 
     @property
+    def t(self):
+        """
+        An array of the acquisition time for each FID.
+        """
+        nfids = len(self.get_fids())
+        t = None
+        if nfids > 0:
+            try:
+                acqtime = self._params['acqtime'][0]
+                t = (1+numpy.arange(len(self.get_fids())))*acqtime
+            except:
+                t = numpy.arange(len(self.get_fids()))
+        return t
+
+    @property
     def deconvoluted_integrals(self):
+        """
+        Collected :class:`~nmrpy.data_objects.Fid.deconvoluted_integrals`
+        """
         deconvoluted_integrals = []
         for fid in self.get_fids():
             deconvoluted_integrals.append(fid.deconvoluted_integrals)

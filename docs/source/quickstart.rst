@@ -196,6 +196,46 @@ In this case, peaks 0 and 1 belong to glucose-6-phosphate, peak 2 belongs to
 fructose-6-phosphate, and peak 3 belongs to triethyl-phosphate. 
 
 
+
+Peak integrals of the array are stored in
+:attr:`nmrpy.data_objects.FidArray.deconvoluted_integrals`, or in each
+individual :class:`~nmrpy.data_objects.Fid` as
+:attr:`nmrpy.data_objects.Fid.deconvoluted_integrals`.
+
+We could easily plot the species integrals using the following code: ::
+
+   import pylab
+
+    integrals = fid_array.deconvoluted_integrals.transpose()
+    
+    g6p = integrals[0] + integrals[1]
+    f6p = integrals[2]
+    tep = integrals[3]
+
+    #scale species by internal standard tep
+    g6p = 5.0*g6p/tep.mean()
+    f6p = 5.0*f6p/tep.mean()
+    tep = 5.0*tep/tep.mean()
+    
+    species = {'g6p': g6p,
+               'f6p': f6p,
+               'tep': tep}
+    
+    fig = pylab.figure()
+    ax = fig.add_subplot(111)
+    for k, v in species.items():
+        ax.plot(fid_array.t, v, label=k)
+
+    ax.set_xlabel('min')
+    ax.set_ylabel('mM')
+    ax.legend(loc=0, frameon=False)
+
+    pylab.show()
+
+   
+.. figure:: images/quickstart_13.png
+
+
 .. _quickstart_exporting:
 
 Exporting/Importing

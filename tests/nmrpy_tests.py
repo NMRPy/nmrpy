@@ -12,7 +12,6 @@ The test data used in this module consists of:
 
 """
 
-
 class TestBaseInitialisation(unittest.TestCase):
 
     def test_init(self):
@@ -674,6 +673,10 @@ class TestPlottingUtils(unittest.TestCase):
         self.fid_varian.phase_correct()
         self.fid_varian.real()
         self.fid_varian.baseliner()
+        if self.fid_varian._bl_ppm is None:
+            ppm = self.fid_varian._ppm
+            narr = numpy.linspace(ppm[0], ppm[-2], 5)
+            self.fid_varian._bl_ppm = narr
         self.fid_varian.baseline_correct()
         
 

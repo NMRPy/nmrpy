@@ -2,7 +2,9 @@
 /docs/build
 *.pyc
 *.swp
+*.swo
 .coverage
+coverage_html
 htmlcov
 *.sh
 quicktest.py
