@@ -11,7 +11,7 @@ The test data used in this module consists of:
     nmrpy/tests/test_data/test2.fid -- A single Varian/Agilent spectrum of 3-phosphoglyceric acid, orthophosphate, and triethylphosphate
 
 """
-'''
+
 class TestBaseInitialisation(unittest.TestCase):
 
     def test_init(self):
@@ -614,7 +614,7 @@ class TestFidArrayUtils(unittest.TestCase):
     def test_failed_deconv_fids(self):
         with self.assertRaises(ValueError):
             self.fid_array_varian.deconv_fids(mp=True, frac_gauss=0.0)
-'''
+
 class TestPlottingUtils(unittest.TestCase):
 
     def setUp(self):
@@ -649,12 +649,21 @@ class TestPlottingUtils(unittest.TestCase):
         self.fid_varian.deconv()
         self.fid_varian.plot_deconv()
 
+    def test_plot_deconv_array(self):
+        self.fid_array_varian.emhz_fids()
+        self.fid_array_varian.ft_fids()
+        self.fid_array_varian.phase_correct_fids()
+        self.fid_array_varian.real_fids()
+        self.fid_array_varian.norm_fids()
+        self.fid_array_varian.deconv_fids()
+        self.fid_array_varian.plot_deconv_array(upper_ppm=6, lower_ppm=3)
+
     def test_plot_array(self):
         self.fid_array_varian.emhz_fids()
         self.fid_array_varian.ft_fids()
         self.fid_array_varian.phase_correct_fids()
         self.fid_array_varian.plot_array()
-        self.fid_array_varian.plot_array(filled=True)
+        self.fid_array_varian.plot_array(upper_ppm=6, lower_ppm=3, filled=True)
         
     def test_phaser(self):
         self.fid_varian.emhz()

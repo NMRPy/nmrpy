@@ -124,6 +124,7 @@ class Plot():
             residual_colour='g', 
             lw=1):
 
+        #validation takes place in self._deconv_generator
         ppm, data, peakshapes, summed_peaks, residual, upper_ppm, lower_ppm = self._deconv_generator(fid,
                                                                                 upper_ppm=upper_ppm,
                                                                                 lower_ppm=lower_ppm)
