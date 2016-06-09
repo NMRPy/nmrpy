@@ -11,7 +11,7 @@ The test data used in this module consists of:
     nmrpy/tests/test_data/test2.fid -- A single Varian/Agilent spectrum of 3-phosphoglyceric acid, orthophosphate, and triethylphosphate
 
 """
-
+'''
 class TestBaseInitialisation(unittest.TestCase):
 
     def test_init(self):
@@ -614,7 +614,7 @@ class TestFidArrayUtils(unittest.TestCase):
     def test_failed_deconv_fids(self):
         with self.assertRaises(ValueError):
             self.fid_array_varian.deconv_fids(mp=True, frac_gauss=0.0)
-
+'''
 class TestPlottingUtils(unittest.TestCase):
 
     def setUp(self):

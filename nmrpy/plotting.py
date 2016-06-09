@@ -79,17 +79,20 @@ class Plot():
         #self.fig.show()
         if filename is not None:
             self.fig.savefig(filename, format='pdf')
-        
-    def _plot_deconv(self, data, params, peakshapes,
+
+    def _deconv_generator(self, fid,
             upper_ppm=None, 
             lower_ppm=None, 
-            colour='k', 
-            peak_colour='b', 
-            summed_peak_colour='r', 
-            residual_colour='g', 
-            lw=1):
+            ):
+
+        data = fid.data
+        params = fid._params
+
         if not Plot._is_flat_iter(data): 
             raise AttributeError('data must be flat iterable.')
+
+        peakshapes = fid._f_pks_list(fid._deconvoluted_peaks, numpy.arange(len(data))) 
+
         if not Plot._is_iter_of_iters(peakshapes): 
             raise AttributeError('data must be flat iterable.')
         if upper_ppm is not None and lower_ppm is not None:
@@ -110,6 +113,20 @@ class Plot():
         peakshapes = peakshapes[:, ppm_bool_index]
         summed_peaks = peakshapes.sum(0)
         residual = data-summed_peaks
+        return ppm, data, peakshapes, summed_peaks, residual, upper_ppm, lower_ppm
+
+    def _plot_deconv(self, fid,
+            upper_ppm=None, 
+            lower_ppm=None, 
+            colour='k', 
+            peak_colour='b', 
+            summed_peak_colour='r', 
+            residual_colour='g', 
+            lw=1):
+
+        ppm, data, peakshapes, summed_peaks, residual, upper_ppm, lower_ppm = self._deconv_generator(fid,
+                                                                                upper_ppm=upper_ppm,
+                                                                                lower_ppm=lower_ppm)
 
         self.fig = pylab.figure(figsize=[10,5])
         ax = self.fig.add_subplot(111)
@@ -124,14 +141,69 @@ class Plot():
         ax.invert_xaxis()
         ax.set_xlim([upper_ppm, lower_ppm])
         ax.grid()
-        ax.set_xlabel('PPM (%.2f MHz)'%(params['reffrq']))
-        #self.fig.show()
+        ax.set_xlabel('PPM (%.2f MHz)'%(fid._params['reffrq']))
         
+    def _plot_deconv_array(self, fids,
+            upper_ppm=None, 
+            lower_ppm=None, 
+            data_colour='k', 
+            #peak_colour='b', 
+            summed_peak_colour='r', 
+            residual_colour='g', 
+            data_filled=False,
+            summed_peak_filled=True,
+            residual_filled=False,
+            figsize=[15, 7.5],
+            lw=0.3, 
+            azim=-90, 
+            elev=20, 
+            filename=None):
+
+        generated_deconvs = []
+        for fid in fids:
+            generated_deconvs.append(self._deconv_generator(fid, upper_ppm=upper_ppm, lower_ppm=lower_ppm))
+      
+        params = fids[0]._params 
+        ppm = generated_deconvs[0][0]
+        data = [i[1] for i in generated_deconvs]
+        peakshapes = [i[2] for i in generated_deconvs]
+        summed_peaks = [i[3] for i in generated_deconvs]
+        residuals = [i[4] for i in generated_deconvs]
+        upper_ppm = generated_deconvs[0][5]
+        lower_ppm = generated_deconvs[0][6]
+
+        plot_data = numpy.array([data, summed_peaks, residuals])
+        colours_list = [[data_colour]*len(data), 
+                        [summed_peak_colour]*len(summed_peaks), 
+                        [residual_colour]*len(residuals)]
+        filled_list = [data_filled, summed_peak_filled, residual_filled] 
+
+        xlabel = 'PPM (%.2f MHz)'%(params['reffrq'])
+        ylabel = 'min.'
+        acqtime = fids[0]._params['acqtime'][0]
+        minutes = numpy.arange(len(data))*acqtime
+        self.fig = self._generic_array_plot(ppm, minutes, plot_data, 
+                                            colours_list=colours_list,
+                                            filled_list=filled_list,
+                                            figsize=figsize, 
+                                            xlabel=xlabel,
+                                            ylabel=ylabel,
+                                            lw=lw, 
+                                            azim=azim, 
+                                            elev=elev, 
+                                            )
+        if filename is not None:
+            self.fig.savefig(filename, format='pdf')
+        self.fig.show()
+          
+        
+
     def _plot_array(self, data, params, 
                 upper_index=None, 
                 lower_index=None, 
                 upper_ppm=None, 
                 lower_ppm=None, 
+                figsize=[15, 7.5],
                 lw=0.3, 
                 azim=-90, 
                 elev=20, 
@@ -174,50 +246,117 @@ class Plot():
             data = data[:, ppm_bool_index]
 
         if colour:
-            cl = pylab.cm.viridis(numpy.linspace(0, 1, len(data)))
-        bh = abs(data.min()) 
+            colours_list = [pylab.cm.viridis(numpy.linspace(0, 1, len(data)))]
+        else:
+            colours_list = None
 
         acqtime = params['acqtime'][0]
         minutes = numpy.arange(len(data))*acqtime
-        self.fig = pylab.figure(figsize=[15,7.5])
-        ax = self.fig.add_subplot(111, projection='3d', azim=azim, elev=elev)
 
-        if not filled:
-            #spectra are plotted in reverse for zorder
-            for n in range(len(data))[::-1]:
-                datum = data[n]
-                minute = minutes[n]
-                clr = 'k' 
-                if colour:
-                    clr = cl[n]
-                ax.plot(ppm, len(datum)*[minute], datum, color=clr, lw=lw)
-        if filled:
-            verts = []
-            plot_data = data+bh 
-            for datum in plot_data:
-                datum[0], datum[-1] = 0, 0
-                verts.append(list(zip(ppm, datum)))
-             
-            fclr, eclr = ['w']*len(data), ['k']*len(data)
-            if colour:
-                fclr = cl
-            poly = PolyCollection(verts, 
-                facecolors=fclr,
-                edgecolors=eclr,
-                linewidths=[lw]*len(verts))
-            ax.add_collection3d(poly, zs=minutes, zdir='y')
-            ax.set_zlim([0, 1.1*plot_data.max()])
-
-        ax.invert_xaxis()
-        ax.set_xlim([upper_ppm, lower_ppm])
-        ax.set_ylim([minutes[0], minutes[-1]])
-        ax.set_xlabel('PPM (%.2f MHz)'%(params['reffrq']))
-        ax.set_ylabel('min.')
-        if not show_zticks:
-            ax.set_zticklabels([])
-        #self.fig.show()
+        xlabel = 'PPM (%.2f MHz)'%(params['reffrq'])
+        ylabel = 'min.'
+        self.fig = self._generic_array_plot(ppm, minutes, [data], 
+                                            colours_list=colours_list,
+                                            filled_list=[filled],
+                                            figsize=figsize, 
+                                            xlabel=xlabel,
+                                            ylabel=ylabel,
+                                            lw=lw, 
+                                            azim=azim, 
+                                            elev=elev, 
+                                            )
         if filename is not None:
             self.fig.savefig(filename, format='pdf')
+        self.fig.show()
+
+    @staticmethod
+    def _interleave_datasets(data):
+        """
+        interleave a list of lists with equal dimensions
+        """
+        idata = []
+        for y in range(len(data[0])):
+            for x in range(len(data)):
+                idata.append(data[x][y])
+        return idata
+
+    def _generic_array_plot(self, x, y, zlist, 
+                colours_list=None, 
+                filled_list=None, 
+                upper_lim=None,
+                lower_lim=None,
+                lw=0.3, 
+                azim=-90, 
+                elev=20, 
+                figsize=[5,5],
+                show_zticks=False, 
+                labels=None, 
+                xlabel=None,
+                ylabel=None,
+                filename=None,
+        ):
+        """
+
+        Generic function for plotting arrayed data on a set of 3D axes. x and y
+        must be 1D arrays. zlist is a list of 2D data arrays, each of which will be
+        plotted with the corresponding colours_list colours, and filled_lists filled
+        state.
+
+        """
+
+        
+
+
+        if colours_list is None:
+            colours_list = [['k']*len(y)]*len(zlist)
+
+        if filled_list is None:
+            filled_list = [False]*len(zlist)
+
+
+        fig = pylab.figure(figsize=figsize)
+        ax = fig.add_subplot(111, projection='3d', azim=azim, elev=elev)
+
+        for data_n in range(len(zlist)):
+            data = zlist[data_n]
+            bh = abs(data.min()) 
+            filled = filled_list[data_n]
+            cl = colours_list[data_n]
+            if not filled:
+                #spectra are plotted in reverse for zorder
+                for n in range(len(data))[::-1]:
+                    datum = data[n]
+                    clr = cl[n]
+                    ax.plot(x, len(datum)*[y[n]], datum, color=clr, lw=lw)
+            if filled:
+                verts = []
+                plot_data = data+bh 
+                for datum in plot_data:
+                    datum[0], datum[-1] = 0, 0
+                    verts.append(list(zip(x, datum)))
+                 
+                fclr, eclr = ['w']*len(data), ['k']*len(data)
+                fclr = cl
+                poly = PolyCollection(verts, 
+                    facecolors=fclr,
+                    edgecolors=eclr,
+                    linewidths=[lw]*len(verts))
+                ax.add_collection3d(poly, zs=y, zdir='y')
+    
+        ax.set_zlim([0, 1.1*max(numpy.array(zlist).flat)])
+        ax.invert_xaxis()
+        if upper_lim is None:
+            upper_lim = x[0]
+        if lower_lim is None:
+            lower_lim = x[-1]
+        ax.set_xlim([upper_lim, lower_lim])
+        ax.set_ylim([y[0], y[-1]])
+        ax.set_xlabel(xlabel)
+        ax.set_ylabel(ylabel)
+        if not show_zticks:
+            ax.set_zticklabels([])
+        return fig
+        
 
     @classmethod
     def _is_iter(cls, i):

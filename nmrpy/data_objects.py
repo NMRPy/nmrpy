@@ -824,6 +824,33 @@ class Fid(Base):
         return max_data_convolution - max_auto_convolution
 
     @classmethod 
+    def _f_pks_list(cls, parameterset_list, x):
+        """
+        Return a list of peak evaluations for deconvolution. See _f_pk().
+        
+        Keyword arguments:
+        parameterset_list -- a list of parameter lists: [spectral offset (x), 
+                                        gauss: 2*sigma**2, 
+                                        lorentz: scale (HWHM), 
+                                        amplitude: amplitude of peak, 
+                                        frac_gauss: fraction of function to be Gaussian (0 -> 1)]
+        x -- array of equal length to FID
+        """
+        if not cls._is_iter_of_iters(parameterset_list):
+            raise TypeError('Parameter set must be an iterable of iterables') 
+        for p in parameterset_list:
+            if not cls._is_iter(p):
+                raise TypeError('Parameter set must be an iterable') 
+            if not all(isinstance(i, numbers.Number) for i in p):
+                raise TypeError('Keyword parameters must be numbers.') 
+        if not cls._is_iter(x):
+            raise TypeError('x must be an iterable') 
+        if not isinstance(x, numpy.ndarray):
+            x = numpy.array(x) 
+        return numpy.array([Fid._f_pk(x, *peak) for peak in parameterset_list])
+        
+
+    @classmethod 
     def _f_pks(cls, parameterset_list, x):
         """
         Return the sum of a series of peak evaluations for deconvolution. See _f_pk().
@@ -1060,10 +1087,8 @@ class Fid(Base):
 
         :keyword residual_colour: colour of the residual signal after subtracting deconvoluted peaks
         """
-        x = numpy.arange(len(self.data))
-        peakshapes = numpy.array([Fid._f_pk(x, *peak) for peak in self._deconvoluted_peaks])
         plt = Plot()
-        plt._plot_deconv(self.data, self._params, peakshapes, **kwargs)
+        plt._plot_deconv(self, **kwargs)
         setattr(self, plt.id, plt)
         plt.fig.show()
  
@@ -1403,6 +1428,43 @@ class FidArray(Base):
         """
         plt = Plot()
         plt._plot_array(self.data, self._params, **kwargs)
+        setattr(self, plt.id, plt)
+        plt.fig.show()
+
+    def plot_deconv(self, **kwargs):
+        """
+        Plot all :attr:`~nmrpy.data_objects.Fid.data` with deconvoluted peaks overlaid.
+
+        :keyword upper_ppm: upper spectral bound in ppm
+
+        :keyword lower_ppm: lower spectral bound in ppm
+
+        :keyword data_colour: colour of the plotted data ('k')
+
+        :keyword summed_peak_colour: colour of the plotted summed peaks ('r')
+
+        :keyword residual_colour: colour of the residual signal after subtracting deconvoluted peaks ('g')
+
+        :keyword data_filled: fill state of the plotted data (False)
+
+        :keyword summed_peak_filled: fill state of the plotted summed peaks (False)
+
+        :keyword residual_filled: fill state of the plotted residuals (False)
+
+        :keyword figsize: [x, y] size of plot ([15, 7.5])
+
+        :keyword lw: linewidth of plot (0.3)
+
+        :keyword azim: azimuth of 3D axes (-90)
+
+        :keyword elev: elevation of 3D axes (20)
+
+
+        """
+        plt = Plot()
+        plt._plot_deconv_array(self.get_fids(), 
+            summed_peak_filled=True,
+            **kwargs)
         setattr(self, plt.id, plt)
         plt.fig.show()
 
