@@ -647,7 +647,9 @@ class Fid(Base):
 
     def peakpick(self, thresh=0.1):
         """ 
-        Attempt to automatically identify peaks.
+
+        Attempt to automatically identify peaks. Picked peaks are assigned to
+        :attr:`~nmrpy.data_objects.Fid.peaks`.
 
         :keyword thresh: fractional threshold for peak-picking
         """
