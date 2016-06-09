@@ -23,7 +23,10 @@ The full script for the quickstart tutorial: ::
         fid.ranges = ranges
     
     fid_array.deconv_fids()
-    
+
+    #fid_array.fid10.plot_deconv(upper_ppm=5.5, lower_ppm=3.5)
+    #fid_array.fid10.plot_deconv(upper_ppm=0.9, lower_ppm=0.2)
+    #fid_array.plot_deconv_array(upper_ppm=6, lower_ppm=3)
     
     integrals = fid_array.deconvoluted_integrals.transpose()
     

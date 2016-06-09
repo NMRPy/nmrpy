@@ -196,6 +196,13 @@ Zooming-in to a set of peaks makes clear the fitting result: ::
 In this case, peaks 0 and 1 belong to glucose-6-phosphate, peak 2 belongs to
 fructose-6-phosphate, and peak 3 belongs to triethyl-phosphate. 
 
+We can view the deconvolution result for the whole array using
+:meth:`~nmrpy.data_objects.FidArray.plot_deconv_array`. Fitted peaks appear in
+red: ::
+
+    fid_array.plot_deconv_array(upper_ppm=6, lower_ppm=3)
+
+.. figure:: images/quickstart_14.png
 
 
 Peak integrals of the array are stored in
