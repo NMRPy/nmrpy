@@ -1431,7 +1431,7 @@ class FidArray(Base):
         setattr(self, plt.id, plt)
         plt.fig.show()
 
-    def plot_deconv(self, **kwargs):
+    def plot_deconv_array(self, **kwargs):
         """
         Plot all :attr:`~nmrpy.data_objects.Fid.data` with deconvoluted peaks overlaid.
 

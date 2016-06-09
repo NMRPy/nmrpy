@@ -172,11 +172,21 @@ class Plot():
         upper_ppm = generated_deconvs[0][5]
         lower_ppm = generated_deconvs[0][6]
 
-        plot_data = numpy.array([data, summed_peaks, residuals])
-        colours_list = [[data_colour]*len(data), 
-                        [summed_peak_colour]*len(summed_peaks), 
-                        [residual_colour]*len(residuals)]
-        filled_list = [data_filled, summed_peak_filled, residual_filled] 
+        plot_data = numpy.array([
+                    residuals, 
+                    data, 
+                    summed_peaks,
+                    ])
+        colours_list = [
+                    [residual_colour]*len(residuals),
+                    [data_colour]*len(data), 
+                    [summed_peak_colour]*len(summed_peaks), 
+                    ]
+        filled_list = [
+                    residual_filled,
+                    data_filled, 
+                    summed_peak_filled, 
+                    ] 
 
         xlabel = 'PPM (%.2f MHz)'%(params['reffrq'])
         ylabel = 'min.'
