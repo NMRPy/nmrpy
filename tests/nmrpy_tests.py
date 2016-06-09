@@ -516,6 +516,12 @@ class TestFidUtils(unittest.TestCase):
         fid.ft()
         fid.phase_correct()
         
+    def test_peakpick(self):
+        fid = self.fid_array_varian.get_fids()[0]
+        fid.ft()
+        fid.phase_correct()
+        fid.peakpick()
+
     def test_f_fitp(self):
         fid = self.fid_array_varian.get_fids()[0]
         fid.ft() 

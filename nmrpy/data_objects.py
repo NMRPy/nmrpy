@@ -645,6 +645,17 @@ class Fid(Base):
         data_bl = data-yp
         self.data = numpy.array(data_bl)
 
+    def peakpick(self, thresh=0.1):
+        """ 
+        Attempt to automatically identify peaks.
+
+        :keyword thresh: fractional threshold for peak-picking
+        """
+        peaks_ind = nmrglue.peakpick.pick(self.data, thresh*self.data.max())
+        peaks_ind = [i[0] for i in peaks_ind]
+        peaks_ppm = Fid._conv_to_ppm(self.data, peaks_ind, self._params['sw_left'], self._params['sw'])
+        self.peaks = peaks_ppm
+        print(self.peaks)
 
     def peakpicker(self):
         """
@@ -1352,6 +1363,9 @@ class FidArray(Base):
         for fid in self.get_fids():
             fid.baseline_correct(deg=deg)
         print('baseline-correction completed')
+
+
+
 
     def deconv_fids(self, mp=True, cpus=None, method='leastsq', frac_gauss=0.0):
         """ 
