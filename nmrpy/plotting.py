@@ -463,6 +463,8 @@ class Phaser(object):
 class DataSelector:
     """Interactive selector widget"""
     def __init__(self, data, params, title=None, label=None):
+        if not Plot._is_iter(data):
+            raise AttributeError('data must be iterable.')
         self.fig = pylab.figure(figsize=[15, 7.5])
         self.data = numpy.array(data)
         self.peaklines = []

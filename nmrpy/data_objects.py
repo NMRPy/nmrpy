@@ -1484,26 +1484,34 @@ class FidArray(Base):
         setattr(self, plt.id, plt)
         plt.fig.show()
 
-    def peakpicker(self, fid_number=0):
+    def peakpicker(self, fid_number=None):
         """
 
-        Instantiate peak-picker GUI widget for a single
+        Instantiate peak-picker GUI widget for 
         :attr:`~nmrpy.data_objects.Fid.data`, and apply selected
         :attr:`~nmrpy.data_objects.Fid.peaks` and
         :attr:`~nmrpy.data_objects.Fid.ranges` to all :class:`~nmrpy.data_objects.Fid`
         objects owned by this :class:`~nmrpy.data_objects.FidArray`. See
         :meth:`~nmrpy.data_objects.Fid.peakpicker`.
 
-        :keyword fid_number: index of :class:`~nmrpy.data_objects.Fid` to use for peak-picking.
+        :keyword fid_number: index of :class:`~nmrpy.data_objects.Fid` to use
+        for peak-picking. If None, data array is plotted.
 
         """
+        global _peakpicker_widget
         fids = self.get_fids()
-        fid = fids[fid_number]
-        fid.peakpicker()
-        #fid._peakpicker_widget = PeakPicker(fid.data, fid._params)
-        if fid.ranges is not None and fid.peaks is not None:
-            peaks = fid.peaks
-            ranges = fid.ranges
+        data = self.data
+        if fid_number is not None:
+            data = fids[fid_number].data 
+        plot_label = 'Left - select peak\nMiddle - delete last selection\nDrag Right - select range'
+        _peakpicker_widget = DataSelector(data, self._params, title="Peak-picking", label=plot_label)
+        if len(_peakpicker_widget.ranges) > 0 and len(_peakpicker_widget.peaks) > 0:
+            ranges = _peakpicker_widget.ranges
+            peaks = []
+            for peak in _peakpicker_widget.peaks:
+                for rng in ranges:
+                    if peak >= rng[1] and peak <= rng[0]:
+                        peaks.append(peak)
             for fid in fids:
                 fid.peaks = peaks
                 fid.ranges = ranges
