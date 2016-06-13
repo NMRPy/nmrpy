@@ -462,12 +462,17 @@ class Phaser(object):
 
 class DataSelector:
     """Interactive selector widget"""
-    def __init__(self, data, params, title=None, label=None):
+    def __init__(self, data, params, 
+                peaks=None, 
+                ranges=None, 
+                title=None, 
+                label=None):
         if not Plot._is_iter(data):
             raise AttributeError('data must be iterable.')
         self.fig = pylab.figure(figsize=[15, 7.5])
         self.data = numpy.array(data)
         self.peaklines = []
+        self.rangespans = []
         self.ax = self.fig.add_subplot(111)
         if len(self.data.shape)==1:
             ppm = numpy.mgrid[params['sw_left']-params['sw']:params['sw_left']:complex(data.shape[0])]
@@ -504,11 +509,19 @@ class DataSelector:
         self.ax.add_patch(self.rect)
         self.ranges = []
         self.peaks = []
+        if peaks is not None:
+            self.peaks = list(peaks)
+        if ranges is not None:
+            self.ranges = list(ranges)
         self.ylims = numpy.array([self.ax.get_ylim()[0], self.data.max() + abs(self.ax.get_ylim()[0])])
-        self.ax.set_ylim([self.ax.get_ylim()[0], self.data.max()*1.1])
+        self.ax.set_ylim(self.ylims)#self.ax.get_ylim()[0], self.data.max()*1.1])
         self.ax_lims = self.ax.get_ylim()
         self.xlims = [ppm[-1], ppm[0]]
         self.ax.set_xlim(self.xlims)
+        for x in self.peaks:
+            self.peaklines.append(self.makeline(x))
+        for rng in self.ranges:
+            self.rangespans.append(self.makespan(rng[1], rng[0]-rng[1]))
         cursor = Cursor(self.ax, useblit=True, color='k', linewidth=0.5)
         cursor.horizOn = False
         self.fig.suptitle(title, size=20)
@@ -520,21 +533,45 @@ class DataSelector:
             label),
         pylab.show()
 
+    def makespan(self, left, width):
+        return self.ax.bar(left=left,
+                        height=sum(abs(self.ylims)),
+                        width=width,
+                        bottom=self.ylims[0],
+                        alpha=0.2,
+                        color='0.5',
+                        edgecolor='k')
+    def makeline(self, x):
+        return self.ax.vlines(x, self.ax_lims[0], self.ax_lims[1], color='#CC0000', lw=1)
+
     def press(self, event):
         tb = pylab.get_current_fig_manager().toolbar
         if tb.mode == '':
             x = numpy.round(event.xdata, 2)
             if event.button == 2:
-                if len(self.peaks) > 0:
-                    self.peaks.pop(-1)
-                    peakline = self.peaklines.pop(-1)
-                    peakline.remove()
+                if event.key == None:
+                    #find and delete nearest peakline
+                    if len(self.peaks) > 0:
+                        x = event.xdata
+                        delete_peak = numpy.argmin([abs(i-x) for i in self.peaks])
+                        self.peaks.pop(delete_peak)
+                        peakline = self.peaklines.pop(delete_peak)
+                        peakline.remove()
+                elif event.key == 'control':
+                    #find and delete range
+                    if len(self.ranges) > 0:
+                        x = event.xdata
+                        for rng in range(len(self.ranges)):
+                            if x >= self.ranges[rng][1] and x <= self.ranges[rng][0]:
+                                self.ranges.pop(rng) 
+                                rangespan = self.rangespans.pop(rng)
+                                rangespan.remove()
             if event.button == 3:
                 self.buttonDown = True
                 self.pressv = event.xdata
             if event.button == 1 and (x >= self.xlims[1]) and (x <= self.xlims[0]):
                 self.peaks.append(x)
-                self.peaklines.append(self.ax.vlines(x, self.ax_lims[0], self.ax_lims[1], color='#CC0000', lw=1))
+                self.peaklines.append(self.makeline(x))
                 print(x)
                 self.peaks = sorted(self.peaks)[::-1]
             self.canvas.draw()
@@ -551,22 +588,17 @@ class DataSelector:
         span = vmax - vmin
         self.pressv = None
         spantest = False
-        print('%.2f - %.2f' % (vmax,vmin))
         if len(self.ranges) > 0:
             for i in self.ranges:
-                if (vmin >= i[0]) and (vmin <= i[1]):
+                print(i, vmin, vmax)
+                if (vmin >= i[1]) and (vmin <= i[0]):
                     spantest = True
-                    if (vmax >= i[0]) and (vmax <= i[1]):
-                         spantest = True
+                if (vmax >= i[1]) and (vmax <= i[0]):
+                    spantest = True
         if span > self.minspan and spantest is False:
             self.ranges.append([numpy.round(vmin, 2), numpy.round(vmax, 2)])
-            self.ax.bar(left=vmin,
-                        height=sum(abs(self.ylims)),
-                        width=span,
-                        bottom=self.ylims[0],
-                        alpha=0.2,
-                        color='0.5',
-                        edgecolor='k')
+            self.rangespans.append(self.makespan(vmin, span))
+        self.ax.set_ylim(self.ylims)
         self.canvas.draw()
         self.ranges = [numpy.sort(i)[::-1] for i in self.ranges]
         return False
