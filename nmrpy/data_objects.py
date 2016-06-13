@@ -671,7 +671,9 @@ class Fid(Base):
         """
         global _peakpicker_widget
         plot_label = 'Left - select peak\nMiddle - delete last selection\nDrag Right - select range'
-        _peakpicker_widget = DataSelector(self.data, self._params, title="Peak-picking", label=plot_label)
+        _peakpicker_widget = DataSelector(self.data, self._params, 
+                            title="Peak-picking {}".format(self.id), 
+                            label=plot_label)
         if len(_peakpicker_widget.ranges) > 0 and len(_peakpicker_widget.peaks) > 0:
             self.ranges = _peakpicker_widget.ranges
             peaks = []
