@@ -477,7 +477,7 @@ class DataSelector:
             ppm = numpy.mgrid[params['sw_left']-params['sw']:params['sw_left']:complex(data.shape[1])]
             inc_orig = 0.5*data.max()/len(data)
             inc = inc_orig.copy()
-            for i,j in zip(range(len(data)), data[::-1]):
+            for i,j in zip(range(len(data)), data):
                 self.ax.plot(ppm[::-1], j+inc, color=cl[i], lw=1)
                 inc += inc_orig
         self.ax.set_xlabel('ppm')
