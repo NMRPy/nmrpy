@@ -145,6 +145,8 @@ class Plot():
         ax.set_xlabel('PPM (%.2f MHz)'%(fid._params['reffrq']))
         
     def _plot_deconv_array(self, fids,
+            upper_index=None, 
+            lower_index=None, 
             upper_ppm=None, 
             lower_ppm=None, 
             data_colour='k', 
@@ -160,6 +162,13 @@ class Plot():
             elev=20, 
             filename=None):
 
+        if lower_index is None:
+            lower_index = 0
+        if upper_index is None:
+            upper_index = len(fids)-1
+        if lower_index >= upper_index:
+            raise ValueError('upper_index must exceed lower_index')
+        fids = fids[lower_index: upper_index]
         generated_deconvs = []
         for fid in fids:
             generated_deconvs.append(self._deconv_generator(fid, upper_ppm=upper_ppm, lower_ppm=lower_ppm))

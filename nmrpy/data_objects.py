@@ -1459,6 +1459,10 @@ class FidArray(Base):
         """
         Plot all :attr:`~nmrpy.data_objects.Fid.data` with deconvoluted peaks overlaid.
 
+        :keyword upper_index: upper index of Fids to plot
+
+        :keyword lower_index: lower index of Fids to plot
+
         :keyword upper_ppm: upper spectral bound in ppm
 
         :keyword lower_ppm: lower spectral bound in ppm
