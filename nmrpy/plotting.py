@@ -459,7 +459,6 @@ class Phaser(object):
         self.canvas.draw()  # _idle()
         return False
 
-
 class DataSelector:
     """Interactive selector widget"""
     def __init__(self, data, params, 
@@ -480,11 +479,12 @@ class DataSelector:
         elif len(self.data.shape)==2:
             cl = dict(zip(range(len(data)), pylab.cm.viridis(numpy.linspace(0,1,len(data)))))
             ppm = numpy.mgrid[params['sw_left']-params['sw']:params['sw_left']:complex(data.shape[1])]
-            inc_orig = 0.5*data.max()/len(data)
+            inc_orig = 0.3*data.max()#/len(data)
             inc = inc_orig.copy()
-            for i,j in zip(range(len(data)), data):
+            #this is reversed for zorder
+            for i,j in zip(range(len(data))[::-1], data[::-1]):
                 self.ax.plot(ppm[::-1], j+inc, color=cl[i], lw=1)
-                inc += inc_orig
+                inc -= inc_orig/len(data)
         self.ax.set_xlabel('ppm')
         self.rectprops = dict(facecolor='0.5', alpha=0.2)
         self.visible = True
