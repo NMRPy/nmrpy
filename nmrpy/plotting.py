@@ -540,6 +540,7 @@ class DataSelector:
             0.7 *
             self.ax.get_ylim()[1],
             label),
+        self.ax.set_ylim(self.ylims)
         pylab.show()
 
     def makespan(self, left, width):
@@ -607,7 +608,7 @@ class DataSelector:
         if span > self.minspan and spantest is False:
             self.ranges.append([numpy.round(vmin, 2), numpy.round(vmax, 2)])
             self.rangespans.append(self.makespan(vmin, span))
-        self.ax.set_ylim(self.ylims)
+        #self.ax.set_ylim(self.ylims)
         self.canvas.draw()
         self.ranges = [numpy.sort(i)[::-1] for i in self.ranges]
         return False
