@@ -824,7 +824,7 @@ class Fid(Base):
         
         p = []
         for i in peaks:
-            single_peak = [i, 0.1, 0.1, 0.9*data[i], frac_gauss]
+            single_peak = [i, 0.1, 0.1, abs(1.0*data[i]), frac_gauss]
             p.append(single_peak)
         return numpy.array(p)
 

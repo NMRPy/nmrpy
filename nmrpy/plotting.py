@@ -479,7 +479,7 @@ class DataSelector:
             raise AttributeError('data must be iterable.')
         self.fig = pylab.figure(figsize=[15, 7.5])
         self.data = numpy.array(data)
-        self.peaklines = []
+        self.peaklines = {}
         self.rangespans = []
         self.ax = self.fig.add_subplot(111)
         if len(self.data.shape)==1:
@@ -528,7 +528,7 @@ class DataSelector:
         self.xlims = [ppm[-1], ppm[0]]
         self.ax.set_xlim(self.xlims)
         for x in self.peaks:
-            self.peaklines.append(self.makeline(x))
+            self.peaklines[x] = self.makeline(x)
         for rng in self.ranges:
             self.rangespans.append(self.makespan(rng[1], rng[0]-rng[1]))
         cursor = Cursor(self.ax, useblit=True, color='k', linewidth=0.5)
@@ -564,9 +564,15 @@ class DataSelector:
                     if len(self.peaks) > 0:
                         x = event.xdata
                         delete_peak = numpy.argmin([abs(i-x) for i in self.peaks])
-                        self.peaks.pop(delete_peak)
-                        peakline = self.peaklines.pop(delete_peak)
+                        print(self.peaks[delete_peak])
+                        print(self.peaks)
+                        print(self.peaklines.keys())
+                        old_peak = self.peaks.pop(delete_peak)
+                        peakline = self.peaklines.pop(old_peak)
                         peakline.remove()
+                        print(self.peaks[delete_peak])
+                        print(self.peaks)
+                        print(self.peaklines.keys())
                 elif event.key == 'control':
                     #find and delete range
                     if len(self.ranges) > 0:
@@ -584,7 +590,7 @@ class DataSelector:
                 self.pressv = event.xdata
             if event.button == 1 and (x >= self.xlims[1]) and (x <= self.xlims[0]):
                 self.peaks.append(x)
-                self.peaklines.append(self.makeline(x))
+                self.peaklines[x] = self.makeline(x)
                 print(x)
                 self.peaks = sorted(self.peaks)[::-1]
             self.canvas.draw()
