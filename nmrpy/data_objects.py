@@ -824,9 +824,8 @@ class Fid(Base):
         
         p = []
         for i in peaks:
-            pw = 0.1
             pamp = 0.9*abs(data[i])
-            single_peak = [i, pw, pw, pamp, frac_gauss]
+            single_peak = [i, 10, 0.1, pamp, frac_gauss]
             p.append(single_peak)
         return numpy.array(p)
 
@@ -913,8 +912,7 @@ class Fid(Base):
             raise TypeError('x must be an iterable') 
         if not isinstance(x, numpy.ndarray):
             x = numpy.array(x) 
-        
-        
+       
         peaks = x*0.0
         for p in parameterset_list:
             peak = cls._f_pk(x, 
@@ -951,7 +949,7 @@ class Fid(Base):
             raise TypeError('data must be a flat iterable.')
         if not isinstance(data, numpy.ndarray):
             data = numpy.array(data) 
-        
+       
         params = Fid._parameters_to_list(p)
         x = numpy.arange(len(data), dtype='f8')
         res = data-cls._f_pks(params, x)
@@ -989,7 +987,7 @@ class Fid(Base):
             p = cls._f_makep(data, peaks+init_ref, frac_gauss=0.5)
         else:
             p = cls._f_makep(data, peaks+init_ref, frac_gauss=frac_gauss)
-
+        
         params = lmfit.Parameters()
         for parset in range(len(p)):
             current_parset = dict(zip(['offset', 'sigma', 'hwhm', 'amplitude', 'frac_gauss'], p[parset]))
@@ -1008,7 +1006,7 @@ class Fid(Base):
                 #if 'sigma' in par_name or 'hwhm' in par_name:
                 #    params[par_name].max = 0.01*current_parset['amplitude'] 
                 if 'amplitude' in par_name:
-                    params[par_name].max = 1.5*data.max()
+                    params[par_name].max = 2.0*data.max()
                     
         try:
             mz = lmfit.minimize(cls._f_res, params, args=([data]), method=method)
