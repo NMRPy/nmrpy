@@ -824,7 +824,6 @@ class Fid(Base):
         
         p = []
         for i in peaks:
-            print('aweh', i, len(data)) 
             single_peak = [i, 0.1, 0.1, 0.9*data[i], frac_gauss]
             p.append(single_peak)
         return numpy.array(p)
@@ -981,8 +980,14 @@ class Fid(Base):
         if not isinstance(data, numpy.ndarray):
             data = numpy.array(data) 
 
+        print('lendata', len(data))
+        print('peaks', peaks)
         p = cls._f_makep(data, peaks, frac_gauss=0.5)
+        print('p', p)
         init_ref = cls._f_conv(p, data)
+        print('init_ref', init_ref)
+        if any(peaks+init_ref < 0) or any(peaks+init_ref > len(data)-1):
+            init_ref = 0 
         if frac_gauss==None:
             p = cls._f_makep(data, peaks+init_ref, frac_gauss=0.5)
         else:
@@ -1006,7 +1011,7 @@ class Fid(Base):
                 #if 'sigma' in par_name or 'hwhm' in par_name:
                 #    params[par_name].max = 0.01*current_parset['amplitude'] 
                 if 'amplitude' in par_name:
-                    params[par_name].max = 1.2*data.max()
+                    params[par_name].max = 1.5*data.max()
                     
         try:
             mz = lmfit.minimize(cls._f_res, params, args=([data]), method=method)
