@@ -383,6 +383,21 @@ class Fid(Base):
                 integrals.append(int_gauss+int_lorentz)
             return numpy.array(integrals)
             
+    def _get_plots(self):
+        """
+        Return a list of all :class:`~nmrpy.plotting.Plot` objects owned by this :class:`~nmrpy.data_objects.Fid`.
+        """
+        plots = [self.__dict__[id] for id in sorted(self.__dict__) if isinstance(self.__dict__[id], Plot)]
+        return plots
+
+    def _del_plots(self):
+        """
+        Deletes all :class:`~nmrpy.plotting.Plot` objects owned by this :class:`~nmrpy.data_objects.Fid`.
+        """
+        plots = self._get_plots()
+        for plot in plots:
+            delattr(self, plot.id)
+
 
     @classmethod
     def _is_valid_dataset(cls, data):
@@ -1151,6 +1166,21 @@ class FidArray(Base):
         fids = [self.__dict__[id] for id in sorted(self.__dict__) if isinstance(self.__dict__[id], Fid)]
         return fids
 
+    def _get_plots(self):
+        """
+        Return a list of all :class:`~nmrpy.plotting.Plot` objects owned by this :class:`~nmrpy.data_objects.FidArray`.
+        """
+        plots = [self.__dict__[id] for id in sorted(self.__dict__) if isinstance(self.__dict__[id], Plot)]
+        return plots
+
+    def _del_plots(self):
+        """
+        Deletes all :class:`~nmrpy.plotting.Plot` objects owned by this :class:`~nmrpy.data_objects.FidArray`.
+        """
+        plots = self._get_plots()
+        for plot in plots:
+            delattr(self, plot.id)
+
     @property
     def data(self):
         """
@@ -1557,7 +1587,10 @@ class FidArray(Base):
             filename = 'data.nmrpy'
         if not isinstance(filename, str):
             raise TypeError('filename must be a string.')
-        #try:
+        #delete all matplotlib plots to reduce file size
+        self._del_plots()
+        for fid in self.get_fids():
+            fid._del_plots()
         with open(filename, 'wb') as f:
             pickle.dump(self, f)
   
