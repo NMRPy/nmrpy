@@ -979,13 +979,8 @@ class Fid(Base):
             raise ValueError('peaks must be within the length of data.')
         if not isinstance(data, numpy.ndarray):
             data = numpy.array(data) 
-
-        print('lendata', len(data))
-        print('peaks', peaks)
         p = cls._f_makep(data, peaks, frac_gauss=0.5)
-        print('p', p)
         init_ref = cls._f_conv(p, data)
-        print('init_ref', init_ref)
         if any(peaks+init_ref < 0) or any(peaks+init_ref > len(data)-1):
             init_ref = 0 
         if frac_gauss==None:
