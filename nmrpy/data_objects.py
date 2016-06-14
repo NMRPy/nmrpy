@@ -731,7 +731,7 @@ class Fid(Base):
 
     @classmethod
     def _f_gauss(cls, offset, amplitude, gauss_sigma, x):
-        return amplitude*numpy.exp(-(offset-x)**2.0/(2.0*gauss_sigma**2.0))
+        return amplitude*numpy.exp(-((offset-x)**2.0)/(2.0*gauss_sigma**2.0))
     
     @classmethod
     def _f_lorentz(cls, offset, amplitude, lorentz_hwhm, x):
@@ -824,7 +824,9 @@ class Fid(Base):
         
         p = []
         for i in peaks:
-            single_peak = [i, 0.1, 0.1, abs(1.0*data[i]), frac_gauss]
+            pw = 0.1
+            pamp = 0.9*abs(data[i])
+            single_peak = [i, pw, pw, pamp, frac_gauss]
             p.append(single_peak)
         return numpy.array(p)
 
