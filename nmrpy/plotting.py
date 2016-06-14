@@ -571,11 +571,14 @@ class DataSelector:
                     #find and delete range
                     if len(self.ranges) > 0:
                         x = event.xdata
-                        for rng in range(len(self.ranges)):
-                            if x >= self.ranges[rng][1] and x <= self.ranges[rng][0]:
+                        rng = 0
+                        while rng < len(self.ranges):
+                            if x >= (self.ranges[rng])[1] and x <= (self.ranges[rng])[0]:
                                 self.ranges.pop(rng) 
                                 rangespan = self.rangespans.pop(rng)
                                 rangespan.remove()
+                                break
+                            rng += 1
             if event.button == 3:
                 self.buttonDown = True
                 self.pressv = event.xdata

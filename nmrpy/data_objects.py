@@ -824,8 +824,9 @@ class Fid(Base):
         
         p = []
         for i in peaks:
-                single_peak = [i, 0.1, 0.1, 0.9*data[i], frac_gauss]
-                p.append(single_peak)
+            print('aweh', i, len(data)) 
+            single_peak = [i, 0.1, 0.1, 0.9*data[i], frac_gauss]
+            p.append(single_peak)
         return numpy.array(p)
 
     @classmethod
@@ -996,6 +997,8 @@ class Fid(Base):
                         value=v, 
                         vary=True, 
                         min=0.0)
+                if 'offset' in par_name:
+                    params[par_name].max = len(data)-1
                 if 'frac_gauss' in par_name:
                     params[par_name].max = 1.0
                     if frac_gauss is not None:
