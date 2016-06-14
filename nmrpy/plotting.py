@@ -564,15 +564,9 @@ class DataSelector:
                     if len(self.peaks) > 0:
                         x = event.xdata
                         delete_peak = numpy.argmin([abs(i-x) for i in self.peaks])
-                        print(self.peaks[delete_peak])
-                        print(self.peaks)
-                        print(self.peaklines.keys())
                         old_peak = self.peaks.pop(delete_peak)
                         peakline = self.peaklines.pop(old_peak)
                         peakline.remove()
-                        print(self.peaks[delete_peak])
-                        print(self.peaks)
-                        print(self.peaklines.keys())
                 elif event.key == 'control':
                     #find and delete range
                     if len(self.ranges) > 0:
