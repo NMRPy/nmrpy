@@ -474,6 +474,7 @@ class DataSelector:
                 peaks=None, 
                 ranges=None, 
                 title=None, 
+                voff=0.3, 
                 label=None):
         if not Plot._is_iter(data):
             raise AttributeError('data must be iterable.')
@@ -488,7 +489,7 @@ class DataSelector:
         elif len(self.data.shape)==2:
             cl = dict(zip(range(len(data)), pylab.cm.viridis(numpy.linspace(0,1,len(data)))))
             ppm = numpy.mgrid[params['sw_left']-params['sw']:params['sw_left']:complex(data.shape[1])]
-            inc_orig = 0.3*data.max()#/len(data)
+            inc_orig = voff*data.max()
             inc = inc_orig.copy()
             #this is reversed for zorder
             for i,j in zip(range(len(data))[::-1], data[::-1]):

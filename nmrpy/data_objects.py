@@ -1529,7 +1529,7 @@ class FidArray(Base):
         setattr(self, plt.id, plt)
         plt.fig.show()
 
-    def peakpicker(self, fid_number=None, assign_only_to_index=True):
+    def peakpicker(self, fid_number=None, assign_only_to_index=True, voff=0.3):
         """
 
         Instantiate peak-picker GUI widget for 
@@ -1546,6 +1546,7 @@ class FidArray(Base):
         :class:`~nmrpy.data_objects.Fid` objects indexed by fid_number, if False,
         assigns to all
 
+        :keyword voff: vertical offset for spectra
         """
         global _peakpicker_widget
         fids = self.get_fids()
@@ -1557,7 +1558,7 @@ class FidArray(Base):
         data = numpy.array([fids[i].data for i in fid_number])
 
         plot_label = 'Left - select peak\nMiddle - delete nearest peak\nCtrl/Middle - delete range\nDrag Right - select range'
-        _peakpicker_widget = DataSelector(data, self._params, title="Peak-picking", label=plot_label)
+        _peakpicker_widget = DataSelector(data, self._params, title="Peak-picking", voff=voff, label=plot_label)
         if len(_peakpicker_widget.ranges) > 0 and len(_peakpicker_widget.peaks) > 0:
             ranges = _peakpicker_widget.ranges
             peaks = []
