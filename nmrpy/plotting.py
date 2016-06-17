@@ -248,7 +248,7 @@ class Plot():
         sw = params['sw']
 
         if upper_index is None:
-            upper_index = -1
+            upper_index = len(data)
         if lower_index is None:
             lower_index = 0
         
