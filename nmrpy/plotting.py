@@ -402,7 +402,7 @@ class Plot():
             return True
         return False
 
-class Phaser(object):
+class Phaser:
     """Interactive phase-correction widget"""
     def __init__(self, fid):
         if not Plot._is_flat_iter(fid.data): 
@@ -636,8 +636,122 @@ class DataSelector:
         self.canvas.draw_idle()
         return False
 
+class IntegralTraceSelector:
+    """Interactive integral-selection widget"""
+    def __init__(self, fid_array):
+        if fid_array.data == [] or fid_array.data == None:
+            raise ValueError('data must exist.')
+        data = fid_array.data
+        params = fid_array._params
+        sw_left = params['sw_left']
+        sw = params['sw']
 
+        ppm = numpy.linspace(sw_left-sw, sw_left, data.shape[1])[::-1]
+        self.linebuilder = LineBuilder(
+            x=ppm, 
+            y=fid_array.data, 
+            invert_x=True,
+            )
+        self.lines = self.linebuilder.lines
+        
 
+class LineBuilder:
+    def __init__(self, 
+        x=None,
+        y=None,
+        invert_x=False,
+        figsize=[15,7.5],
+        lw=1):
+        self.lw = lw
+        self.xs = []
+        self.ys = []
+        self._x = None
+        self._y = None
+        self.lines = []
+        self._visual_lines = []
+        self.fig = pylab.figure(figsize=figsize)
+        self.ax = self.fig.add_subplot(111)
+        self.ax.set_title('click to build line segments')
+        inc = 0
+        for i in range(len(y)):
+            self.ax.plot(x, y[i]+inc, '-k')
+            inc+=0.1
+        if invert_x:
+            self.ax.invert_xaxis()
+        self.ax.set_xlim([x[0], x[-1]])
+        self.line = None
+        self.canvas = self.fig.canvas
+        self.cid_press = self.canvas.mpl_connect('button_press_event', self.on_press)
+        self.cid_release = self.canvas.mpl_connect('button_release_event', self.on_release)
+        self.cid_move = self.canvas.mpl_connect('motion_notify_event', self.on_move)
+        self.fig.show()
+        self.background = self.canvas.copy_from_bbox(self.ax.bbox)
+        self._drawing = False
+
+    def check_mode(self):
+        tb = pylab.get_current_fig_manager().toolbar
+        if tb.mode == '':
+            return True 
+        else:
+            return False
+        
+    def on_press(self, event):
+        if not self.check_mode():
+            return
+        if event.button == 1:
+            if event.key == 'control':
+                if len(self._visual_lines) > 0:
+                    x = event.xdata
+                    y = event.ydata
+                    trace_dist = [[i[0]-x, i[1]-y] for i in self.lines]
+                    delete_trace = numpy.argmin([min(numpy.sqrt(i[0]**2+i[1]**2)) for i in trace_dist])
+                    self.lines.pop(delete_trace)
+                    trace = self._visual_lines.pop(delete_trace)
+                    trace.remove()
+                    self.canvas.draw()
+            else:
+                self.xs.append(event.xdata)
+                self.ys.append(event.ydata)
+                if self.line is None:
+                    self.line, = self.ax.plot(self.xs, self.ys, '-+', color='r', lw=self.lw, animated=True)
+                self.line.set_data(self.xs, self.ys)
+                self.background = self.canvas.copy_from_bbox(self.ax.bbox)
+                self.ax.draw_artist(self.line)
+                self.canvas.blit(self.ax.bbox) 
+
+        if event.button == 3 and self.line is not None:
+            if len(self.xs) > 1:
+                self._visual_lines.append(self.ax.plot(self.xs, self.ys, '-+', color='b', lw=self.lw)[0])
+                self.canvas.draw()
+                self.background = self.canvas.copy_from_bbox(self.ax.bbox)
+                self.lines.append(numpy.array([self.xs, self.ys]))
+                self.xs, self.ys = [], []
+                self.line = None
+            else:
+                self.canvas.draw()
+                self.background = self.canvas.copy_from_bbox(self.ax.bbox)
+                self.xs, self.ys = [], []
+                self.line = None
+            
+
+    def on_release(self, event):
+        if not self.check_mode():
+            self.line = None
+            self.canvas.draw()
+            self.background = self.canvas.copy_from_bbox(self.ax.bbox)
+            self.line, = self.ax.plot(self.xs, self.ys, '-+', color='r', lw=self.lw, animated=True)
+            return
+
+    def on_move(self, event):
+        #if not self.check_mode():
+        #    return
+        if self.line is None:
+            return
+        self.canvas.restore_region(self.background)
+        self._x, self._y = event.xdata, event.ydata
+        self.line.set_data(self.xs+[self._x], self.ys+[self._y])
+        self.ax.draw_artist(self.line)
+        self.canvas.blit(self.ax.bbox) 
 
 if __name__ == '__main__':
     pass
