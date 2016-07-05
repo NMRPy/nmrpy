@@ -651,6 +651,7 @@ class IntegralTraceSelector:
             x=ppm, 
             y=fid_array.data, 
             invert_x=True,
+            xlabel='ppm',
             )
         self.lines = self.linebuilder.lines
         
@@ -661,7 +662,10 @@ class LineBuilder:
         y=None,
         invert_x=False,
         figsize=[15,7.5],
-        lw=1):
+        lw=1,
+        xlabel=None,
+        ylabel=None,
+        ):
         self.lw = lw
         self.xs = []
         self.ys = []
@@ -671,7 +675,7 @@ class LineBuilder:
         self._visual_lines = []
         self.fig = pylab.figure(figsize=figsize)
         self.ax = self.fig.add_subplot(111)
-        self.ax.set_title('click to build line segments')
+        self.ax.set_title('click to build line segments\nright-click to finish line\nctrl-click deletes nearest line')
         inc = 0
         for i in range(len(y)):
             self.ax.plot(x, y[i]+inc, '-k')
@@ -679,6 +683,8 @@ class LineBuilder:
         if invert_x:
             self.ax.invert_xaxis()
         self.ax.set_xlim([x[0], x[-1]])
+        self.ax.set_xlabel(xlabel)
+        self.ax.set_ylabel(ylabel)
         self.line = None
         self.canvas = self.fig.canvas
         self.cid_press = self.canvas.mpl_connect('button_press_event', self.on_press)
@@ -690,13 +696,10 @@ class LineBuilder:
 
     def check_mode(self):
         tb = pylab.get_current_fig_manager().toolbar
-        if tb.mode == '':
-            return True 
-        else:
-            return False
+        return tb.mode
         
     def on_press(self, event):
-        if not self.check_mode():
+        if self.check_mode() != '':
             return
         if event.button == 1:
             if event.key == 'control':
@@ -735,7 +738,7 @@ class LineBuilder:
             
 
     def on_release(self, event):
-        if not self.check_mode():
+        if self.check_mode() != '':
             self.line = None
             self.canvas.draw()
             self.background = self.canvas.copy_from_bbox(self.ax.bbox)
@@ -743,8 +746,8 @@ class LineBuilder:
             return
 
     def on_move(self, event):
-        #if not self.check_mode():
-        #    return
+        if self.check_mode() == 'pan/zoom':
+            return
         if self.line is None:
             return
         self.canvas.restore_region(self.background)
