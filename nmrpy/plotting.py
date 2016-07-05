@@ -712,6 +712,7 @@ class LineBuilder:
                     trace = self._visual_lines.pop(delete_trace)
                     trace.remove()
                     self.canvas.draw()
+                    self.background = self.canvas.copy_from_bbox(self.ax.bbox)
             else:
                 self.xs.append(event.xdata)
                 self.ys.append(event.ydata)
