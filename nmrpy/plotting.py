@@ -663,10 +663,15 @@ class LineBuilder:
         invert_x=False,
         figsize=[15,7.5],
         lw=1,
+        voff=0.1,
         xlabel=None,
         ylabel=None,
         ):
+        self.x = x
+        self.y = y
         self.lw = lw
+        self.voff = 0.1
+        self.y_indices = numpy.arange(0, self.voff*len(self.y), self.voff)
         self.xs = []
         self.ys = []
         self._x = None
@@ -676,10 +681,8 @@ class LineBuilder:
         self.fig = pylab.figure(figsize=figsize)
         self.ax = self.fig.add_subplot(111)
         self.ax.set_title('click to build line segments\nright-click to finish line\nctrl-click deletes nearest line')
-        inc = 0
         for i in range(len(y)):
-            self.ax.plot(x, y[i]+inc, '-k')
-            inc+=0.1
+            self.ax.plot(x, y[i]+self.y_indices[i], '-k')
         if invert_x:
             self.ax.invert_xaxis()
         self.ax.set_xlim([x[0], x[-1]])
@@ -757,5 +760,30 @@ class LineBuilder:
         self.ax.draw_artist(self.line)
         self.canvas.blit(self.ax.bbox) 
 
+    def get_neighbours(self, xs, ys):
+        ymask = list((self.y_indices <= max(ys)) * (self.y_indices >= min(ys)))
+        y_lo = ymask.index(True)
+        y_hi = len(ymask)-ymask[::-1].index(True)
+        x_intersects = []
+        for i in range(y_lo, y_hi):
+            x = [self.x[0], self.x[-1], xs[0], xs[1]]    
+            y = [self.y_indices[i], self.y_indices[i], ys[0], ys[1]]    
+            x, y = self.get_intersection(x, y)
+    
+        return 
+
+    @staticmethod
+    def get_intersection(x, y):
+        px = (((x[0]*y[1]-y[0]*x[1])*(x[2]-x[3])-(x[0]-x[1])*(x[2]*y[3]-y[2]*x[3]))/((x[0]-x[1])*(y[2]-y[3])-(y[0]-y[1])*(x[2]-x[3])))
+        py = (((x[0]*y[1]-y[0]*x[1])*(y[2]-y[3])-(y[0]-y[1])*(x[2]*y[3]-y[2]*x[3]))/((x[0]-x[1])*(y[2]-y[3])-(y[0]-y[1])*(x[2]-x[3])))
+        return px, py
+
+
+
+
+
+
+
+        
 if __name__ == '__main__':
     pass
