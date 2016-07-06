@@ -636,7 +636,7 @@ class DataSelector:
         self.canvas.draw_idle()
         return False
 
-class IntegralTraceSelector:
+class DataTraceSelector:
     """Interactive integral-selection widget"""
     def __init__(self, fid_array):
         if fid_array.data == [] or fid_array.data == None:
@@ -653,7 +653,7 @@ class IntegralTraceSelector:
             invert_x=True,
             xlabel='ppm',
             )
-        self.lines = self.linebuilder.lines
+        self.traces = self.linebuilder.data_lines
         
 
 class LineBuilder:
@@ -679,6 +679,7 @@ class LineBuilder:
         self.datax = None
         self.datay = None
         self.lines = []
+        self.data_lines = []
         self._visual_lines = []
         self.fig = pylab.figure(figsize=figsize)
         self.ax = self.fig.add_subplot(111)
@@ -706,6 +707,8 @@ class LineBuilder:
         
     def on_press(self, event):
         if self.check_mode() != '':
+            return
+        if event.xdata is None or event.ydata is None:
             return
         if event.button == 1:
             if event.key == 'control':
@@ -738,6 +741,16 @@ class LineBuilder:
                 self.lines.append(numpy.array([self.xs, self.ys]))
                 self.xs, self.ys = [], []
                 self.line = None
+                line_x = []
+                line_y = []
+                for i in range(len(self.lines[-1][0])-1):
+                    line = self.lines[-1]
+                    x1, y1, x2, y2 = line[0][i], line[1][i], line[0][i+1], line[1][i+1]
+                    x, y = self.get_neighbours([x1, x2], [y1, y2])
+                    if x is not None and y is not None:
+                        line_x = line_x+list(x)
+                        line_y = line_y+list(y)
+                self.data_lines.append([line_x, line_y])
             else:
                 self.canvas.draw()
                 self.background = self.canvas.copy_from_bbox(self.ax.bbox)
@@ -764,6 +777,8 @@ class LineBuilder:
             return
         self.canvas.restore_region(self.background)
         self._x, self._y = event.xdata, event.ydata
+        if self._x is None or self._y is None:
+            return
         self.line.set_data(self.xs+[self._x], self.ys+[self._y])
         self.ax.draw_artist(self.line)
         self.datax, self.datay = self.get_neighbours([self.xs[-1], self._x], [self.ys[-1], self._y]) 

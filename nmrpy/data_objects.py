@@ -1424,7 +1424,7 @@ class FidArray(Base):
         if not len(self.deconvoluted_integrals):
             raise AttributeError('no integration data')
         global _select_integration_widget
-        _select_integration_widget = IntegralTraceSelector(self)
+        _select_integration_widget = DataTraceSelector(self)
         self._integral_traces = _select_integration_widget.lines
 
 
