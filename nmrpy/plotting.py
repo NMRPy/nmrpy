@@ -676,6 +676,8 @@ class LineBuilder:
         self.ys = []
         self._x = None
         self._y = None
+        self.datax = None
+        self.datay = None
         self.lines = []
         self._visual_lines = []
         self.fig = pylab.figure(figsize=figsize)
@@ -689,6 +691,7 @@ class LineBuilder:
         self.ax.set_xlabel(xlabel)
         self.ax.set_ylabel(ylabel)
         self.line = None
+        self.data_line = None
         self.canvas = self.fig.canvas
         self.cid_press = self.canvas.mpl_connect('button_press_event', self.on_press)
         self.cid_release = self.canvas.mpl_connect('button_release_event', self.on_release)
@@ -725,6 +728,7 @@ class LineBuilder:
                 self.background = self.canvas.copy_from_bbox(self.ax.bbox)
                 self.ax.draw_artist(self.line)
                 self.canvas.blit(self.ax.bbox) 
+                self.data_line = None
 
         if event.button == 3 and self.line is not None:
             if len(self.xs) > 1:
@@ -758,6 +762,13 @@ class LineBuilder:
         self._x, self._y = event.xdata, event.ydata
         self.line.set_data(self.xs+[self._x], self.ys+[self._y])
         self.ax.draw_artist(self.line)
+        self.datax, self.datay = self.get_neighbours([self.xs[-1], self._x], [self.ys[-1], self._y]) 
+        if self.data_line is None and self.datax is not None and self.datay is not None:
+            self.data_line, = self.ax.plot(self.datax, self.datay, 'o', color='r', animated=True)
+        if self.data_line is not None and self.datax is not None and self.datay is not None:
+            self.data_line.set_data(self.datax, self.datay)
+        if self.data_line is not None:
+            self.ax.draw_artist(self.data_line)
         self.canvas.blit(self.ax.bbox) 
 
     def get_neighbours(self, xs, ys):
@@ -768,6 +779,8 @@ class LineBuilder:
         Returns two arrays, one of x-coordinates, one of y-coordinates.
         """
         ymask = list((self.y_indices <= max(ys)) * (self.y_indices >= min(ys)))
+        if True not in ymask:
+            return None, None
         y_lo = ymask.index(True)
         y_hi = len(ymask)-ymask[::-1].index(True)
         x_neighbours = []
@@ -778,7 +791,7 @@ class LineBuilder:
             x, y = self.get_intersection(x, y)
             x = numpy.argmin(abs(self.x-x))
             x_neighbours.append(self.x[x])
-            y_neighbours.append(self.y[i][x])
+            y_neighbours.append(self.y[i][x]+self.y_indices[i])
         return x_neighbours, y_neighbours
 
     @staticmethod
