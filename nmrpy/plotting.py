@@ -761,19 +761,35 @@ class LineBuilder:
         self.canvas.blit(self.ax.bbox) 
 
     def get_neighbours(self, xs, ys):
+        """
+        For a pair of coordinates (xs = [x1, x2], ys = [y1, y2]), return the
+        nearest datum in each spectrum for a line subtended between the two coordinate
+        points which intersects the baseline of each spectrum.
+        Returns two arrays, one of x-coordinates, one of y-coordinates.
+        """
         ymask = list((self.y_indices <= max(ys)) * (self.y_indices >= min(ys)))
         y_lo = ymask.index(True)
         y_hi = len(ymask)-ymask[::-1].index(True)
-        x_intersects = []
+        x_neighbours = []
+        y_neighbours = []
         for i in range(y_lo, y_hi):
             x = [self.x[0], self.x[-1], xs[0], xs[1]]    
             y = [self.y_indices[i], self.y_indices[i], ys[0], ys[1]]    
             x, y = self.get_intersection(x, y)
-    
-        return 
+            x = numpy.argmin(abs(self.x-x))
+            x_neighbours.append(self.x[x])
+            y_neighbours.append(self.y[i][x])
+        return x_neighbours, y_neighbours
 
     @staticmethod
     def get_intersection(x, y):
+        """
+        This function take a set of two pairs of x/y coordinates, defining a
+        pair of crossing lines, and returns the intersection. x = [x1, x2, x3, x4], y =
+        [y1, y2, y3, y4], where [x1, y1] and [x2, y2] represent one line, and [x3, y3]
+        and [x4, y4] represent the other. See
+        https://en.wikipedia.org/wiki/Line%E2%80%93line_intersection#Given_two_points_on_each_line
+        """
         px = (((x[0]*y[1]-y[0]*x[1])*(x[2]-x[3])-(x[0]-x[1])*(x[2]*y[3]-y[2]*x[3]))/((x[0]-x[1])*(y[2]-y[3])-(y[0]-y[1])*(x[2]-x[3])))
         py = (((x[0]*y[1]-y[0]*x[1])*(y[2]-y[3])-(y[0]-y[1])*(x[2]*y[3]-y[2]*x[3]))/((x[0]-x[1])*(y[2]-y[3])-(y[0]-y[1])*(x[2]-x[3])))
         return px, py
