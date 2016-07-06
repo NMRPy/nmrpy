@@ -1415,7 +1415,7 @@ class FidArray(Base):
     def _data_traces(self, data_traces):
         self.__data_traces = data_traces 
 
-    def select_data_trace(self):
+    def _select_data_trace(self):
         """
         Instantiate an integral selection widget.
         """
@@ -1425,7 +1425,7 @@ class FidArray(Base):
             raise AttributeError('no integration data')
         global _select_trace_widget
         _select_trace_widget = DataTraceSelector(self)
-        self._data_traces = _select_trace_widget.traces
+        self._data_traces = [dict(zip(i[1], i[0])) for i in _select_trace_widget.traces]
 
 
     def deconv_fids(self, mp=True, cpus=None, method='leastsq', frac_gauss=0.0):
