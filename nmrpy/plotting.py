@@ -747,10 +747,14 @@ class LineBuilder:
 
     def on_release(self, event):
         if self.check_mode() != '':
-            self.line = None
+            redraw_line = False
+            if self.line is not None:
+                redraw_line = True
+                self.line = None
             self.canvas.draw()
             self.background = self.canvas.copy_from_bbox(self.ax.bbox)
-            self.line, = self.ax.plot(self.xs, self.ys, '-+', color='r', lw=self.lw, animated=True)
+            if redraw_line:
+                self.line, = self.ax.plot(self.xs, self.ys, '-+', color='r', lw=self.lw, animated=True)
             return
 
     def on_move(self, event):
