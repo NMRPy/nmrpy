@@ -12,6 +12,7 @@ from matplotlib.patches import Circle, Rectangle
 from matplotlib.lines import Line2D
 from matplotlib.transforms import blended_transform_factory
 from matplotlib.widgets import Cursor
+from matplotlib.backend_bases import NavigationToolbar2, Event
 
 class Plot():
     """
@@ -638,7 +639,11 @@ class DataSelector:
 
 class DataTraceSelector:
     """Interactive integral-selection widget"""
-    def __init__(self, fid_array):
+    def __init__(self, fid_array,
+            extra_data=None,
+            voff=0.1,
+            lw=1,
+            ):
         if fid_array.data == [] or fid_array.data == None:
             raise ValueError('data must exist.')
         data = fid_array.data
@@ -647,19 +652,33 @@ class DataTraceSelector:
         sw = params['sw']
 
         ppm = numpy.linspace(sw_left-sw, sw_left, data.shape[1])[::-1]
+        
         self.linebuilder = LineBuilder(
             x=ppm, 
             y=fid_array.data, 
+            y2=extra_data,
             invert_x=True,
             xlabel='ppm',
+            voff=voff,
+            lw=lw,
             )
         self.traces = self.linebuilder.data_lines
-        
+  
+
+#this is to catch 'home' events in the linebuilder 
+def linebuilder_home(self, *args, **kwargs):
+    s = 'home_event'
+    event = Event(s, self)
+    self.canvas.callbacks.process(s, event)
+    original_home(self, *args, **kwargs)
+
+original_home = NavigationToolbar2.home
 
 class LineBuilder:
     def __init__(self, 
         x=None,
         y=None,
+        y2=None, 
         invert_x=False,
         figsize=[15,7.5],
         lw=1,
@@ -681,9 +700,15 @@ class LineBuilder:
         self.lines = []
         self.data_lines = []
         self._visual_lines = []
+
+        NavigationToolbar2.home = linebuilder_home
+
         self.fig = pylab.figure(figsize=figsize)
         self.ax = self.fig.add_subplot(111)
         self.ax.set_title('click to build line segments\nright-click to finish line\nctrl-click deletes nearest line')
+        if y2 is not None:
+            for i in range(len(y2)):
+                self.ax.plot(x, y2[i]+self.y_indices[i], '-b')
         for i in range(len(y)):
             self.ax.plot(x, y[i]+self.y_indices[i], '-k')
         if invert_x:
@@ -697,14 +722,31 @@ class LineBuilder:
         self.cid_press = self.canvas.mpl_connect('button_press_event', self.on_press)
         self.cid_release = self.canvas.mpl_connect('button_release_event', self.on_release)
         self.cid_move = self.canvas.mpl_connect('motion_notify_event', self.on_move)
+        self.cid_home = self.canvas.mpl_connect('home_event', self.on_home) 
         pylab.show()
         self.background = self.canvas.copy_from_bbox(self.ax.bbox)
         self._drawing = False
 
+
     def check_mode(self):
         tb = pylab.get_current_fig_manager().toolbar
         return tb.mode
+    
+    def on_home(self, event):
+        if self.check_mode() != '':
+            redraw_line = False
+            if self.line is not None:
+                redraw_line = True
+                self.line = None
+            self.canvas.draw()
+            self.background = self.canvas.copy_from_bbox(self.ax.bbox)
+            if redraw_line:
+                self.line, = self.ax.plot(self.xs, self.ys, '-+', color='r', lw=self.lw, animated=True)
+            return
+
         
+
+
     def on_press(self, event):
         if self.check_mode() != '':
             return
@@ -718,6 +760,7 @@ class LineBuilder:
                     trace_dist = [[i[0]-x, i[1]-y] for i in self.lines]
                     delete_trace = numpy.argmin([min(numpy.sqrt(i[0]**2+i[1]**2)) for i in trace_dist])
                     self.lines.pop(delete_trace)
+                    self.data_lines.pop(delete_trace)
                     trace = self._visual_lines.pop(delete_trace)
                     trace.remove()
                     self.canvas.draw()

@@ -1415,16 +1415,17 @@ class FidArray(Base):
     def _data_traces(self, data_traces):
         self.__data_traces = data_traces 
 
-    def _select_data_trace(self):
+    def _select_data_trace(self, extra_data=None, lw=1, voff=0.1):
         """
-        Instantiate an integral selection widget.
+        Instantiate an trace selection widget. This is useful for peak-picking
+        and integral-selection when data are subject to drift.
         """
         if not len(self.data):
             raise AttributeError('data does not exist.')
         if not len(self.deconvoluted_integrals):
             raise AttributeError('no integration data')
         global _select_trace_widget
-        _select_trace_widget = DataTraceSelector(self)
+        _select_trace_widget = DataTraceSelector(self, extra_data=extra_data, voff=voff, lw=lw)
         self._data_traces = [dict(zip(i[1], i[0])) for i in _select_trace_widget.traces]
 
 
@@ -1597,6 +1598,31 @@ class FidArray(Base):
                 fid.peaks = peaks
                 fid.ranges = ranges
 
+    #def peakpicker_traces(self, voff=0.1, lw=1):
+    #    if self.data is None:
+    #        raise AttributeError('No FIDs.')
+    #    self._select_data_trace(lw=lw, voff=voff)
+    #    for trace in self._data_traces:
+    #        for  
+
+    def _get_all_peakshapes(self):
+        """
+        Returns peakshapes for all FIDs
+        """
+        peaks = []
+        for fid in self.get_fids():
+            #x = numpy.arange(len(self.get_fids()[0].data))
+            x = numpy.arange(len(self.get_fids()[0].data))
+            peaks.append(Fid._f_pks(fid._deconvoluted_peaks, x))
+        return peaks
+
+    def select_integral_traces(self, voff=0.1, lw=1):
+        if self.data is None:
+            raise AttributeError('No FIDs.')
+        if self.deconvoluted_integrals is None:
+            raise AttributeError('No integrals.')
+        self._select_data_trace(extra_data=self._get_all_peakshapes(), lw=lw, voff=voff)
+        #for trace in self._data_traces:
 
     def save_to_file(self, filename=None):
         """
