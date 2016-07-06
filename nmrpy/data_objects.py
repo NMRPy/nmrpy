@@ -1408,14 +1408,14 @@ class FidArray(Base):
         print('baseline-correction completed')
 
     @property
-    def _integral_traces(self):
-        return self.__integral_traces
+    def _data_traces(self):
+        return self.__data_traces
 
-    @_integral_traces.setter
-    def _integral_traces(self, integral_traces):
-        self.__integral_traces = integral_traces 
+    @_data_traces.setter
+    def _data_traces(self, data_traces):
+        self.__data_traces = data_traces 
 
-    def select_integral_trace(self):
+    def select_data_trace(self):
         """
         Instantiate an integral selection widget.
         """
@@ -1423,9 +1423,9 @@ class FidArray(Base):
             raise AttributeError('data does not exist.')
         if not len(self.deconvoluted_integrals):
             raise AttributeError('no integration data')
-        global _select_integration_widget
-        _select_integration_widget = DataTraceSelector(self)
-        self._integral_traces = _select_integration_widget.lines
+        global _select_trace_widget
+        _select_trace_widget = DataTraceSelector(self)
+        self._data_traces = _select_trace_widget.traces
 
 
     def deconv_fids(self, mp=True, cpus=None, method='leastsq', frac_gauss=0.0):

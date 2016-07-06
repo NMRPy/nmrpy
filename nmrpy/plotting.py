@@ -436,7 +436,7 @@ class Phaser:
         self.ax.text(0.05 *self.ax.get_xlim()[1],0.7 *self.ax.get_ylim()[1],'phasing\nleft - zero-order\nright - first order')
         cursor = Cursor(self.ax, useblit=True, color='k', linewidth=0.5)
         cursor.horizOn = False
-        self.fig.show()
+        pylab.show()
 
     def press(self, event):
         tb = pylab.get_current_fig_manager().toolbar
@@ -697,7 +697,7 @@ class LineBuilder:
         self.cid_press = self.canvas.mpl_connect('button_press_event', self.on_press)
         self.cid_release = self.canvas.mpl_connect('button_release_event', self.on_release)
         self.cid_move = self.canvas.mpl_connect('motion_notify_event', self.on_move)
-        self.fig.show()
+        pylab.show()
         self.background = self.canvas.copy_from_bbox(self.ax.bbox)
         self._drawing = False
 
