@@ -6,6 +6,7 @@ from datetime import datetime
 from matplotlib.figure import Figure
 from mpl_toolkits.mplot3d import Axes3D
 from matplotlib.collections import PolyCollection
+import copy
 
 from matplotlib.mlab import dist
 from matplotlib.patches import Circle, Rectangle
@@ -640,7 +641,10 @@ class DataSelector:
 class DataTraceSelector:
     """Interactive integral-selection widget"""
     def __init__(self, fid_array,
-            extra_data=None,
+            extra_x=None,
+            extra_y=None,
+            ycolour='k',
+            y2colour='b',
             voff=0.1,
             lw=1,
             ):
@@ -656,7 +660,10 @@ class DataTraceSelector:
         self.linebuilder = LineBuilder(
             x=ppm, 
             y=fid_array.data, 
-            y2=extra_data,
+            x2=extra_x,
+            y2=extra_y,
+            ycolour=ycolour,
+            y2colour=y2colour,
             invert_x=True,
             xlabel='ppm',
             voff=voff,
@@ -669,8 +676,8 @@ class DataTraceSelector:
 def linebuilder_home(self, *args, **kwargs):
     s = 'home_event'
     event = Event(s, self)
-    self.canvas.callbacks.process(s, event)
     original_home(self, *args, **kwargs)
+    self.canvas.callbacks.process(s, event)
 
 original_home = NavigationToolbar2.home
 
@@ -678,7 +685,10 @@ class LineBuilder:
     def __init__(self, 
         x=None,
         y=None,
+        x2=None, 
         y2=None, 
+        ycolour='k',
+        y2colour='b',
         invert_x=False,
         figsize=[15,7.5],
         lw=1,
@@ -688,6 +698,10 @@ class LineBuilder:
         ):
         self.x = x
         self.y = y
+        self.x2 = x2 
+        self.y2 = y2
+        self.ycolour = ycolour
+        self.y2colour = y2colour
         self.lw = lw
         self.voff = 0.1
         self.y_indices = numpy.arange(0, self.voff*len(self.y), self.voff)
@@ -706,11 +720,18 @@ class LineBuilder:
         self.fig = pylab.figure(figsize=figsize)
         self.ax = self.fig.add_subplot(111)
         self.ax.set_title('click to build line segments\nright-click to finish line\nctrl-click deletes nearest line')
-        if y2 is not None:
-            for i in range(len(y2)):
-                self.ax.plot(x, y2[i]+self.y_indices[i], '-b')
-        for i in range(len(y)):
-            self.ax.plot(x, y[i]+self.y_indices[i], '-k')
+        if self.y2 is not None:
+            if self.x2 is None:
+                self.x2 = self.x
+            for i in range(len(self.y2)):
+                if Plot._is_iter_of_iters(self.y2[i]):
+                    for xd, yd in zip(self.x2[i], self.y2[i]):
+                        self.ax.plot(xd, yd+self.y_indices[i], '-', color=self.y2colour)
+                else:
+                    self.ax.plot(self.x2, self.y2[i]+self.y_indices[i], '-', color=self.y2colour)
+                    #self.ax.fill_between(x, y2[i], y2[i]+self.y_indices[i])
+        for i in range(len(self.y)):
+            self.ax.plot(self.x, self.y[i]+self.y_indices[i], '-', color=self.ycolour)
         if invert_x:
             self.ax.invert_xaxis()
         self.ax.set_xlim([x[0], x[-1]])
@@ -723,9 +744,8 @@ class LineBuilder:
         self.cid_release = self.canvas.mpl_connect('button_release_event', self.on_release)
         self.cid_move = self.canvas.mpl_connect('motion_notify_event', self.on_move)
         self.cid_home = self.canvas.mpl_connect('home_event', self.on_home) 
-        pylab.show()
         self.background = self.canvas.copy_from_bbox(self.ax.bbox)
-        self._drawing = False
+        pylab.show()
 
 
     def check_mode(self):
@@ -733,18 +753,13 @@ class LineBuilder:
         return tb.mode
     
     def on_home(self, event):
-        if self.check_mode() != '':
-            redraw_line = False
-            if self.line is not None:
-                redraw_line = True
-                self.line = None
-            self.canvas.draw()
-            self.background = self.canvas.copy_from_bbox(self.ax.bbox)
-            if redraw_line:
-                self.line, = self.ax.plot(self.xs, self.ys, '-+', color='r', lw=self.lw, animated=True)
-            return
-
-        
+        self.canvas.draw()
+        self.background = self.canvas.copy_from_bbox(self.ax.bbox)
+        if self.line is not None:
+            self.ax.draw_artist(self.line)
+            self.ax.draw_artist(self.data_line)
+        self.canvas.blit(self.ax.bbox) 
+        return
 
 
     def on_press(self, event):
@@ -774,7 +789,6 @@ class LineBuilder:
                 self.background = self.canvas.copy_from_bbox(self.ax.bbox)
                 self.ax.draw_artist(self.line)
                 self.canvas.blit(self.ax.bbox) 
-                self.data_line = None
 
         if event.button == 3 and self.line is not None:
             if len(self.xs) > 1:
@@ -784,21 +798,13 @@ class LineBuilder:
                 self.lines.append(numpy.array([self.xs, self.ys]))
                 self.xs, self.ys = [], []
                 self.line = None
-                line_x = []
-                line_y = []
-                for i in range(len(self.lines[-1][0])-1):
-                    line = self.lines[-1]
-                    x1, y1, x2, y2 = line[0][i], line[1][i], line[0][i+1], line[1][i+1]
-                    x, y, y_index = self.get_neighbours([x1, x2], [y1, y2])
-                    if x is not None and y is not None:
-                        line_x = line_x+list(x)
-                        line_y = line_y+y_index
-                self.data_lines.append([line_x, line_y])
+                self.data_lines.append(self.get_polygon_neighbours(self.lines[-1]))
             else:
                 self.canvas.draw()
                 self.background = self.canvas.copy_from_bbox(self.ax.bbox)
                 self.xs, self.ys = [], []
                 self.line = None
+                self.data_line = None
             
 
     def on_release(self, event):
@@ -811,6 +817,8 @@ class LineBuilder:
             self.background = self.canvas.copy_from_bbox(self.ax.bbox)
             if redraw_line:
                 self.line, = self.ax.plot(self.xs, self.ys, '-+', color='r', lw=self.lw, animated=True)
+                self.ax.draw_artist(self.line)
+                self.canvas.blit(self.ax.bbox) 
             return
 
     def on_move(self, event):
@@ -832,6 +840,23 @@ class LineBuilder:
         if self.data_line is not None:
             self.ax.draw_artist(self.data_line)
         self.canvas.blit(self.ax.bbox) 
+
+    def get_polygon_neighbours(self, line):
+        """
+        Returns the nearest datum in each spectrum as it is intersected by a
+        polygonal line consisting of [[x coordinates], [y coordinates]].
+        """
+        line_xs = []
+        line_ys = []
+        for i in range(len(line[0])-1):
+            x1, y1, x2, y2 = line[0][i], line[1][i], line[0][i+1], line[1][i+1]
+            x, y, y_index = self.get_neighbours([x1, x2], [y1, y2])
+            if x is not None and y is not None:
+                line_xs = line_xs+list(x)
+                line_ys = line_ys+y_index
+        return [line_xs, line_ys]
+            
+
 
     def get_neighbours(self, xs, ys):
         """

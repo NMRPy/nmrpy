@@ -1415,7 +1415,13 @@ class FidArray(Base):
     def _data_traces(self, data_traces):
         self.__data_traces = data_traces 
 
-    def _select_data_trace(self, extra_data=None, lw=1, voff=0.1):
+    def _select_data_trace(self, 
+        extra_x=None, 
+        extra_y=None, 
+        ycolour='k',
+        y2colour='b',
+        lw=1, 
+        voff=0.1):
         """
         Instantiate an trace selection widget. This is useful for peak-picking
         and integral-selection when data are subject to drift.
@@ -1425,7 +1431,13 @@ class FidArray(Base):
         if not len(self.deconvoluted_integrals):
             raise AttributeError('no integration data')
         global _select_trace_widget
-        _select_trace_widget = DataTraceSelector(self, extra_data=extra_data, voff=voff, lw=lw)
+        _select_trace_widget = DataTraceSelector(self, 
+            extra_x=extra_x, 
+            extra_y=extra_y, 
+            ycolour=ycolour,
+            y2colour=y2colour,
+            voff=voff, 
+            lw=lw)
         self._data_traces = [dict(zip(i[1], i[0])) for i in _select_trace_widget.traces]
 
 
@@ -1605,7 +1617,7 @@ class FidArray(Base):
     #    for trace in self._data_traces:
     #        for  
 
-    def _get_all_peakshapes(self):
+    def _get_all_summed_peakshapes(self):
         """
         Returns peakshapes for all FIDs
         """
@@ -1616,12 +1628,48 @@ class FidArray(Base):
             peaks.append(Fid._f_pks(fid._deconvoluted_peaks, x))
         return peaks
 
+    def _get_all_list_peakshapes(self):
+        """
+        Returns peakshapes for all FIDs
+        """
+        peaks = []
+        for fid in self.get_fids():
+            #x = numpy.arange(len(self.get_fids()[0].data))
+            x = numpy.arange(len(self.get_fids()[0].data))
+            peaks.append(Fid._f_pks_list(fid._deconvoluted_peaks, x))
+        return peaks
+
+    def _get_truncated_peak_shapes_for_plotting(self):
+        peakshapes = self._get_all_list_peakshapes()
+        ppms = [fid._ppm for fid in self.get_fids()]
+        peakshapes_short_x = []
+        peakshapes_short_y = []
+        for ps, ppm in zip(peakshapes, ppms):
+            pk_y = []
+            pk_x = []
+            for pk in ps:
+                pk_ind = pk > 0.1*pk.max()
+                pk_x.append(ppm[pk_ind])
+                pk_y.append(pk[pk_ind])
+            peakshapes_short_x.append(pk_x)
+            peakshapes_short_y.append(pk_y)
+        return peakshapes_short_x, peakshapes_short_y
+
     def select_integral_traces(self, voff=0.1, lw=1):
         if self.data is None:
             raise AttributeError('No FIDs.')
         if self.deconvoluted_integrals is None:
             raise AttributeError('No integrals.')
-        self._select_data_trace(extra_data=self._get_all_peakshapes(), lw=lw, voff=voff)
+        #peakshapes = self._get_all_summed_peakshapes()
+        pk_x, pk_y = self._get_truncated_peak_shapes_for_plotting()
+        self._select_data_trace(
+            extra_x=pk_x, 
+            extra_y=pk_y, 
+            ycolour='0.5',
+            y2colour='b',
+            #extra_y=peakshapes, 
+            lw=0.5, 
+            voff=voff)
         #for trace in self._data_traces:
 
     def save_to_file(self, filename=None):
