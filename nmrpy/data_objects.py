@@ -1691,7 +1691,7 @@ class FidArray(Base):
             #extra_y=peakshapes, 
             lw=0.5, 
             voff=voff)
-        decon_peaks = [i.transpose()[0] for i in self._deconvoluted_peaks]
+        decon_peaks = numpy.array([i.transpose()[0] for i in self._deconvoluted_peaks])
         trace_dict = {}
         for t in range(len(self._data_traces)):
             trace = self._data_traces[t]
@@ -1719,8 +1719,14 @@ class FidArray(Base):
         if self._integral_traces is None:
             raise AttributeError('No integral traces. First run select_integral_traces().')
         integrals_set = {}
+        decon_set = self.deconvoluted_integrals 
         for i, tr in self._integral_traces.items():
-            integrals = [self.deconvoluted_integrals[fid][pk] for fid, pk in tr.items()]
+            tr_keys = numpy.array([fid for fid in tr.keys()])
+            tr_vals = numpy.array([val for val in tr.values()])
+            tr_sort = numpy.argsort(tr_keys)
+            tr_keys = tr_keys[tr_sort]
+            tr_vals = tr_vals[tr_sort]
+            integrals = decon_set[tr_keys, tr_vals]
             integrals_set[i] = integrals    
         return integrals_set
 
