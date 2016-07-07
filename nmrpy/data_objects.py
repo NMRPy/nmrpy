@@ -1671,6 +1671,7 @@ class FidArray(Base):
             lw=0.5, 
             voff=voff)
         #for trace in self._data_traces:
+             
 
     def save_to_file(self, filename=None):
         """

@@ -833,7 +833,7 @@ class LineBuilder:
             return
         self.line.set_data(self.xs+[self._x], self.ys+[self._y])
         self.ax.draw_artist(self.line)
-        self.datax, self.datay, y_index = self.get_neighbours([self.xs[-1], self._x], [self.ys[-1], self._y]) 
+        self.datax, self.datay, x_index, y_index = self.get_neighbours([self.xs[-1], self._x], [self.ys[-1], self._y]) 
         if self.data_line is None and self.datax is not None and self.datay is not None:
             self.data_line, = self.ax.plot(self.datax, self.datay, '-', color='r', lw=2*self.lw, animated=True)
         if self.data_line is not None and self.datax is not None and self.datay is not None:
@@ -851,14 +851,12 @@ class LineBuilder:
         line_ys = []
         for i in range(len(line[0])-1):
             x1, y1, x2, y2 = line[0][i], line[1][i], line[0][i+1], line[1][i+1]
-            x, y, y_index = self.get_neighbours([x1, x2], [y1, y2])
+            x, y, x_index, y_index = self.get_neighbours([x1, x2], [y1, y2])
             if x is not None and y is not None:
                 line_xs = line_xs+list(x)
                 line_ys = line_ys+y_index
         return [line_xs, line_ys]
             
-
-
     def get_neighbours(self, xs, ys):
         """
         For a pair of coordinates (xs = [x1, x2], ys = [y1, y2]), return the
@@ -868,20 +866,22 @@ class LineBuilder:
         """
         ymask = list((self.y_indices <= max(ys)) * (self.y_indices >= min(ys)))
         if True not in ymask:
-            return None, None, None
+            return None, None, None, None
         y_lo = ymask.index(True)
         y_hi = len(ymask)-ymask[::-1].index(True)
         x_neighbours = []
         y_neighbours = []
         y_indices = [i for i in range(y_lo, y_hi)]
+        x_indices = []
         for i in y_indices:
             x = [self.x[0], self.x[-1], xs[0], xs[1]]    
             y = [self.y_indices[i], self.y_indices[i], ys[0], ys[1]]    
             x, y = self.get_intersection(x, y)
             x = numpy.argmin(abs(self.x-x))
+            x_indices.append(x)
             x_neighbours.append(self.x[x])
             y_neighbours.append(self.y[i][x]+self.y_indices[i])
-        return x_neighbours, y_neighbours, y_indices
+        return x_neighbours, y_neighbours, x_indices, y_indices
 
     @staticmethod
     def get_intersection(x, y):
