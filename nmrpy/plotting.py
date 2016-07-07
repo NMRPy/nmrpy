@@ -734,6 +734,8 @@ class LineBuilder:
             self.ax.plot(self.x, self.y[i]+self.y_indices[i], '-', color=self.ycolour)
         if invert_x:
             self.ax.invert_xaxis()
+        ylim = self.ax.get_ylim()
+        self.ax.set_ylim([ylim[0], ylim[1]*1.1])
         self.ax.set_xlim([x[0], x[-1]])
         self.ax.set_xlabel(xlabel)
         self.ax.set_ylabel(ylabel)

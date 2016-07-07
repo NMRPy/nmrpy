@@ -1217,6 +1217,19 @@ class FidArray(Base):
             deconvoluted_integrals.append(fid.deconvoluted_integrals)
         return numpy.array(deconvoluted_integrals)
 
+    @property
+    def _deconvoluted_peaks(self):
+        """
+        Collected :class:`~nmrpy.data_objects.Fid._deconvoluted_peaks`
+        """
+        deconvoluted_peaks = []
+        for fid in self.get_fids():
+            try:
+                deconvoluted_peaks.append(fid._deconvoluted_peaks)
+            except:
+                deconvoluted_peaks.append([])
+        return numpy.array(deconvoluted_peaks)
+
     def add_fid(self, fid):
         """
         Add an :class:`~nmrpy.data_objects.Fid` object to this :class:`~nmrpy.data_objects.FidArray`, using a unique id.
@@ -1414,6 +1427,14 @@ class FidArray(Base):
     @_data_traces.setter
     def _data_traces(self, data_traces):
         self.__data_traces = data_traces 
+
+    @property
+    def _integral_traces(self):
+        return self.__integral_traces
+
+    @_integral_traces.setter
+    def _integral_traces(self, integral_traces):
+        self.__integral_traces = integral_traces 
 
     def _select_data_trace(self, 
         extra_x=None, 
@@ -1670,8 +1691,38 @@ class FidArray(Base):
             #extra_y=peakshapes, 
             lw=0.5, 
             voff=voff)
-        #for trace in self._data_traces:
-             
+        decon_peaks = numpy.transpose(numpy.transpose(self._deconvoluted_peaks)[0])
+        trace_dict = {}
+        for t in range(len(self._data_traces)):
+            trace = self._data_traces[t]
+            integrals = {}
+            for fid, indx in trace.items():
+                integrals[fid] = numpy.argmin(abs(decon_peaks[fid]-indx))
+            trace_dict[t] = integrals
+        last_fid = (len(self.get_fids())-1)
+        for i in trace_dict:
+            tmin = min(trace_dict[i])
+            tminval = trace_dict[i][tmin]
+            if tmin > 0:
+                for j in range(0, tmin):
+                    trace_dict[i][j] = tminval
+            tmax = max(trace_dict[i])
+            tmaxval = trace_dict[i][tmax]
+            if tmax < last_fid:
+                for j in range(tmax, last_fid+1):
+                    trace_dict[i][j] = tmaxval
+        self._integral_traces = trace_dict
+                
+    def get_integrals_from_traces(self):
+        if self.deconvoluted_integrals is None:
+            raise AttributeError('No integrals.')
+        if self._integral_traces is None:
+            raise AttributeError('No integral traces. First run select_integral_traces().')
+        integrals_set = {}
+        for i, tr in self._integral_traces.items():
+            integrals = [self.deconvoluted_integrals[fid][pk] for fid, pk in tr.items()]
+            integrals_set[i] = integrals    
+        return integrals_set
 
     def save_to_file(self, filename=None):
         """
