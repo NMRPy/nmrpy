@@ -1691,7 +1691,7 @@ class FidArray(Base):
             #extra_y=peakshapes, 
             lw=0.5, 
             voff=voff)
-        decon_peaks = numpy.transpose(numpy.transpose(self._deconvoluted_peaks)[0])
+        decon_peaks = [i.transpose()[0] for i in p._deconvoluted_peaks]
         trace_dict = {}
         for t in range(len(self._data_traces)):
             trace = self._data_traces[t]
