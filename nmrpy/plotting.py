@@ -798,7 +798,7 @@ class LineBuilder:
                 self.lines.append(numpy.array([self.xs, self.ys]))
                 self.xs, self.ys = [], []
                 self.line = None
-                self.data_lines.append(self.get_polygon_neighbours(self.lines[-1]))
+                self.data_lines.append(self.get_polygon_neighbours_indices(self.lines[-1]))
                 self.data_line = None
             else:
                 self.canvas.draw()
@@ -842,7 +842,7 @@ class LineBuilder:
             self.ax.draw_artist(self.data_line)
         self.canvas.blit(self.ax.bbox) 
 
-    def get_polygon_neighbours(self, line):
+    def get_polygon_neighbours_data(self, line):
         """
         Returns the nearest datum in each spectrum as it is intersected by a
         polygonal line consisting of [[x coordinates], [y coordinates]].
@@ -855,6 +855,21 @@ class LineBuilder:
             if x is not None and y is not None:
                 line_xs = line_xs+list(x)
                 line_ys = line_ys+y_index
+        return [line_xs, line_ys]
+
+    def get_polygon_neighbours_indices(self, line):
+        """
+        Returns the nearest datum in each spectrum as it is intersected by a
+        polygonal line consisting of [[x coordinates], [y coordinates]].
+        """
+        line_xs = []
+        line_ys = []
+        for i in range(len(line[0])-1):
+            x1, y1, x2, y2 = line[0][i], line[1][i], line[0][i+1], line[1][i+1]
+            x, y, x_index, y_index = self.get_neighbours([x1, x2], [y1, y2])
+            if x_index is not None and y_index is not None:
+                line_xs = line_xs+list(x_index)
+                line_ys = line_ys+list(y_index)
         return [line_xs, line_ys]
             
     def get_neighbours(self, xs, ys):
