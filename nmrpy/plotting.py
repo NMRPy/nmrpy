@@ -784,7 +784,7 @@ class LineBuilder:
                 self.xs.append(event.xdata)
                 self.ys.append(event.ydata)
                 if self.line is None:
-                    self.line, = self.ax.plot(self.xs, self.ys, '-+', color='r', lw=self.lw, animated=True)
+                    self.line, = self.ax.plot(self.xs, self.ys, '-+', color='r', lw=2*self.lw, animated=True)
                 self.line.set_data(self.xs, self.ys)
                 self.background = self.canvas.copy_from_bbox(self.ax.bbox)
                 self.ax.draw_artist(self.line)
@@ -792,13 +792,14 @@ class LineBuilder:
 
         if event.button == 3 and self.line is not None:
             if len(self.xs) > 1:
-                self._visual_lines.append(self.ax.plot(self.xs, self.ys, '-+', color='b', lw=self.lw)[0])
+                self._visual_lines.append(self.ax.plot(self.xs, self.ys, '-+', color='b', lw=2*self.lw)[0])
                 self.canvas.draw()
                 self.background = self.canvas.copy_from_bbox(self.ax.bbox)
                 self.lines.append(numpy.array([self.xs, self.ys]))
                 self.xs, self.ys = [], []
                 self.line = None
                 self.data_lines.append(self.get_polygon_neighbours(self.lines[-1]))
+                self.data_line = None
             else:
                 self.canvas.draw()
                 self.background = self.canvas.copy_from_bbox(self.ax.bbox)
@@ -816,7 +817,7 @@ class LineBuilder:
             self.canvas.draw()
             self.background = self.canvas.copy_from_bbox(self.ax.bbox)
             if redraw_line:
-                self.line, = self.ax.plot(self.xs, self.ys, '-+', color='r', lw=self.lw, animated=True)
+                self.line, = self.ax.plot(self.xs, self.ys, '-+', color='r', lw=2*self.lw, animated=True)
                 self.ax.draw_artist(self.line)
                 self.canvas.blit(self.ax.bbox) 
             return
@@ -834,7 +835,7 @@ class LineBuilder:
         self.ax.draw_artist(self.line)
         self.datax, self.datay, y_index = self.get_neighbours([self.xs[-1], self._x], [self.ys[-1], self._y]) 
         if self.data_line is None and self.datax is not None and self.datay is not None:
-            self.data_line, = self.ax.plot(self.datax, self.datay, 'o', color='r', animated=True)
+            self.data_line, = self.ax.plot(self.datax, self.datay, '-', color='r', lw=2*self.lw, animated=True)
         if self.data_line is not None and self.datax is not None and self.datay is not None:
             self.data_line.set_data(self.datax, self.datay)
         if self.data_line is not None:
