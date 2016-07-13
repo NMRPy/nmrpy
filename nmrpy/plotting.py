@@ -554,6 +554,7 @@ class DataSelector:
                         alpha=0.2,
                         color='0.5',
                         edgecolor='k')
+
     def makeline(self, x):
         return self.ax.vlines(x, self.ax_lims[0], self.ax_lims[1], color='#CC0000', lw=1)
 
@@ -915,9 +916,212 @@ class LineBuilder:
 
 
 
+class SpanSelectorMixin:
 
+    def __init__(self):
+        self.minspan = 0
+        self.rect = None
+        self.rangespans = []
+        self.rectprops = dict(facecolor='0.5', alpha=0.2)
+        for rng in self.ranges:
+            self.rangespans.append(self.makespan(rng[1], rng[0]-rng[1]))
 
+        trans = blended_transform_factory(
+            self.ax.transData,
+            self.ax.transAxes)
+        w, h = 0, 1
+        self.rect = Rectangle([0, 0], w, h,
+                              transform=trans,
+                              visible=False,
+                              **self.rectprops
+                              )
+        self.ax.add_patch(self.rect)
 
+    def makespan(self, left, width):
+        return self.ax.bar(left=left,
+                        height=sum(abs(self.ylims)),
+                        width=width,
+                        bottom=self.ylims[0],
+                        alpha=0.2,
+                        color='0.5',
+                        edgecolor='k')
+
+    def press(self, event):
+        if event.button == 3:
+            self.buttonDown = True
+            self.pressv = event.xdata
+
+    def release(self, event):
+        self.rect.set_visible(False)
+        vmin = numpy.round(self.pressv, 2)
+        vmax = numpy.round(event.xdata or self.prev[0], 2)
+        if vmin > vmax:
+            vmin, vmax = vmax, vmin
+        span = vmax - vmin
+        self.pressv = None
+        spantest = False
+        if len(self.ranges) > 0:
+            for i in self.ranges:
+                print(i, vmin, vmax)
+                if (vmin >= i[1]) and (vmin <= i[0]):
+                    spantest = True
+                if (vmax >= i[1]) and (vmax <= i[0]):
+                    spantest = True
+        if span > self.minspan and spantest is False:
+            self.ranges.append([numpy.round(vmin, 2), numpy.round(vmax, 2)])
+            self.rangespans.append(self.makespan(vmin, span))
+        self.canvas.draw()
+        self.ranges = [numpy.sort(i)[::-1] for i in self.ranges]
+
+class NewDataSelector(SpanSelectorMixin):
+    """Interactive selector widget"""
+
+    def __init__(self, 
+                data, 
+                params, 
+                peaks=None, 
+                ranges=None, 
+                title=None, 
+                voff=0.3, 
+                label=None):
+
+        if not Plot._is_iter(data):
+            raise AttributeError('data must be iterable.')
+        self.data = numpy.array(data)
+        self.params = params
+        self.ranges = []
+        self.peaks = []
+        if peaks is not None:
+            self.peaks = list(peaks)
+        if ranges is not None:
+            self.ranges = list(ranges)
+        self.voff = voff
+        self.title = title
+        self.label = label
+
+        self._make_basic_fig()
+
+        self.prev = (0, 0)
+        self.peaklines = {}
+        self.visible = True
+        self.canvas = self.ax.figure.canvas
+        self.canvas.mpl_connect('motion_notify_event', self.onmove)
+        self.canvas.mpl_connect('button_press_event', self.press)
+        self.canvas.mpl_connect('button_release_event', self.release)
+
+        self.pressv = None
+        self.buttonDown = False
+        self.prev = (0, 0)
+        
+        super().__init__() #calling SpanSelectorMixin's init
+
+        for x in self.peaks:
+            self.peaklines[x] = self.makeline(x)
+        cursor = Cursor(self.ax, useblit=True, color='k', linewidth=0.5)
+        cursor.horizOn = False
+        pylab.show()
+
+    def _make_basic_fig(self, *args, **kwargs):
+        self.fig = pylab.figure(figsize=[15, 7.5])
+        self.ax = self.fig.add_subplot(111)
+        if len(self.data.shape)==1:
+            ppm = numpy.mgrid[self.params['sw_left']-self.params['sw']:self.params['sw_left']:complex(self.data.shape[0])]
+            self.ax.plot(ppm[::-1], self.data, color='k', lw=1)
+        elif len(self.data.shape)==2:
+            cl = dict(zip(range(len(self.data)), pylab.cm.viridis(numpy.linspace(0,1,len(self.data)))))
+            ppm = numpy.mgrid[self.params['sw_left']-self.params['sw']:self.params['sw_left']:complex(self.data.shape[1])]
+            inc_orig = self.voff*self.data.max()
+            inc = inc_orig.copy()
+            #this is reversed for zorder
+            for i,j in zip(range(len(self.data))[::-1], self.data[::-1]):
+                self.ax.plot(ppm[::-1], j+inc, color=cl[i], lw=1)
+                inc -= inc_orig/len(self.data)
+        self.ax.set_xlabel('ppm')
+        self.ylims = numpy.array([self.ax.get_ylim()[0], self.data.max() + abs(self.ax.get_ylim()[0])])
+        self.ax.set_ylim(self.ylims)#self.ax.get_ylim()[0], self.data.max()*1.1])
+        self.ax_lims = self.ax.get_ylim()
+        self.xlims = [ppm[-1], ppm[0]]
+        self.ax.set_xlim(self.xlims)
+        self.fig.suptitle(self.title, size=20)
+        self.ax.text(
+            0.95 *
+            self.ax.get_xlim()[0],
+            0.7 *
+            self.ax.get_ylim()[1],
+            self.label),
+        self.ax.set_ylim(self.ylims)
+
+    def makeline(self, x):
+        return self.ax.vlines(x, self.ax_lims[0], self.ax_lims[1], color='#CC0000', lw=1)
+
+    def press(self, event):
+        tb = pylab.get_current_fig_manager().toolbar
+        if tb.mode == '':
+            x = numpy.round(event.xdata, 2)
+            #middle
+            if event.button == 2:
+                if event.key == None:
+                    #find and delete nearest peakline
+                    if len(self.peaks) > 0:
+                        x = event.xdata
+                        delete_peak = numpy.argmin([abs(i-x) for i in self.peaks])
+                        old_peak = self.peaks.pop(delete_peak)
+                        peakline = self.peaklines.pop(old_peak)
+                        peakline.remove()
+                elif event.key == 'control':
+                    #find and delete range
+                    if len(self.ranges) > 0:
+                        x = event.xdata
+                        rng = 0
+                        while rng < len(self.ranges):
+                            if x >= (self.ranges[rng])[1] and x <= (self.ranges[rng])[0]:
+                                self.ranges.pop(rng) 
+                                rangespan = self.rangespans.pop(rng)
+                                rangespan.remove()
+                                break
+                            rng += 1
+
+            #right
+            try:
+                super().press(event)
+            except:
+                pass
+
+            #left
+            if event.button == 1 and (x >= self.xlims[1]) and (x <= self.xlims[0]):
+                self.peaks.append(x)
+                self.peaklines[x] = self.makeline(x)
+                print(x)
+                self.peaks = sorted(self.peaks)[::-1]
+            self.canvas.draw()
+
+    def release(self, event):
+        if self.pressv is None or not self.buttonDown:
+            return
+        self.buttonDown = False
+        try:
+            super().release(event)
+        except:
+            pass
+
+    def onmove(self, event):
+        if self.pressv is None or self.buttonDown is False or event.inaxes is None:
+                return
+        self.rect.set_visible(self.visible)
+        x, y = event.xdata, event.ydata
+        self.prev = x, y
+        v = x
+        minv, maxv = v, self.pressv
+        if minv > maxv:
+                minv, maxv = maxv, minv
+        self.rect.set_xy([minv, self.rect.xy[1]])
+        self.rect.set_width(maxv-minv)
+        vmin = self.pressv
+        vmax = event.xdata  # or self.prev[0]
+        if vmin > vmax:
+                vmin, vmax = vmax, vmin
+        self.canvas.draw_idle()
+        return False
 
         
 if __name__ == '__main__':
