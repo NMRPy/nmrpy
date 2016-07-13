@@ -919,11 +919,14 @@ class LineSelectorMixin:
 
     def __init__(self):
         self.peaklines = {}
+        for x in self.peaks:
+            self.peaklines[x] = self.makeline(x)
 
     def makeline(self, x):
         return self.ax.vlines(x, self.ax_lims[0], self.ax_lims[1], color='#CC0000', lw=1)
 
     def press(self, event):
+        x = numpy.round(event.xdata, 2)
         if event.button == 1 and (x >= self.xlims[1]) and (x <= self.xlims[0]):
             self.peaks.append(x)
             self.peaklines[x] = self.makeline(x)
@@ -1001,7 +1004,7 @@ class SpanSelectorMixin:
         self.rect.set_xy([minv, self.rect.xy[1]])
         self.rect.set_width(maxv-minv)
 
-class NewDataSelector(SpanSelectorMixin):
+class NewDataSelector(LineSelectorMixin):
     """Interactive selector widget"""
 
     def __init__(self, 
@@ -1041,8 +1044,6 @@ class NewDataSelector(SpanSelectorMixin):
         
         super().__init__() #calling SpanSelectorMixin's init
 
-        for x in self.peaks:
-            self.peaklines[x] = self.makeline(x)
         cursor = Cursor(self.ax, useblit=True, color='k', linewidth=0.5)
         cursor.horizOn = False
         pylab.show()
