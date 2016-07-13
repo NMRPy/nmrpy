@@ -915,6 +915,20 @@ class LineBuilder:
         return px, py
 
 
+class LineSelectorMixin:
+
+    def __init__(self):
+        self.peaklines = {}
+
+    def makeline(self, x):
+        return self.ax.vlines(x, self.ax_lims[0], self.ax_lims[1], color='#CC0000', lw=1)
+
+    def press(self, event):
+        if event.button == 1 and (x >= self.xlims[1]) and (x <= self.xlims[0]):
+            self.peaks.append(x)
+            self.peaklines[x] = self.makeline(x)
+            print(x)
+            self.peaks = sorted(self.peaks)[::-1]
 
 class SpanSelectorMixin:
 
@@ -973,6 +987,20 @@ class SpanSelectorMixin:
         self.canvas.draw()
         self.ranges = [numpy.sort(i)[::-1] for i in self.ranges]
 
+    def onmove(self, event):
+        x, y = self.prev
+        v = x
+        minv, maxv = v, self.pressv
+        if minv > maxv:
+                minv, maxv = maxv, minv
+        vmin = self.pressv
+        vmax = event.xdata  # or self.prev[0]
+        if vmin > vmax:
+                vmin, vmax = vmax, vmin
+        self.rect.set_visible(self.visible)
+        self.rect.set_xy([minv, self.rect.xy[1]])
+        self.rect.set_width(maxv-minv)
+
 class NewDataSelector(SpanSelectorMixin):
     """Interactive selector widget"""
 
@@ -1001,8 +1029,6 @@ class NewDataSelector(SpanSelectorMixin):
 
         self._make_basic_fig()
 
-        self.prev = (0, 0)
-        self.peaklines = {}
         self.visible = True
         self.canvas = self.ax.figure.canvas
         self.canvas.mpl_connect('motion_notify_event', self.onmove)
@@ -1051,8 +1077,6 @@ class NewDataSelector(SpanSelectorMixin):
             self.label),
         self.ax.set_ylim(self.ylims)
 
-    def makeline(self, x):
-        return self.ax.vlines(x, self.ax_lims[0], self.ax_lims[1], color='#CC0000', lw=1)
 
     def press(self, event):
         tb = pylab.get_current_fig_manager().toolbar
@@ -1088,11 +1112,6 @@ class NewDataSelector(SpanSelectorMixin):
                 pass
 
             #left
-            if event.button == 1 and (x >= self.xlims[1]) and (x <= self.xlims[0]):
-                self.peaks.append(x)
-                self.peaklines[x] = self.makeline(x)
-                print(x)
-                self.peaks = sorted(self.peaks)[::-1]
             self.canvas.draw()
 
     def release(self, event):
@@ -1107,19 +1126,12 @@ class NewDataSelector(SpanSelectorMixin):
     def onmove(self, event):
         if self.pressv is None or self.buttonDown is False or event.inaxes is None:
                 return
-        self.rect.set_visible(self.visible)
         x, y = event.xdata, event.ydata
         self.prev = x, y
-        v = x
-        minv, maxv = v, self.pressv
-        if minv > maxv:
-                minv, maxv = maxv, minv
-        self.rect.set_xy([minv, self.rect.xy[1]])
-        self.rect.set_width(maxv-minv)
-        vmin = self.pressv
-        vmax = event.xdata  # or self.prev[0]
-        if vmin > vmax:
-                vmin, vmax = vmax, vmin
+        try:
+            super().onmove(event)
+        except:
+            pass
         self.canvas.draw_idle()
         return False
 
