@@ -821,6 +821,7 @@ class PolySelectorMixin(BaseSelectorMixin):
                 )
  
     def press(self, event):
+        super().press(event)
         if self.check_mode() != '':
             return
         if event.xdata is None or event.ydata is None:
@@ -868,6 +869,7 @@ class PolySelectorMixin(BaseSelectorMixin):
         self.redraw()
     
     def onmove(self, event):
+        super().onmove(event)
         self.psm._x = event.xdata
         self.psm._y = event.ydata
         if self.psm.line is not None:
@@ -1146,8 +1148,9 @@ def dataselector_zoom(self, *args, **kwargs):
     self.canvas.callbacks.process(s, event)
 
 
-#class DataSelector(PolySelectorMixin):#LineSelectorMixin, SpanSelectorMixin):
-class DataSelector(LineSelectorMixin, SpanSelectorMixin):
+class DataSelector(PolySelectorMixin, SpanSelectorMixin):
+#class DataSelector(SpanSelectorMixin, PolySelectorMixin):
+#class DataSelector(LineSelectorMixin, SpanSelectorMixin):
     """Interactive selector widget"""
 
     def __init__(self, 
