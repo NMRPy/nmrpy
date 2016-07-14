@@ -1111,6 +1111,8 @@ class SpanSelectorMixin(BaseSelectorMixin):
 
     def onmove(self, event):
         super().onmove(event)
+        if self.pressv is None or self.buttonDown is False:
+            return
         if event.button == 3:
             x, y = self.prev
             v = x
@@ -1144,8 +1146,8 @@ def dataselector_zoom(self, *args, **kwargs):
     self.canvas.callbacks.process(s, event)
 
 
-class DataSelector(PolySelectorMixin):#LineSelectorMixin, SpanSelectorMixin):
-#class DataSelector(LineSelectorMixin, SpanSelectorMixin):
+#class DataSelector(PolySelectorMixin):#LineSelectorMixin, SpanSelectorMixin):
+class DataSelector(LineSelectorMixin, SpanSelectorMixin):
     """Interactive selector widget"""
 
     def __init__(self, 
@@ -1269,7 +1271,6 @@ class DataSelector(PolySelectorMixin):#LineSelectorMixin, SpanSelectorMixin):
         self.canvas.blit(self.ax.bbox) 
 
     def onmove(self, event):
-        #if self.pressv is None or self.buttonDown is False or event.inaxes is None:
         if event.inaxes is None:
                 return
         x, y = event.xdata, event.ydata
