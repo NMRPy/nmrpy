@@ -773,6 +773,9 @@ class BaseSelectorMixin:
     def redraw(self):
         pass
 
+    def change_visibility(self):
+        pass
+
 class LineSelectorMixin(BaseSelectorMixin):
 
     def __init__(self):
@@ -795,6 +798,14 @@ class LineSelectorMixin(BaseSelectorMixin):
         super().redraw()
         for i, j in self.peaklines.items():
             self.ax.draw_artist(j)
+
+    def change_visibility(self):
+        super().change_visibility()
+        for i, j in self.peaklines.items():
+            if j.visibility is True:
+                j.visibility = False
+            else:
+                j.visibility = True
 
     def press(self, event):
         super().press(event)
@@ -823,6 +834,7 @@ class LineSelectorMixin(BaseSelectorMixin):
     def onmove(self, event):
         super().onmove(event)
         self.redraw()
+
 
 class SpanSelectorMixin(BaseSelectorMixin):
 
@@ -865,6 +877,14 @@ class SpanSelectorMixin(BaseSelectorMixin):
         super().redraw()
         for i in self.rangespans:
             self.ax.draw_artist(i)
+
+    def change_visibility(self):
+        super().change_visibility()
+        for i in self.rangespans:
+            if i.visibility is True:
+                i.visibility = False
+            else:
+                i.visibility = True
 
     def press(self, event):
         super().press(event)
@@ -976,11 +996,12 @@ class DataSelector(LineSelectorMixin, SpanSelectorMixin):
         self.pressv = None
         self.buttonDown = False
         self.prev = (0, 0)
-        self._zoomed = False
         
         #self.canvas.restore_region(self.background)
         super().__init__() #calling parent init
         #self.canvas.blit(self.ax.bbox) 
+
+        self._zoomed = False
 
         NavigationToolbar2.home = dataselector_home
         NavigationToolbar2.zoom = dataselector_zoom
@@ -990,6 +1011,7 @@ class DataSelector(LineSelectorMixin, SpanSelectorMixin):
         self.canvas.mpl_connect('button_release_event', self.release)
         self.canvas.mpl_connect('home_event', self.on_home) 
         self.canvas.mpl_connect('zoom_event', self.on_zoom) 
+        self.canvas.mpl_connect('draw_event', self.on_draw) 
         #self.ax.callbacks.connect('xlim_changed', dataselector_zoom)
         #cursor = Cursor(self.ax, useblit=True, color='k', linewidth=0.5)
         #cursor.horizOn = False
@@ -1034,25 +1056,23 @@ class DataSelector(LineSelectorMixin, SpanSelectorMixin):
         tb = pylab.get_current_fig_manager().toolbar
         return tb.mode
 
-    def on_home(self, event):
-        self._zoomed = False
-        self.canvas.restore_region(self.background)
+    def on_draw(self, event):
+        self.change_visibility()
         self.redraw()
-        self.canvas.blit(self.ax.bbox) 
-        return
+        self.background = self.canvas.copy_from_bbox(self.ax.bbox)
+        self.change_visibility()
+        self.redraw()
+
+    def on_home(self, event):
+        pass
 
     def on_zoom(self, event):
-        self._zoomed = True
-        self.background = self.canvas.copy_from_bbox(self.ax.bbox)
-        self.redraw()
-        self.canvas.blit(self.ax.bbox) 
-
+        pass
 
     def press(self, event):
         tb = pylab.get_current_fig_manager().toolbar
         if tb.mode == '' and event.xdata is not None:
             x = numpy.round(event.xdata, 2)
-
             self.canvas.restore_region(self.background)
             try:
                 super().press(event)
@@ -1083,7 +1103,6 @@ class DataSelector(LineSelectorMixin, SpanSelectorMixin):
         except:
             pass
         self.canvas.blit(self.ax.bbox) 
-        #self.canvas.draw()
 
     def redraw(self):
          try:
@@ -1091,5 +1110,10 @@ class DataSelector(LineSelectorMixin, SpanSelectorMixin):
          except:
              pass
         
+    def change_visibility(self):
+         try:
+             super().change_visibility()
+         except:
+             pass
 if __name__ == '__main__':
     pass
