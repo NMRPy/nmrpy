@@ -15,6 +15,9 @@ from matplotlib.transforms import blended_transform_factory
 from matplotlib.widgets import Cursor
 from matplotlib.backend_bases import NavigationToolbar2, Event
 
+original_home = NavigationToolbar2.home
+original_zoom = NavigationToolbar2.zoom
+
 class Plot():
     """
     Basic 'plot' class containing functions for various types of plots.
@@ -511,7 +514,6 @@ def linebuilder_home(self, *args, **kwargs):
     original_home(self, *args, **kwargs)
     self.canvas.callbacks.process(s, event)
 
-original_home = NavigationToolbar2.home
 
 class LineBuilder:
     def __init__(self, 
@@ -768,6 +770,9 @@ class BaseSelectorMixin:
     def onmove(self, event):
         pass
 
+    def redraw(self):
+        pass
+
 class LineSelectorMixin(BaseSelectorMixin):
 
     def __init__(self):
@@ -785,6 +790,11 @@ class LineSelectorMixin(BaseSelectorMixin):
             lw=1,
             #animated=True
             )[0]
+
+    def redraw(self):
+        super().redraw()
+        for i, j in self.peaklines.items():
+            self.ax.draw_artist(j)
 
     def press(self, event):
         super().press(event)
@@ -804,18 +814,15 @@ class LineSelectorMixin(BaseSelectorMixin):
                     old_peak = self.peaks.pop(delete_peak)
                     peakline = self.peaklines.pop(old_peak)
                     peakline.remove()
-        for i, j in self.peaklines.items():
-            self.ax.draw_artist(j)
+        self.redraw()
 
     def release(self, event):
         super().release(event)
-        for i, j in self.peaklines.items():
-            self.ax.draw_artist(j)
+        self.redraw()
 
     def onmove(self, event):
         super().onmove(event)
-        for i, j in self.peaklines.items():
-            self.ax.draw_artist(j)
+        self.redraw()
 
 class SpanSelectorMixin(BaseSelectorMixin):
 
@@ -827,7 +834,7 @@ class SpanSelectorMixin(BaseSelectorMixin):
         self.rectprops = dict(facecolor='0.5', alpha=0.2)
         for rng in self.ranges:
             self.rangespans.append(self.makespan(rng[1], rng[0]-rng[1]))
-            self.ax.draw_artist(self.rangespans[-1])
+        self.redraw()
         trans = blended_transform_factory(
             self.ax.transData,
             self.ax.transAxes)
@@ -854,6 +861,11 @@ class SpanSelectorMixin(BaseSelectorMixin):
         self.ax.add_patch(rect)
         return rect
 
+    def redraw(self):
+        super().redraw()
+        for i in self.rangespans:
+            self.ax.draw_artist(i)
+
     def press(self, event):
         super().press(event)
         if event.button == 3:
@@ -871,8 +883,7 @@ class SpanSelectorMixin(BaseSelectorMixin):
                         rangespan.remove()
                         break
                     rng += 1
-        for i in self.rangespans:
-            self.ax.draw_artist(i)
+        self.redraw()
 
     def release(self, event):
         super().release(event)
@@ -895,8 +906,7 @@ class SpanSelectorMixin(BaseSelectorMixin):
             self.rangespans.append(self.makespan(vmin, span))
             print('range {} -> {}'.format(vmax, vmin))
         self.ranges = [numpy.sort(i)[::-1] for i in self.ranges]
-        for i in self.rangespans:
-            self.ax.draw_artist(i)
+        self.redraw()
 
 
     def onmove(self, event):
@@ -917,8 +927,22 @@ class SpanSelectorMixin(BaseSelectorMixin):
             #self.canvas.restore_region(self.background)
             self.ax.draw_artist(self.rect)
             #self.canvas.blit(self.ax.bbox) 
-            for i in self.rangespans:
-                self.ax.draw_artist(i)
+            self.redraw()
+
+#this is to catch 'home' events in the dataselector 
+def dataselector_home(self, *args, **kwargs):
+    s = 'home_event'
+    event = Event(s, self)
+    original_home(self, *args, **kwargs)
+    self.canvas.callbacks.process(s, event)
+
+#this is to catch 'zoom' events in the dataselector 
+def dataselector_zoom(self, *args, **kwargs):
+    s = 'zoom_event'
+    event = Event(s, self)
+    original_zoom(self, *args, **kwargs)
+    self.canvas.callbacks.process(s, event)
+
 
 class DataSelector(LineSelectorMixin, SpanSelectorMixin):
     """Interactive selector widget"""
@@ -952,17 +976,26 @@ class DataSelector(LineSelectorMixin, SpanSelectorMixin):
         self.pressv = None
         self.buttonDown = False
         self.prev = (0, 0)
+        self._zoomed = False
         
         #self.canvas.restore_region(self.background)
         super().__init__() #calling parent init
         #self.canvas.blit(self.ax.bbox) 
+
+        NavigationToolbar2.home = dataselector_home
+        NavigationToolbar2.zoom = dataselector_zoom
+
         self.canvas.mpl_connect('motion_notify_event', self.onmove)
         self.canvas.mpl_connect('button_press_event', self.press)
         self.canvas.mpl_connect('button_release_event', self.release)
+        self.canvas.mpl_connect('home_event', self.on_home) 
+        self.canvas.mpl_connect('zoom_event', self.on_zoom) 
+        #self.ax.callbacks.connect('xlim_changed', dataselector_zoom)
         #cursor = Cursor(self.ax, useblit=True, color='k', linewidth=0.5)
         #cursor.horizOn = False
         self.canvas.draw()
         pylab.show()
+
 
     def _make_basic_fig(self, *args, **kwargs):
         self.fig = pylab.figure(figsize=[15, 7.5])
@@ -997,6 +1030,24 @@ class DataSelector(LineSelectorMixin, SpanSelectorMixin):
         self.canvas.draw()
         self.background = self.canvas.copy_from_bbox(self.ax.bbox)
 
+    def check_mode(self):
+        tb = pylab.get_current_fig_manager().toolbar
+        return tb.mode
+
+    def on_home(self, event):
+        self._zoomed = False
+        self.canvas.restore_region(self.background)
+        self.redraw()
+        self.canvas.blit(self.ax.bbox) 
+        return
+
+    def on_zoom(self, event):
+        self._zoomed = True
+        self.background = self.canvas.copy_from_bbox(self.ax.bbox)
+        self.redraw()
+        self.canvas.blit(self.ax.bbox) 
+
+
     def press(self, event):
         tb = pylab.get_current_fig_manager().toolbar
         if tb.mode == '' and event.xdata is not None:
@@ -1008,13 +1059,6 @@ class DataSelector(LineSelectorMixin, SpanSelectorMixin):
             except:
                 pass
             self.canvas.blit(self.ax.bbox) 
-            #for peak, line in self.peaklines.items():
-            #    self.ax.draw_artist(line)
-            #for rangespan in self.rangespans:
-            #    self.ax.draw_artist(rangespan)
-            #self.canvas.blit(self.ax.bbox) 
-            #self.background = self.canvas.copy_from_bbox(self.ax.bbox)
-            #self.canvas.draw()
 
     def release(self, event):
         if self.pressv is None or not self.buttonDown:
@@ -1041,6 +1085,11 @@ class DataSelector(LineSelectorMixin, SpanSelectorMixin):
         self.canvas.blit(self.ax.bbox) 
         #self.canvas.draw()
 
+    def redraw(self):
+         try:
+             super().redraw()
+         except:
+             pass
         
 if __name__ == '__main__':
     pass
