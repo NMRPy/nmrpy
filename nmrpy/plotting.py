@@ -1,3 +1,4 @@
+import logging, traceback
 import numpy
 import scipy
 import pylab
@@ -773,17 +774,141 @@ class BaseSelectorMixin:
     def redraw(self):
         pass
 
-    def change_visibility(self):
-        pass
+
+class PolySelectorMixin(BaseSelectorMixin):
+
+    def __init__(self):
+        super().__init__()
+        class Psm:
+            pass
+        self.psm = Psm()
+        self.psm.xs = []
+        self.psm.ys = []
+        self.psm._x = None
+        self.psm._y = None
+        self.psm.datax = None
+        self.psm.datay = None
+        self.psm.lines = []
+        self.psm.data_lines = []
+        self.psm._visual_lines = []
+        self.psm.line = None
+        self.psm.lw = 1
+
+    def redraw(self):
+        super().redraw()
+        if hasattr(self, 'psm'):
+            for i in self.psm._visual_lines:
+                self.ax.draw_artist(i)
+            if self.psm.line is not None:
+                self.ax.draw_artist(self.psm.line)
+
+    def makepoly(self,
+        xs=None,
+        ys=None,
+        lw=1,
+        colour='r',
+        ms='+',
+        ls='-',
+        ):
+        if xs is not None and ys is not None:
+            return self.ax.plot(
+                xs,
+                ys,
+                lw=lw,
+                color=colour,
+                marker=ms,
+                ls=ls,
+                )
+ 
+    def press(self, event):
+        if self.check_mode() != '':
+            return
+        if event.xdata is None or event.ydata is None:
+            return
+        if event.button == 1:
+            if event.key == 'control':
+                pass
+                #if len(self.psm._visual_lines) > 0:
+                #    x = event.xdata
+                #    y = event.ydata
+                #    trace_dist = [[i[0]-x, i[1]-y] for i in self.psm.lines]
+                #    delete_trace = numpy.argmin([min(numpy.sqrt(i[0]**2+i[1]**2)) for i in trace_dist])
+                #    self.psm.lines.pop(delete_trace)
+                #    self.psm.data_lines.pop(delete_trace)
+                #    trace = self.psm._visual_lines.pop(delete_trace)
+                #    trace.remove()
+                #    self.canvas.draw()
+                #    self.background = self.canvas.copy_from_bbox(self.ax.bbox)
+            else:
+                self.psm.xs.append(event.xdata)
+                self.psm.ys.append(event.ydata)
+                if self.psm.line is None:
+                    self.psm.line, = self.makepoly(
+                        self.psm.xs, 
+                        self.psm.ys, 
+                        lw=2*self.psm.lw,
+                        )
+                else:
+                    self.psm.line.set_data(self.psm.xs, self.psm.ys)
+        if event.button == 3 and self.psm.line is not None:
+            if len(self.psm.xs) > 1:
+                self.psm._visual_lines.append(self.makepoly(
+                        self.psm.xs, 
+                        self.psm.ys, 
+                        lw=self.psm.lw,
+                        colour='b', 
+                        )[0])
+                #self.canvas.draw()
+                #self.background = self.canvas.copy_from_bbox(self.ax.bbox)
+                self.psm.lines.append(numpy.array([self.psm.xs, self.psm.ys]))
+                self.psm.xs, self.psm.ys = [], []
+                self.psm.line = None
+                #self.psm.data_lines.append(self.get_polygon_neighbours_indices(self.lines[-1]))
+                #self.psm.data_line = None
+            else:
+                #self.canvas.draw()
+                #self.background = self.canvas.copy_from_bbox(self.ax.bbox)
+                self.psm.xs, self.psm.ys = [], []
+                self.psm.line = None
+                #self.data_line = None
+        self.redraw()
+    
+    def onmove(self, event):
+        self.psm._x = event.xdata
+        self.psm._y = event.ydata
+        if self.psm.line is not None:
+            xs = self.psm.xs+[self.psm._x]
+            ys = self.psm.ys+[self.psm._y]
+            self.psm.line.set_data(xs, ys)
+        self.redraw()
+              
+
+    #def on_release(self, event):
+    #    if self.check_mode() != '':
+    #        redraw_line = False
+    #        if self.line is not None:
+    #            redraw_line = True
+    #            self.line = None
+    #        self.canvas.draw()
+    #        self.background = self.canvas.copy_from_bbox(self.ax.bbox)
+    #        if redraw_line:
+    #            self.line, = self.ax.plot(self.xs, self.ys, '-+', color='r', lw=2*self.lw, animated=True)
+    #            self.ax.draw_artist(self.line)
+    #            self.canvas.blit(self.ax.bbox) 
+    #        return
 
 class LineSelectorMixin(BaseSelectorMixin):
 
     def __init__(self):
         super().__init__()
-        self.peaklines = {}
-        for x in self.peaks:
-            self.peaklines[x] = self.makeline(x)
-            self.ax.draw_artist(self.peaklines[x])
+        class Lsm:
+            pass
+        self.lsm = Lsm()
+        self.lsm.peaklines = {}
+        self.lsm.peaks = self.peaks
+        for x in self.lsm.peaks:
+            self.lsm.peaklines[x] = self.makeline(x)
+            self.ax.draw_artist(self.lsm.peaklines[x])
                 
     def makeline(self, x):
         return self.ax.plot(
@@ -796,34 +921,28 @@ class LineSelectorMixin(BaseSelectorMixin):
 
     def redraw(self):
         super().redraw()
-        for i, j in self.peaklines.items():
-            self.ax.draw_artist(j)
+        if hasattr(self, 'lsm'):
+            for i, j in self.lsm.peaklines.items():
+                self.ax.draw_artist(j)
 
-    def change_visibility(self):
-        super().change_visibility()
-        for i, j in self.peaklines.items():
-            if j.visibility is True:
-                j.visibility = False
-            else:
-                j.visibility = True
 
     def press(self, event):
         super().press(event)
         x = numpy.round(event.xdata, 2)
         if event.button == 1 and (x >= self.xlims[1]) and (x <= self.xlims[0]):
             print('peak {}'.format(x))
-            self.peaks.append(x)
-            self.peaklines[x] = self.makeline(x)
-            self.peaks = sorted(self.peaks)[::-1]
-            #self.ax.draw_artist(self.peaklines[x])
+            self.lsm.peaks.append(x)
+            self.lsm.peaklines[x] = self.makeline(x)
+            self.lsm.peaks = sorted(self.lsm.peaks)[::-1]
+            #self.ax.draw_artist(self.lsm.peaklines[x])
         #middle
         elif event.button == 2:
             if event.key == None:
                 #find and delete nearest peakline
-                if len(self.peaks) > 0:
-                    delete_peak = numpy.argmin([abs(i-x) for i in self.peaks])
-                    old_peak = self.peaks.pop(delete_peak)
-                    peakline = self.peaklines.pop(old_peak)
+                if len(self.lsm.peaks) > 0:
+                    delete_peak = numpy.argmin([abs(i-x) for i in self.lsm.peaks])
+                    old_peak = self.lsm.peaks.pop(delete_peak)
+                    peakline = self.lsm.peaklines.pop(old_peak)
                     peakline.remove()
         self.redraw()
 
@@ -840,24 +959,28 @@ class SpanSelectorMixin(BaseSelectorMixin):
 
     def __init__(self):
         super().__init__()
-        self.minspan = 0
-        self.rect = None
-        self.rangespans = []
-        self.rectprops = dict(facecolor='0.5', alpha=0.2)
-        for rng in self.ranges:
-            self.rangespans.append(self.makespan(rng[1], rng[0]-rng[1]))
+        class Ssm:
+            pass
+        self.ssm = Ssm()
+        self.ssm.minspan = 0
+        self.ssm.rect = None
+        self.ssm.rangespans = []
+        self.ssm.rectprops = dict(facecolor='0.5', alpha=0.2)
+        self.ssm.ranges = self.ranges
+        for rng in self.ssm.ranges:
+            self.ssm.rangespans.append(self.makespan(rng[1], rng[0]-rng[1]))
         self.redraw()
         trans = blended_transform_factory(
             self.ax.transData,
             self.ax.transAxes)
         w, h = 0, 1
-        self.rect = Rectangle([0, 0], w, h,
+        self.ssm.rect = Rectangle([0, 0], w, h,
                               transform=trans,
                               visible=False,
                               animated=True,
-                              **self.rectprops
+                              **self.ssm.rectprops
                               )
-        self.ax.add_patch(self.rect)
+        self.ax.add_patch(self.ssm.rect)
 
     def makespan(self, left, width):
         trans = blended_transform_factory(
@@ -868,23 +991,17 @@ class SpanSelectorMixin(BaseSelectorMixin):
                               transform=trans,
                               visible=True,
                               #animated=True,
-                              **self.rectprops
+                              **self.ssm.rectprops
                               )
         self.ax.add_patch(rect)
         return rect
 
     def redraw(self):
         super().redraw()
-        for i in self.rangespans:
-            self.ax.draw_artist(i)
+        if hasattr(self, 'ssm'):
+            for i in self.ssm.rangespans:
+                self.ax.draw_artist(i)
 
-    def change_visibility(self):
-        super().change_visibility()
-        for i in self.rangespans:
-            if i.visibility is True:
-                i.visibility = False
-            else:
-                i.visibility = True
 
     def press(self, event):
         super().press(event)
@@ -893,13 +1010,13 @@ class SpanSelectorMixin(BaseSelectorMixin):
             self.pressv = event.xdata
         elif event.button == 2 and event.key == 'control':
             #find and delete range
-            if len(self.ranges) > 0:
+            if len(self.ssm.ranges) > 0:
                 x = event.xdata
                 rng = 0
-                while rng < len(self.ranges):
-                    if x >= (self.ranges[rng])[1] and x <= (self.ranges[rng])[0]:
-                        self.ranges.pop(rng) 
-                        rangespan = self.rangespans.pop(rng)
+                while rng < len(self.ssm.ranges):
+                    if x >= (self.ssm.ranges[rng])[1] and x <= (self.ssm.ranges[rng])[0]:
+                        self.ssm.ranges.pop(rng) 
+                        rangespan = self.ssm.rangespans.pop(rng)
                         rangespan.remove()
                         break
                     rng += 1
@@ -907,7 +1024,7 @@ class SpanSelectorMixin(BaseSelectorMixin):
 
     def release(self, event):
         super().release(event)
-        self.rect.set_visible(False)
+        self.ssm.rect.set_visible(False)
         vmin = numpy.round(self.pressv, 2)
         vmax = numpy.round(event.xdata or self.prev[0], 2)
         if vmin > vmax:
@@ -915,17 +1032,17 @@ class SpanSelectorMixin(BaseSelectorMixin):
         span = vmax - vmin
         self.pressv = None
         spantest = False
-        if len(self.ranges) > 0:
-            for i in self.ranges:
+        if len(self.ssm.ranges) > 0:
+            for i in self.ssm.ranges:
                 if (vmin >= i[1]) and (vmin <= i[0]):
                     spantest = True
                 if (vmax >= i[1]) and (vmax <= i[0]):
                     spantest = True
-        if span > self.minspan and spantest is False:
-            self.ranges.append([numpy.round(vmin, 2), numpy.round(vmax, 2)])
-            self.rangespans.append(self.makespan(vmin, span))
+        if span > self.ssm.minspan and spantest is False:
+            self.ssm.ranges.append([numpy.round(vmin, 2), numpy.round(vmax, 2)])
+            self.ssm.rangespans.append(self.makespan(vmin, span))
             print('range {} -> {}'.format(vmax, vmin))
-        self.ranges = [numpy.sort(i)[::-1] for i in self.ranges]
+        self.ssm.ranges = [numpy.sort(i)[::-1] for i in self.ssm.ranges]
         self.redraw()
 
 
@@ -941,11 +1058,11 @@ class SpanSelectorMixin(BaseSelectorMixin):
             vmax = event.xdata  # or self.prev[0]
             if vmin > vmax:
                     vmin, vmax = vmax, vmin
-            self.rect.set_visible(self.visible)
-            self.rect.set_xy([minv, self.rect.xy[1]])
-            self.rect.set_width(maxv-minv)
+            self.ssm.rect.set_visible(self.visible)
+            self.ssm.rect.set_xy([minv, self.ssm.rect.xy[1]])
+            self.ssm.rect.set_width(maxv-minv)
             #self.canvas.restore_region(self.background)
-            self.ax.draw_artist(self.rect)
+            self.ax.draw_artist(self.ssm.rect)
             #self.canvas.blit(self.ax.bbox) 
             self.redraw()
 
@@ -964,7 +1081,8 @@ def dataselector_zoom(self, *args, **kwargs):
     self.canvas.callbacks.process(s, event)
 
 
-class DataSelector(LineSelectorMixin, SpanSelectorMixin):
+class DataSelector(PolySelectorMixin):#LineSelectorMixin, SpanSelectorMixin):
+#class DataSelector(LineSelectorMixin, SpanSelectorMixin):
     """Interactive selector widget"""
 
     def __init__(self, 
@@ -1057,10 +1175,8 @@ class DataSelector(LineSelectorMixin, SpanSelectorMixin):
         return tb.mode
 
     def on_draw(self, event):
-        self.change_visibility()
         self.redraw()
         self.background = self.canvas.copy_from_bbox(self.ax.bbox)
-        self.change_visibility()
         self.redraw()
 
     def on_home(self, event):
@@ -1076,8 +1192,8 @@ class DataSelector(LineSelectorMixin, SpanSelectorMixin):
             self.canvas.restore_region(self.background)
             try:
                 super().press(event)
-            except:
-                pass
+            except Exception as e:
+                logging.error(traceback.format_exc())
             self.canvas.blit(self.ax.bbox) 
 
     def release(self, event):
@@ -1087,33 +1203,29 @@ class DataSelector(LineSelectorMixin, SpanSelectorMixin):
         self.canvas.restore_region(self.background)
         try:
             super().release(event)
-        except:
-            pass
+        except Exception as e:
+            logging.error(traceback.format_exc())
         self.canvas.blit(self.ax.bbox) 
 
     def onmove(self, event):
-        if self.pressv is None or self.buttonDown is False or event.inaxes is None:
-        #if self.pressv is None or event.inaxes is None:
+        #if self.pressv is None or self.buttonDown is False or event.inaxes is None:
+        if event.inaxes is None:
                 return
         x, y = event.xdata, event.ydata
         self.prev = x, y
         self.canvas.restore_region(self.background)
         try:
             super().onmove(event)
-        except:
-            pass
+        except Exception as e:
+            logging.error(traceback.format_exc())
         self.canvas.blit(self.ax.bbox) 
 
     def redraw(self):
-         try:
+        try:
              super().redraw()
-         except:
-             pass
+        except Exception as e:
+            logging.error(traceback.format_exc())
         
-    def change_visibility(self):
-         try:
-             super().change_visibility()
-         except:
-             pass
+
 if __name__ == '__main__':
     pass
