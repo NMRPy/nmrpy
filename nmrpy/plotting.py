@@ -534,8 +534,12 @@ class LineBuilder:
         self.y2 = y2
         self.ycolour = ycolour
         self.y2colour = y2colour
+        self.invert_x = invert_x
+        self.figsize = figsize
         self.lw = lw
         self.voff = 0.1
+        self.xlabel = None
+        self.ylabel = None
         self.y_indices = numpy.arange(0, self.voff*len(self.y), self.voff)
         self.xs = []
         self.ys = []
@@ -548,8 +552,20 @@ class LineBuilder:
         self._visual_lines = []
 
         NavigationToolbar2.home = linebuilder_home
+        
+        self._make_basic_fig()
+        self.line = None
+        self.data_line = None
 
-        self.fig = pylab.figure(figsize=figsize)
+        self.cid_press = self.canvas.mpl_connect('button_press_event', self.on_press)
+        self.cid_release = self.canvas.mpl_connect('button_release_event', self.on_release)
+        self.cid_move = self.canvas.mpl_connect('motion_notify_event', self.on_move)
+        self.cid_home = self.canvas.mpl_connect('home_event', self.on_home) 
+
+        pylab.show()
+
+    def _make_basic_fig(self): 
+        self.fig = pylab.figure(figsize=self.figsize)
         self.ax = self.fig.add_subplot(111)
         self.ax.set_title('click to build line segments\nright-click to finish line\nctrl-click deletes nearest line')
         if self.y2 is not None:
@@ -564,22 +580,15 @@ class LineBuilder:
                     #self.ax.fill_between(x, y2[i], y2[i]+self.y_indices[i])
         for i in range(len(self.y)):
             self.ax.plot(self.x, self.y[i]+self.y_indices[i], '-', color=self.ycolour)
-        if invert_x:
+        if self.invert_x:
             self.ax.invert_xaxis()
-        ylim = self.ax.get_ylim()
-        self.ax.set_ylim([ylim[0], ylim[1]*1.1])
-        self.ax.set_xlim([x[0], x[-1]])
-        self.ax.set_xlabel(xlabel)
-        self.ax.set_ylabel(ylabel)
-        self.line = None
-        self.data_line = None
+        self.ylim = self.ax.get_ylim()
+        self.ax.set_ylim([self.ylim[0], self.ylim[1]*1.1])
+        self.ax.set_xlim([self.x[0], self.x[-1]])
+        self.ax.set_xlabel(self.xlabel)
+        self.ax.set_ylabel(self.ylabel)
         self.canvas = self.fig.canvas
-        self.cid_press = self.canvas.mpl_connect('button_press_event', self.on_press)
-        self.cid_release = self.canvas.mpl_connect('button_release_event', self.on_release)
-        self.cid_move = self.canvas.mpl_connect('motion_notify_event', self.on_move)
-        self.cid_home = self.canvas.mpl_connect('home_event', self.on_home) 
         self.background = self.canvas.copy_from_bbox(self.ax.bbox)
-        pylab.show()
 
 
     def check_mode(self):
