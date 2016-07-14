@@ -858,19 +858,13 @@ class PolySelectorMixin(BaseSelectorMixin):
                         lw=self.psm.lw,
                         colour='b', 
                         )[0])
-                #self.canvas.draw()
-                #self.background = self.canvas.copy_from_bbox(self.ax.bbox)
                 self.psm.lines.append(numpy.array([self.psm.xs, self.psm.ys]))
                 self.psm.xs, self.psm.ys = [], []
                 self.psm.line = None
-                #self.psm.data_lines.append(self.get_polygon_neighbours_indices(self.lines[-1]))
-                #self.psm.data_line = None
+                self.psm.data_lines.append(self.get_polygon_neighbours_indices(self.psm.lines[-1]))
             else:
-                #self.canvas.draw()
-                #self.background = self.canvas.copy_from_bbox(self.ax.bbox)
                 self.psm.xs, self.psm.ys = [], []
                 self.psm.line = None
-                #self.data_line = None
         self.redraw()
     
     def onmove(self, event):
@@ -896,6 +890,75 @@ class PolySelectorMixin(BaseSelectorMixin):
     #            self.ax.draw_artist(self.line)
     #            self.canvas.blit(self.ax.bbox) 
     #        return
+
+    def get_polygon_neighbours_data(self, line):
+        """
+        Returns the nearest datum in each spectrum as it is intersected by a
+        polygonal line consisting of [[x coordinates], [y coordinates]].
+        """
+        line_xs = []
+        line_ys = []
+        for i in range(len(line[0])-1):
+            x1, y1, x2, y2 = line[0][i], line[1][i], line[0][i+1], line[1][i+1]
+            x, y, x_index, y_index = self.get_neighbours([x1, x2], [y1, y2])
+            if x is not None and y is not None:
+                line_xs = line_xs+list(x)
+                line_ys = line_ys+y_index
+        return [line_xs, line_ys]
+
+    def get_polygon_neighbours_indices(self, line):
+        """
+        Returns the nearest datum in each spectrum as it is intersected by a
+        polygonal line consisting of [[x coordinates], [y coordinates]].
+        """
+        line_xs = []
+        line_ys = []
+        for i in range(len(line[0])-1):
+            x1, y1, x2, y2 = line[0][i], line[1][i], line[0][i+1], line[1][i+1]
+            x, y, x_index, y_index = self.get_neighbours([x1, x2], [y1, y2])
+            if x_index is not None and y_index is not None:
+                line_xs = line_xs+list(x_index)
+                line_ys = line_ys+list(y_index)
+        return [line_xs, line_ys]
+            
+    def get_neighbours(self, xs, ys):
+        """
+        For a pair of coordinates (xs = [x1, x2], ys = [y1, y2]), return the
+        nearest datum in each spectrum for a line subtended between the two coordinate
+        points which intersects the baseline of each spectrum.
+        Returns three arrays, one of x-coordinates, one of y-coordinates, and a y index range
+        """
+        ymask = list((self.y_indices <= max(ys)) * (self.y_indices >= min(ys)))
+        if True not in ymask:
+            return None, None, None, None
+        y_lo = ymask.index(True)
+        y_hi = len(ymask)-ymask[::-1].index(True)
+        x_neighbours = []
+        y_neighbours = []
+        y_indices = [i for i in range(y_lo, y_hi)]
+        x_indices = []
+        for i in y_indices:
+            x = [self.ppm[0], self.ppm[-1], xs[0], xs[1]]    
+            y = [self.y_indices[i], self.y_indices[i], ys[0], ys[1]]    
+            x, y = self.get_intersection(x, y)
+            x = numpy.argmin(abs(self.ppm-x))
+            x_indices.append(x)
+            x_neighbours.append(self.ppm[x])
+            y_neighbours.append(self.data[i][x]+self.y_indices[i])
+        return x_neighbours, y_neighbours, x_indices, y_indices
+
+    @staticmethod
+    def get_intersection(x, y):
+        """
+        This function take a set of two pairs of x/y coordinates, defining a
+        pair of crossing lines, and returns the intersection. x = [x1, x2, x3, x4], y =
+        [y1, y2, y3, y4], where [x1, y1] and [x2, y2] represent one line, and [x3, y3]
+        and [x4, y4] represent the other. See
+        https://en.wikipedia.org/wiki/Line%E2%80%93line_intersection#Given_two_points_on_each_line
+        """
+        px = (((x[0]*y[1]-y[0]*x[1])*(x[2]-x[3])-(x[0]-x[1])*(x[2]*y[3]-y[2]*x[3]))/((x[0]-x[1])*(y[2]-y[3])-(y[0]-y[1])*(x[2]-x[3])))
+        py = (((x[0]*y[1]-y[0]*x[1])*(y[2]-y[3])-(y[0]-y[1])*(x[2]*y[3]-y[2]*x[3]))/((x[0]-x[1])*(y[2]-y[3])-(y[0]-y[1])*(x[2]-x[3])))
+        return px, py
 
 class LineSelectorMixin(BaseSelectorMixin):
 
@@ -1091,7 +1154,7 @@ class DataSelector(PolySelectorMixin):#LineSelectorMixin, SpanSelectorMixin):
                 peaks=None, 
                 ranges=None, 
                 title=None, 
-                voff=0.3, 
+                voff=0.001, 
                 label=None):
         if not Plot._is_iter(data):
             raise AttributeError('data must be iterable.')
@@ -1141,22 +1204,20 @@ class DataSelector(PolySelectorMixin):#LineSelectorMixin, SpanSelectorMixin):
         self.fig = pylab.figure(figsize=[15, 7.5])
         self.ax = self.fig.add_subplot(111)
         if len(self.data.shape)==1:
-            ppm = numpy.mgrid[self.params['sw_left']-self.params['sw']:self.params['sw_left']:complex(self.data.shape[0])]
-            self.ax.plot(ppm[::-1], self.data, color='k', lw=1)
+            self.ppm = numpy.mgrid[self.params['sw_left']-self.params['sw']:self.params['sw_left']:complex(self.data.shape[0])]
+            self.ax.plot(self.ppm[::-1], self.data, color='k', lw=1)
         elif len(self.data.shape)==2:
             cl = dict(zip(range(len(self.data)), pylab.cm.viridis(numpy.linspace(0,1,len(self.data)))))
-            ppm = numpy.mgrid[self.params['sw_left']-self.params['sw']:self.params['sw_left']:complex(self.data.shape[1])]
-            inc_orig = self.voff*self.data.max()
-            inc = inc_orig.copy()
+            self.ppm = numpy.mgrid[self.params['sw_left']-self.params['sw']:self.params['sw_left']:complex(self.data.shape[1])]
+            self.y_indices = numpy.arange(len(self.data))*self.voff#max(self.data)
             #this is reversed for zorder
             for i,j in zip(range(len(self.data))[::-1], self.data[::-1]):
-                self.ax.plot(ppm[::-1], j+inc, color=cl[i], lw=1)
-                inc -= inc_orig/len(self.data)
+                self.ax.plot(self.ppm[::-1], j+self.y_indices[i], color=cl[i], lw=1)
         self.ax.set_xlabel('ppm')
         self.ylims = numpy.array([self.ax.get_ylim()[0], self.data.max() + abs(self.ax.get_ylim()[0])])
         self.ax.set_ylim(self.ylims)#self.ax.get_ylim()[0], self.data.max()*1.1])
         self.ax_lims = self.ax.get_ylim()
-        self.xlims = [ppm[-1], ppm[0]]
+        self.xlims = [self.ppm[-1], self.ppm[0]]
         self.ax.set_xlim(self.xlims)
         self.fig.suptitle(self.title, size=20)
         self.ax.text(
