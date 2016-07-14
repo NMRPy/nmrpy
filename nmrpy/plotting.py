@@ -785,6 +785,15 @@ class LineSelectorMixin(BaseSelectorMixin):
             self.peaklines[x] = self.makeline(x)
             self.peaks = sorted(self.peaks)[::-1]
             #self.ax.draw_artist(self.peaklines[x])
+        #middle
+        elif event.button == 2:
+            if event.key == None:
+                #find and delete nearest peakline
+                if len(self.peaks) > 0:
+                    delete_peak = numpy.argmin([abs(i-x) for i in self.peaks])
+                    old_peak = self.peaks.pop(delete_peak)
+                    peakline = self.peaklines.pop(old_peak)
+                    peakline.remove()
         for i, j in self.peaklines.items():
             self.ax.draw_artist(j)
 
@@ -840,6 +849,18 @@ class SpanSelectorMixin(BaseSelectorMixin):
         if event.button == 3:
             self.buttonDown = True
             self.pressv = event.xdata
+        elif event.button == 2 and event.key == 'control':
+            #find and delete range
+            if len(self.ranges) > 0:
+                x = event.xdata
+                rng = 0
+                while rng < len(self.ranges):
+                    if x >= (self.ranges[rng])[1] and x <= (self.ranges[rng])[0]:
+                        self.ranges.pop(rng) 
+                        rangespan = self.rangespans.pop(rng)
+                        rangespan.remove()
+                        break
+                    rng += 1
         for i in self.rangespans:
             self.ax.draw_artist(i)
 
@@ -971,30 +992,7 @@ class DataSelector(LineSelectorMixin, SpanSelectorMixin):
         tb = pylab.get_current_fig_manager().toolbar
         if tb.mode == '' and event.xdata is not None:
             x = numpy.round(event.xdata, 2)
-            #middle
-            if event.button == 2:
-                if event.key == None:
-                    #find and delete nearest peakline
-                    if len(self.peaks) > 0:
-                        x = event.xdata
-                        delete_peak = numpy.argmin([abs(i-x) for i in self.peaks])
-                        old_peak = self.peaks.pop(delete_peak)
-                        peakline = self.peaklines.pop(old_peak)
-                        peakline.remove()
-                elif event.key == 'control':
-                    #find and delete range
-                    if len(self.ranges) > 0:
-                        x = event.xdata
-                        rng = 0
-                        while rng < len(self.ranges):
-                            if x >= (self.ranges[rng])[1] and x <= (self.ranges[rng])[0]:
-                                self.ranges.pop(rng) 
-                                rangespan = self.rangespans.pop(rng)
-                                rangespan.remove()
-                                break
-                            rng += 1
 
-            #left/right
             self.canvas.restore_region(self.background)
             try:
                 super().press(event)
