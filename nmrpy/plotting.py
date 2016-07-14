@@ -753,6 +753,12 @@ class BaseSelectorMixin:
     def press(self, event):
         pass
 
+    def release(self, event):
+        pass
+
+    def onmove(self, event):
+        pass
+
 class LineSelectorMixin(BaseSelectorMixin):
 
     def __init__(self):
@@ -760,9 +766,24 @@ class LineSelectorMixin(BaseSelectorMixin):
         self.peaklines = {}
         for x in self.peaks:
             self.peaklines[x] = self.makeline(x)
-
+            self.ax.draw_artist(self.peaklines[x])
+                
     def makeline(self, x):
-        return self.ax.vlines(x, self.ax_lims[0], self.ax_lims[1], color='#CC0000', lw=1)
+        #return self.ax.vlines(
+        #    x, 
+        #    self.ax_lims[0], 
+        #    self.ax_lims[1], 
+        #    color='#CC0000', 
+        #    lw=1,
+        #    animated=True
+        #    )
+        return self.ax.plot(
+            [x, x], 
+            self.ylims,
+            color='#CC0000', 
+            lw=1,
+            #animated=True
+            )[0]
 
     def press(self, event):
         super().press(event)
@@ -770,8 +791,20 @@ class LineSelectorMixin(BaseSelectorMixin):
         if event.button == 1 and (x >= self.xlims[1]) and (x <= self.xlims[0]):
             self.peaks.append(x)
             self.peaklines[x] = self.makeline(x)
-            print(x)
             self.peaks = sorted(self.peaks)[::-1]
+            #self.ax.draw_artist(self.peaklines[x])
+        for i, j in self.peaklines.items():
+            self.ax.draw_artist(j)
+
+    def release(self, event):
+        super().release(event)
+        for i, j in self.peaklines.items():
+            self.ax.draw_artist(j)
+
+    def onmove(self, event):
+        super().onmove(event)
+        for i, j in self.peaklines.items():
+            self.ax.draw_artist(j)
 
 class SpanSelectorMixin(BaseSelectorMixin):
 
@@ -783,7 +816,7 @@ class SpanSelectorMixin(BaseSelectorMixin):
         self.rectprops = dict(facecolor='0.5', alpha=0.2)
         for rng in self.ranges:
             self.rangespans.append(self.makespan(rng[1], rng[0]-rng[1]))
-
+            self.ax.draw_artist(self.rangespans[-1])
         trans = blended_transform_factory(
             self.ax.transData,
             self.ax.transAxes)
@@ -791,26 +824,35 @@ class SpanSelectorMixin(BaseSelectorMixin):
         self.rect = Rectangle([0, 0], w, h,
                               transform=trans,
                               visible=False,
+                              animated=True,
                               **self.rectprops
                               )
         self.ax.add_patch(self.rect)
 
     def makespan(self, left, width):
-        return self.ax.bar(left=left,
-                        height=sum(abs(self.ylims)),
-                        width=width,
-                        bottom=self.ylims[0],
-                        alpha=0.2,
-                        color='0.5',
-                        edgecolor='k')
+        trans = blended_transform_factory(
+            self.ax.transData,
+            self.ax.transAxes)
+        bottom, height = self.ylims
+        rect = Rectangle([left, bottom], width, height,
+                              transform=trans,
+                              visible=True,
+                              #animated=True,
+                              **self.rectprops
+                              )
+        self.ax.add_patch(rect)
+        return rect
 
     def press(self, event):
         super().press(event)
         if event.button == 3:
             self.buttonDown = True
             self.pressv = event.xdata
+        for i in self.rangespans:
+            self.ax.draw_artist(i)
 
     def release(self, event):
+        super().release(event)
         self.rect.set_visible(False)
         vmin = numpy.round(self.pressv, 2)
         vmax = numpy.round(event.xdata or self.prev[0], 2)
@@ -829,22 +871,32 @@ class SpanSelectorMixin(BaseSelectorMixin):
         if span > self.minspan and spantest is False:
             self.ranges.append([numpy.round(vmin, 2), numpy.round(vmax, 2)])
             self.rangespans.append(self.makespan(vmin, span))
-        self.canvas.draw()
+        #self.canvas.draw()
         self.ranges = [numpy.sort(i)[::-1] for i in self.ranges]
+        for i in self.rangespans:
+            self.ax.draw_artist(i)
+
 
     def onmove(self, event):
-        x, y = self.prev
-        v = x
-        minv, maxv = v, self.pressv
-        if minv > maxv:
-                minv, maxv = maxv, minv
-        vmin = self.pressv
-        vmax = event.xdata  # or self.prev[0]
-        if vmin > vmax:
-                vmin, vmax = vmax, vmin
-        self.rect.set_visible(self.visible)
-        self.rect.set_xy([minv, self.rect.xy[1]])
-        self.rect.set_width(maxv-minv)
+        super().onmove(event)
+        if event.button == 3:
+            x, y = self.prev
+            v = x
+            minv, maxv = v, self.pressv
+            if minv > maxv:
+                    minv, maxv = maxv, minv
+            vmin = self.pressv
+            vmax = event.xdata  # or self.prev[0]
+            if vmin > vmax:
+                    vmin, vmax = vmax, vmin
+            self.rect.set_visible(self.visible)
+            self.rect.set_xy([minv, self.rect.xy[1]])
+            self.rect.set_width(maxv-minv)
+            #self.canvas.restore_region(self.background)
+            self.ax.draw_artist(self.rect)
+            #self.canvas.blit(self.ax.bbox) 
+            for i in self.rangespans:
+                self.ax.draw_artist(i)
 
 class DataSelector(LineSelectorMixin, SpanSelectorMixin):
     """Interactive selector widget"""
@@ -857,7 +909,6 @@ class DataSelector(LineSelectorMixin, SpanSelectorMixin):
                 title=None, 
                 voff=0.3, 
                 label=None):
-        print('c')   
         if not Plot._is_iter(data):
             raise AttributeError('data must be iterable.')
         self.data = numpy.array(data)
@@ -875,19 +926,20 @@ class DataSelector(LineSelectorMixin, SpanSelectorMixin):
         self._make_basic_fig()
 
         self.visible = True
-        self.canvas = self.ax.figure.canvas
-        self.canvas.mpl_connect('motion_notify_event', self.onmove)
-        self.canvas.mpl_connect('button_press_event', self.press)
-        self.canvas.mpl_connect('button_release_event', self.release)
 
         self.pressv = None
         self.buttonDown = False
         self.prev = (0, 0)
         
+        #self.canvas.restore_region(self.background)
         super().__init__() #calling parent init
-
-        cursor = Cursor(self.ax, useblit=True, color='k', linewidth=0.5)
-        cursor.horizOn = False
+        #self.canvas.blit(self.ax.bbox) 
+        self.canvas.mpl_connect('motion_notify_event', self.onmove)
+        self.canvas.mpl_connect('button_press_event', self.press)
+        self.canvas.mpl_connect('button_release_event', self.release)
+        #cursor = Cursor(self.ax, useblit=True, color='k', linewidth=0.5)
+        #cursor.horizOn = False
+        self.canvas.draw()
         pylab.show()
 
     def _make_basic_fig(self, *args, **kwargs):
@@ -919,7 +971,9 @@ class DataSelector(LineSelectorMixin, SpanSelectorMixin):
             self.ax.get_ylim()[1],
             self.label),
         self.ax.set_ylim(self.ylims)
-
+        self.canvas = self.ax.figure.canvas
+        self.canvas.draw()
+        self.background = self.canvas.copy_from_bbox(self.ax.bbox)
 
     def press(self, event):
         tb = pylab.get_current_fig_manager().toolbar
@@ -948,35 +1002,45 @@ class DataSelector(LineSelectorMixin, SpanSelectorMixin):
                                 break
                             rng += 1
 
-            #right
+            #left/right
+            self.canvas.restore_region(self.background)
             try:
                 super().press(event)
             except:
                 pass
-
-            #left
-            self.canvas.draw()
+            self.canvas.blit(self.ax.bbox) 
+            #for peak, line in self.peaklines.items():
+            #    self.ax.draw_artist(line)
+            #for rangespan in self.rangespans:
+            #    self.ax.draw_artist(rangespan)
+            #self.canvas.blit(self.ax.bbox) 
+            #self.background = self.canvas.copy_from_bbox(self.ax.bbox)
+            #self.canvas.draw()
 
     def release(self, event):
         if self.pressv is None or not self.buttonDown:
             return
         self.buttonDown = False
+        self.canvas.restore_region(self.background)
         try:
             super().release(event)
         except:
             pass
+        self.canvas.blit(self.ax.bbox) 
 
     def onmove(self, event):
         if self.pressv is None or self.buttonDown is False or event.inaxes is None:
+        #if self.pressv is None or event.inaxes is None:
                 return
         x, y = event.xdata, event.ydata
         self.prev = x, y
+        self.canvas.restore_region(self.background)
         try:
             super().onmove(event)
         except:
             pass
-        self.canvas.draw_idle()
-        return False
+        self.canvas.blit(self.ax.bbox) 
+        #self.canvas.draw()
 
         
 if __name__ == '__main__':
