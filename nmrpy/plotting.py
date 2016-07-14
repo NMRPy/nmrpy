@@ -781,6 +781,7 @@ class LineSelectorMixin(BaseSelectorMixin):
         super().press(event)
         x = numpy.round(event.xdata, 2)
         if event.button == 1 and (x >= self.xlims[1]) and (x <= self.xlims[0]):
+            print('peak {}'.format(x))
             self.peaks.append(x)
             self.peaklines[x] = self.makeline(x)
             self.peaks = sorted(self.peaks)[::-1]
@@ -876,7 +877,6 @@ class SpanSelectorMixin(BaseSelectorMixin):
         spantest = False
         if len(self.ranges) > 0:
             for i in self.ranges:
-                print(i, vmin, vmax)
                 if (vmin >= i[1]) and (vmin <= i[0]):
                     spantest = True
                 if (vmax >= i[1]) and (vmax <= i[0]):
@@ -884,7 +884,7 @@ class SpanSelectorMixin(BaseSelectorMixin):
         if span > self.minspan and spantest is False:
             self.ranges.append([numpy.round(vmin, 2), numpy.round(vmax, 2)])
             self.rangespans.append(self.makespan(vmin, span))
-        #self.canvas.draw()
+            print('range {} -> {}'.format(vmax, vmin))
         self.ranges = [numpy.sort(i)[::-1] for i in self.ranges]
         for i in self.rangespans:
             self.ax.draw_artist(i)
