@@ -769,14 +769,6 @@ class LineSelectorMixin(BaseSelectorMixin):
             self.ax.draw_artist(self.peaklines[x])
                 
     def makeline(self, x):
-        #return self.ax.vlines(
-        #    x, 
-        #    self.ax_lims[0], 
-        #    self.ax_lims[1], 
-        #    color='#CC0000', 
-        #    lw=1,
-        #    animated=True
-        #    )
         return self.ax.plot(
             [x, x], 
             self.ylims,
