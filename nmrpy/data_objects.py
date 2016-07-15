@@ -1437,10 +1437,8 @@ class FidArray(Base):
         self.__integral_traces = integral_traces 
 
     def _select_data_trace(self, 
-        extra_x=None, 
-        extra_y=None, 
-        ycolour='k',
-        y2colour='b',
+        extra_data=None, 
+        extra_data_colour='b',
         lw=1, 
         voff=0.1):
         """
@@ -1453,10 +1451,8 @@ class FidArray(Base):
             raise AttributeError('no integration data')
         global _select_trace_widget
         _select_trace_widget = DataTraceSelector(self, 
-            extra_x=extra_x, 
-            extra_y=extra_y, 
-            ycolour=ycolour,
-            y2colour=y2colour,
+            extra_data=extra_data, 
+            extra_data_colour=extra_data_colour, 
             voff=voff, 
             lw=lw)
         self._data_traces = [dict(zip(i[1], i[0])) for i in _select_trace_widget.traces]
@@ -1681,14 +1677,11 @@ class FidArray(Base):
             raise AttributeError('No FIDs.')
         if self.deconvoluted_integrals is None:
             raise AttributeError('No integrals.')
-        #peakshapes = self._get_all_summed_peakshapes()
-        pk_x, pk_y = self._get_truncated_peak_shapes_for_plotting()
+        peakshapes = self._get_all_summed_peakshapes()
+        #pk_x, pk_y = self._get_truncated_peak_shapes_for_plotting()
         self._select_data_trace(
-            extra_x=pk_x, 
-            extra_y=pk_y, 
-            ycolour='0.5',
-            y2colour='b',
-            #extra_y=peakshapes, 
+            extra_data=peakshapes, 
+            extra_data_colour='b',
             lw=0.5, 
             voff=voff)
         decon_peaks = numpy.array([i.transpose()[0] for i in self._deconvoluted_peaks])

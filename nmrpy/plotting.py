@@ -477,10 +477,8 @@ class Phaser:
 class DataTraceSelector:
     """Interactive data-selection widget"""
     def __init__(self, fid_array,
-            extra_x=None,
-            extra_y=None,
-            ycolour='k',
-            y2colour='b',
+            extra_data=None,
+            extra_data_colour='b',
             voff=1e-3,
             lw=1,
             ):
@@ -495,7 +493,9 @@ class DataTraceSelector:
        
         self.integral_selector = DataSelector(
                 fid_array.data, 
-                fid_array._params, 
+                fid_array._params,
+                extra_data=extra_data,
+                extra_data_colour=extra_data_colour,
                 peaks=None, 
                 ranges=None, 
                 title='integral trace selector', 
@@ -513,246 +513,6 @@ def linebuilder_home(self, *args, **kwargs):
     self.canvas.callbacks.process(s, event)
 
 
-class LineBuilder:
-    def __init__(self, 
-        x=None,
-        y=None,
-        x2=None, 
-        y2=None, 
-        ycolour='k',
-        y2colour='b',
-        invert_x=False,
-        figsize=[15,7.5],
-        lw=1,
-        voff=0.1,
-        xlabel=None,
-        ylabel=None,
-        ):
-        self.x = x
-        self.y = y
-        self.x2 = x2 
-        self.y2 = y2
-        self.ycolour = ycolour
-        self.y2colour = y2colour
-        self.invert_x = invert_x
-        self.figsize = figsize
-        self.lw = lw
-        self.voff = 0.1
-        self.xlabel = None
-        self.ylabel = None
-        self.y_indices = numpy.arange(0, self.voff*len(self.y), self.voff)
-        self.xs = []
-        self.ys = []
-        self._x = None
-        self._y = None
-        self.datax = None
-        self.datay = None
-        self.lines = []
-        self.data_lines = []
-        self._visual_lines = []
-
-        NavigationToolbar2.home = linebuilder_home
-        
-        self._make_basic_fig()
-        self.line = None
-        self.data_line = None
-
-        self.cid_press = self.canvas.mpl_connect('button_press_event', self.on_press)
-        self.cid_release = self.canvas.mpl_connect('button_release_event', self.on_release)
-        self.cid_move = self.canvas.mpl_connect('motion_notify_event', self.on_move)
-        self.cid_home = self.canvas.mpl_connect('home_event', self.on_home) 
-
-        pylab.show()
-
-    def _make_basic_fig(self): 
-        self.fig = pylab.figure(figsize=self.figsize)
-        self.ax = self.fig.add_subplot(111)
-        self.ax.set_title('click to build line segments\nright-click to finish line\nctrl-click deletes nearest line')
-        if self.y2 is not None:
-            if self.x2 is None:
-                self.x2 = self.x
-            for i in range(len(self.y2)):
-                if Plot._is_iter_of_iters(self.y2[i]):
-                    for xd, yd in zip(self.x2[i], self.y2[i]):
-                        self.ax.plot(xd, yd+self.y_indices[i], '-', color=self.y2colour)
-                else:
-                    self.ax.plot(self.x2, self.y2[i]+self.y_indices[i], '-', color=self.y2colour)
-                    #self.ax.fill_between(x, y2[i], y2[i]+self.y_indices[i])
-        for i in range(len(self.y)):
-            self.ax.plot(self.x, self.y[i]+self.y_indices[i], '-', color=self.ycolour)
-        if self.invert_x:
-            self.ax.invert_xaxis()
-        self.ylim = self.ax.get_ylim()
-        self.ax.set_ylim([self.ylim[0], self.ylim[1]*1.1])
-        self.ax.set_xlim([self.x[0], self.x[-1]])
-        self.ax.set_xlabel(self.xlabel)
-        self.ax.set_ylabel(self.ylabel)
-        self.canvas = self.fig.canvas
-        self.background = self.canvas.copy_from_bbox(self.ax.bbox)
-
-
-    def check_mode(self):
-        tb = pylab.get_current_fig_manager().toolbar
-        return tb.mode
-    
-    def on_home(self, event):
-        self.canvas.draw()
-        self.background = self.canvas.copy_from_bbox(self.ax.bbox)
-        if self.line is not None:
-            self.ax.draw_artist(self.line)
-            self.ax.draw_artist(self.data_line)
-        self.canvas.blit(self.ax.bbox) 
-        return
-
-
-    def on_press(self, event):
-        if self.check_mode() != '':
-            return
-        if event.xdata is None or event.ydata is None:
-            return
-        if event.button == 1:
-            if event.key == 'control':
-                if len(self._visual_lines) > 0:
-                    x = event.xdata
-                    y = event.ydata
-                    trace_dist = [[i[0]-x, i[1]-y] for i in self.lines]
-                    delete_trace = numpy.argmin([min(numpy.sqrt(i[0]**2+i[1]**2)) for i in trace_dist])
-                    self.lines.pop(delete_trace)
-                    self.data_lines.pop(delete_trace)
-                    trace = self._visual_lines.pop(delete_trace)
-                    trace.remove()
-                    self.canvas.draw()
-                    self.background = self.canvas.copy_from_bbox(self.ax.bbox)
-            else:
-                self.xs.append(event.xdata)
-                self.ys.append(event.ydata)
-                if self.line is None:
-                    self.line, = self.ax.plot(self.xs, self.ys, '-+', color='r', lw=2*self.lw, animated=True)
-                self.line.set_data(self.xs, self.ys)
-                self.background = self.canvas.copy_from_bbox(self.ax.bbox)
-                self.ax.draw_artist(self.line)
-                self.canvas.blit(self.ax.bbox) 
-
-        if event.button == 3 and self.line is not None:
-            if len(self.xs) > 1:
-                self._visual_lines.append(self.ax.plot(self.xs, self.ys, '-+', color='b', lw=2*self.lw)[0])
-                self.canvas.draw()
-                self.background = self.canvas.copy_from_bbox(self.ax.bbox)
-                self.lines.append(numpy.array([self.xs, self.ys]))
-                self.xs, self.ys = [], []
-                self.line = None
-                self.data_lines.append(self.get_polygon_neighbours_indices(self.lines[-1]))
-                self.data_line = None
-            else:
-                self.canvas.draw()
-                self.background = self.canvas.copy_from_bbox(self.ax.bbox)
-                self.xs, self.ys = [], []
-                self.line = None
-                self.data_line = None
-            
-
-    def on_release(self, event):
-        if self.check_mode() != '':
-            redraw_line = False
-            if self.line is not None:
-                redraw_line = True
-                self.line = None
-            self.canvas.draw()
-            self.background = self.canvas.copy_from_bbox(self.ax.bbox)
-            if redraw_line:
-                self.line, = self.ax.plot(self.xs, self.ys, '-+', color='r', lw=2*self.lw, animated=True)
-                self.ax.draw_artist(self.line)
-                self.canvas.blit(self.ax.bbox) 
-            return
-
-    def on_move(self, event):
-        if self.check_mode() == 'pan/zoom':
-            return
-        if self.line is None:
-            return
-        self.canvas.restore_region(self.background)
-        self._x, self._y = event.xdata, event.ydata
-        if self._x is None or self._y is None:
-            return
-        self.line.set_data(self.xs+[self._x], self.ys+[self._y])
-        self.ax.draw_artist(self.line)
-        self.datax, self.datay, x_index, y_index = self.get_neighbours([self.xs[-1], self._x], [self.ys[-1], self._y]) 
-        if self.data_line is None and self.datax is not None and self.datay is not None:
-            self.data_line, = self.ax.plot(self.datax, self.datay, '-', color='r', lw=2*self.lw, animated=True)
-        if self.data_line is not None and self.datax is not None and self.datay is not None:
-            self.data_line.set_data(self.datax, self.datay)
-        if self.data_line is not None:
-            self.ax.draw_artist(self.data_line)
-        self.canvas.blit(self.ax.bbox) 
-
-    def get_polygon_neighbours_data(self, line):
-        """
-        Returns the nearest datum in each spectrum as it is intersected by a
-        polygonal line consisting of [[x coordinates], [y coordinates]].
-        """
-        line_xs = []
-        line_ys = []
-        for i in range(len(line[0])-1):
-            x1, y1, x2, y2 = line[0][i], line[1][i], line[0][i+1], line[1][i+1]
-            x, y, x_index, y_index = self.get_neighbours([x1, x2], [y1, y2])
-            if x is not None and y is not None:
-                line_xs = line_xs+list(x)
-                line_ys = line_ys+y_index
-        return [line_xs, line_ys]
-
-    def get_polygon_neighbours_indices(self, line):
-        """
-        Returns the nearest datum in each spectrum as it is intersected by a
-        polygonal line consisting of [[x coordinates], [y coordinates]].
-        """
-        line_xs = []
-        line_ys = []
-        for i in range(len(line[0])-1):
-            x1, y1, x2, y2 = line[0][i], line[1][i], line[0][i+1], line[1][i+1]
-            x, y, x_index, y_index = self.get_neighbours([x1, x2], [y1, y2])
-            if x_index is not None and y_index is not None:
-                line_xs = line_xs+list(x_index)
-                line_ys = line_ys+list(y_index)
-        return [line_xs, line_ys]
-            
-    def get_neighbours(self, xs, ys):
-        """
-        For a pair of coordinates (xs = [x1, x2], ys = [y1, y2]), return the
-        nearest datum in each spectrum for a line subtended between the two coordinate
-        points which intersects the baseline of each spectrum.
-        Returns three arrays, one of x-coordinates, one of y-coordinates, and a y index range
-        """
-        ymask = list((self.y_indices <= max(ys)) * (self.y_indices >= min(ys)))
-        if True not in ymask:
-            return None, None, None, None
-        y_lo = ymask.index(True)
-        y_hi = len(ymask)-ymask[::-1].index(True)
-        x_neighbours = []
-        y_neighbours = []
-        y_indices = [i for i in range(y_lo, y_hi)]
-        x_indices = []
-        for i in y_indices:
-            x = [self.x[0], self.x[-1], xs[0], xs[1]]    
-            y = [self.y_indices[i], self.y_indices[i], ys[0], ys[1]]    
-            x, y = self.get_intersection(x, y)
-            x = numpy.argmin(abs(self.x-x))
-            x_indices.append(x)
-            x_neighbours.append(self.x[x])
-            y_neighbours.append(self.y[i][x]+self.y_indices[i])
-        return x_neighbours, y_neighbours, x_indices, y_indices
-
-    @staticmethod
-    def get_intersection(x, y):
-        """
-        This function take a set of two pairs of x/y coordinates, defining a
-        pair of crossing lines, and returns the intersection. x = [x1, x2, x3, x4], y =
-        [y1, y2, y3, y4], where [x1, y1] and [x2, y2] represent one line, and [x3, y3]
-        and [x4, y4] represent the other. See
-        https://en.wikipedia.org/wiki/Line%E2%80%93line_intersection#Given_two_points_on_each_line
-        """
-        px = (((x[0]*y[1]-y[0]*x[1])*(x[2]-x[3])-(x[0]-x[1])*(x[2]*y[3]-y[2]*x[3]))/((x[0]-x[1])*(y[2]-y[3])-(y[0]-y[1])*(x[2]-x[3])))
-        py = (((x[0]*y[1]-y[0]*x[1])*(y[2]-y[3])-(y[0]-y[1])*(x[2]*y[3]-y[2]*x[3]))/((x[0]-x[1])*(y[2]-y[3])-(y[0]-y[1])*(x[2]-x[3])))
-        return px, py
 
 class BaseSelectorMixin:
 
@@ -781,6 +541,10 @@ class PolySelectorMixin(BaseSelectorMixin):
         class Psm:
             pass
         self.psm = Psm()
+        self.psm.btn_add = 1
+        self.psm.btn_del = 1
+        self.psm.btn_cls = 3
+        self.psm.key_mod = 'control'
         self.psm.xs = []
         self.psm.ys = []
         self.psm._x = None
@@ -834,18 +598,7 @@ class PolySelectorMixin(BaseSelectorMixin):
             return
         if event.xdata is None or event.ydata is None:
             return
-        if event.button == 1:
-            if event.key == 'control':
-                if len(self.psm._visual_lines) > 0:
-                    x = event.xdata
-                    y = event.ydata
-                    trace_dist = [[i[0]-x, i[1]-y] for i in self.psm.lines]
-                    delete_trace = numpy.argmin([min(numpy.sqrt(i[0]**2+i[1]**2)) for i in trace_dist])
-                    self.psm.lines.pop(delete_trace)
-                    self.psm.data_lines.pop(delete_trace)
-                    trace = self.psm._visual_lines.pop(delete_trace)
-                    trace.remove()
-            else:
+        if event.button == self.psm.btn_add and event.key != self.psm.key_mod:
                 self.psm.xs.append(event.xdata)
                 self.psm.ys.append(event.ydata)
                 if self.psm.line is None:
@@ -857,7 +610,17 @@ class PolySelectorMixin(BaseSelectorMixin):
                     self.blocking = True
                 else:
                     self.psm.line.set_data(self.psm.xs, self.psm.ys)
-        if event.button == 3 and self.psm.line is not None:
+        elif event.button == self.psm.btn_del and event.key == self.psm.key_mod:
+            if len(self.psm._visual_lines) > 0:
+                x = event.xdata
+                y = event.ydata
+                trace_dist = [[i[0]-x, i[1]-y] for i in self.psm.lines]
+                delete_trace = numpy.argmin([min(numpy.sqrt(i[0]**2+i[1]**2)) for i in trace_dist])
+                self.psm.lines.pop(delete_trace)
+                self.psm.data_lines.pop(delete_trace)
+                trace = self.psm._visual_lines.pop(delete_trace)
+                trace.remove()
+        elif event.button == self.psm.btn_cls and self.psm.line is not None:
             if len(self.psm.xs) > 1:
                 self.psm._visual_lines.append(self.makepoly(
                         self.psm.xs, 
@@ -884,21 +647,6 @@ class PolySelectorMixin(BaseSelectorMixin):
             ys = self.psm.ys+[self.psm._y]
             self.psm.line.set_data(xs, ys)
               
-
-    #def on_release(self, event):
-    #    if self.check_mode() != '':
-    #        redraw_line = False
-    #        if self.line is not None:
-    #            redraw_line = True
-    #            self.line = None
-    #        self.canvas.draw()
-    #        self.background = self.canvas.copy_from_bbox(self.ax.bbox)
-    #        if redraw_line:
-    #            self.line, = self.ax.plot(self.xs, self.ys, '-+', color='r', lw=2*self.lw, animated=True)
-    #            self.ax.draw_artist(self.line)
-    #            self.canvas.blit(self.ax.bbox) 
-    #        return
-
     def get_polygon_neighbours_data(self, line):
         """
         Returns the nearest datum in each spectrum as it is intersected by a
@@ -975,6 +723,9 @@ class LineSelectorMixin(BaseSelectorMixin):
         class Lsm:
             pass
         self.lsm = Lsm()
+        self.lsm.btn_add = 1
+        self.lsm.btn_del = 1
+        self.lsm.key_mod = 'control'
         self.lsm.peaklines = {}
         self.lsm.peaks = self.peaks
         for x in self.lsm.peaks:
@@ -1005,21 +756,20 @@ class LineSelectorMixin(BaseSelectorMixin):
     def press(self, event):
         super().press(event)
         x = numpy.round(event.xdata, 2)
-        if event.button == 1 and (x >= self.xlims[1]) and (x <= self.xlims[0]):
+        if event.button == self.lsm.btn_add and event.key != self.lsm.key_mod  and (x >= self.xlims[1]) and (x <= self.xlims[0]):
             print('peak {}'.format(x))
             self.lsm.peaks.append(x)
             self.lsm.peaklines[x] = self.makeline(x)
             self.lsm.peaks = sorted(self.lsm.peaks)[::-1]
             #self.ax.draw_artist(self.lsm.peaklines[x])
         #middle
-        elif event.button == 2:
-            if event.key == None:
-                #find and delete nearest peakline
-                if len(self.lsm.peaks) > 0:
-                    delete_peak = numpy.argmin([abs(i-x) for i in self.lsm.peaks])
-                    old_peak = self.lsm.peaks.pop(delete_peak)
-                    peakline = self.lsm.peaklines.pop(old_peak)
-                    peakline.remove()
+        elif event.button == self.lsm.btn_del and event.key == self.lsm.key_mod:
+            #find and delete nearest peakline
+            if len(self.lsm.peaks) > 0:
+                delete_peak = numpy.argmin([abs(i-x) for i in self.lsm.peaks])
+                old_peak = self.lsm.peaks.pop(delete_peak)
+                peakline = self.lsm.peaklines.pop(old_peak)
+                peakline.remove()
         #self.redraw()
 
     def release(self, event):
@@ -1036,6 +786,9 @@ class SpanSelectorMixin(BaseSelectorMixin):
         class Ssm:
             pass
         self.ssm = Ssm()
+        self.ssm.btn_add = 3
+        self.ssm.btn_del = 3
+        self.ssm.key_mod = 'control'
         self.ssm.minspan = 0
         self.ssm.rect = None
         self.ssm.rangespans = []
@@ -1086,10 +839,10 @@ class SpanSelectorMixin(BaseSelectorMixin):
         super().press(event)
         if self.blocking:
             return
-        if event.button == 3:
+        if event.button == self.ssm.btn_add and event.key != self.ssm.key_mod:
             self.buttonDown = True
             self.pressv = event.xdata
-        elif event.button == 2 and event.key == 'control':
+        elif event.button == self.ssm.btn_add and event.key == self.ssm.key_mod:
             #find and delete range
             if len(self.ssm.ranges) > 0:
                 x = event.xdata
@@ -1101,7 +854,6 @@ class SpanSelectorMixin(BaseSelectorMixin):
                         rangespan.remove()
                         break
                     rng += 1
-        #self.redraw()
 
     def release(self, event):
         super().release(event)
@@ -1130,7 +882,7 @@ class SpanSelectorMixin(BaseSelectorMixin):
         super().onmove(event)
         if self.pressv is None or self.buttonDown is False:
             return
-        if event.button == 3:
+        if event.button == self.ssm.btn_add and event.key != self.ssm.key_mod:
             x, y = self.prev
             v = x
             minv, maxv = v, self.pressv
@@ -1143,9 +895,7 @@ class SpanSelectorMixin(BaseSelectorMixin):
             self.ssm.rect.set_visible(self.visible)
             self.ssm.rect.set_xy([minv, self.ssm.rect.xy[1]])
             self.ssm.rect.set_width(maxv-minv)
-            #self.canvas.restore_region(self.background)
             self.ax.draw_artist(self.ssm.rect)
-            #self.canvas.blit(self.ax.bbox) 
 
 
 #this is to catch 'home' events in the dataselector 
@@ -1164,6 +914,7 @@ def dataselector_zoom(self, *args, **kwargs):
 
 
 class DataSelector(PolySelectorMixin, SpanSelectorMixin):
+#class DataSelector(LineSelectorMixin, SpanSelectorMixin):
     """
     Interactive selector widget. can inherit from various mixins for functionality:
         Line selection: :class:`~nmrpy.plotting.LineSelectorMixin`
@@ -1174,6 +925,8 @@ class DataSelector(PolySelectorMixin, SpanSelectorMixin):
     def __init__(self, 
                 data, 
                 params, 
+                extra_data=None,
+                extra_data_colour='k',
                 peaks=None, 
                 ranges=None, 
                 title=None, 
@@ -1182,6 +935,8 @@ class DataSelector(PolySelectorMixin, SpanSelectorMixin):
         if not Plot._is_iter(data):
             raise AttributeError('data must be iterable.')
         self.data = numpy.array(data)
+        self.extra_data = extra_data
+        self.extra_data_colour = extra_data_colour
         self.params = params
         self.ranges = []
         self.peaks = []
@@ -1205,8 +960,6 @@ class DataSelector(PolySelectorMixin, SpanSelectorMixin):
         super().__init__() #calling parent init
         #self.canvas.blit(self.ax.bbox) 
 
-        self._zoomed = False
-
         NavigationToolbar2.home = dataselector_home
         NavigationToolbar2.zoom = dataselector_zoom
 
@@ -1227,12 +980,21 @@ class DataSelector(PolySelectorMixin, SpanSelectorMixin):
         self.ax = self.fig.add_subplot(111)
         if len(self.data.shape)==1:
             self.ppm = numpy.mgrid[self.params['sw_left']-self.params['sw']:self.params['sw_left']:complex(self.data.shape[0])]
+            #extra_data
+            if self.extra_data is not None:
+                self.ax.plot(self.ppm[::-1], self.extra_data, color=self.extra_data_colour, lw=1)
+            #data
             self.ax.plot(self.ppm[::-1], self.data, color='k', lw=1)
         elif len(self.data.shape)==2:
             cl = dict(zip(range(len(self.data)), pylab.cm.viridis(numpy.linspace(0,1,len(self.data)))))
             self.ppm = numpy.mgrid[self.params['sw_left']-self.params['sw']:self.params['sw_left']:complex(self.data.shape[1])]
             self.y_indices = numpy.arange(len(self.data))*self.voff#max(self.data)
             #this is reversed for zorder
+            #extra_data
+            if self.extra_data is not None:
+                for i,j in zip(range(len(self.extra_data))[::-1], self.extra_data[::-1]):
+                    self.ax.plot(self.ppm[::-1], j+self.y_indices[i], color=self.extra_data_colour, lw=1)
+            #data
             for i,j in zip(range(len(self.data))[::-1], self.data[::-1]):
                 self.ax.plot(self.ppm[::-1], j+self.y_indices[i], color=cl[i], lw=1)
         self.ax.set_xlabel('ppm')
