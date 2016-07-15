@@ -913,8 +913,7 @@ def dataselector_zoom(self, *args, **kwargs):
     self.canvas.callbacks.process(s, event)
 
 
-class DataSelector(PolySelectorMixin, SpanSelectorMixin):
-#class DataSelector(LineSelectorMixin, SpanSelectorMixin):
+class DataSelector(PolySelectorMixin):
     """
     Interactive selector widget. can inherit from various mixins for functionality:
         Line selection: :class:`~nmrpy.plotting.LineSelectorMixin`
