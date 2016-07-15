@@ -1647,16 +1647,14 @@ class FidArray(Base):
             _peakpicker_widget.spans)
 
     def _set_all_peaks_ranges_from_traces_and_spans(self, traces, spans): 
-        if traces is None:
-            traces = []
-        if spans is None:
-            spans = []
+        if spans == []:
+            spans = None
         traces = [dict(zip(i[1], i[0])) for i in traces]
         fids = self.get_fids()
         fids_i = range(len(self.data))
         for i in fids_i:
             peaks = []
-            for j in self._data_traces:
+            for j in traces:
                 if i in j:
                     peaks.append(j[i])
             fids[i].peaks = peaks 

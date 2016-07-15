@@ -586,6 +586,8 @@ class PolySelectorMixin(BaseSelectorMixin):
         self.psm.line = None
         self.psm.lw = 1
         self.blocking = False
+        if not hasattr(self, 'return_data'):
+            self.return_data = False
 
     def redraw(self):
         super().redraw()
@@ -660,7 +662,10 @@ class PolySelectorMixin(BaseSelectorMixin):
                 self.psm.lines.append(numpy.array([self.psm.xs, self.psm.ys]))
                 self.psm.xs, self.psm.ys = [], []
                 self.psm.line = None
-                self.psm.data_lines.append(self.get_polygon_neighbours_indices(self.psm.lines[-1]))
+                if self.return_data:
+                    self.psm.data_lines.append(self.get_polygon_neighbours_data(self.psm.lines[-1]))
+                else:
+                    self.psm.data_lines.append(self.get_polygon_neighbours_indices(self.psm.lines[-1]))
                 self.blocking = False
             else:
                 self.psm.xs, self.psm.ys = [], []
@@ -1108,7 +1113,7 @@ class IntegralDataSelector(DataSelector, PolySelectorMixin):
     pass
 
 class PeakTraceDataSelector(DataSelector, PolySelectorMixin, SpanSelectorMixin):
-    pass
+    return_data = True
 
 if __name__ == '__main__':
     pass
