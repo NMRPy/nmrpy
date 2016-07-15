@@ -475,7 +475,7 @@ class Phaser:
         return False
 
 class DataTraceSelector:
-    """Interactive integral-selection widget"""
+    """Interactive data-selection widget"""
     def __init__(self, fid_array,
             extra_x=None,
             extra_y=None,
@@ -502,18 +502,6 @@ class DataTraceSelector:
                 voff=voff,
                 label=None)
 
-        #self.linebuilder = LineBuilder(
-        #    x=ppm, 
-        #    y=fid_array.data, 
-        #    x2=extra_x,
-        #    y2=extra_y,
-        #    ycolour=ycolour,
-        #    y2colour=y2colour,
-        #    invert_x=True,
-        #    xlabel='ppm',
-        #    voff=voff,
-        #    lw=lw,
-        #    )
         self.traces = self.integral_selector.psm.data_lines
   
 
@@ -1176,9 +1164,12 @@ def dataselector_zoom(self, *args, **kwargs):
 
 
 class DataSelector(PolySelectorMixin, SpanSelectorMixin):
-#class DataSelector(SpanSelectorMixin, PolySelectorMixin):
-#class DataSelector(LineSelectorMixin, SpanSelectorMixin):
-    """Interactive selector widget"""
+    """
+    Interactive selector widget. can inherit from various mixins for functionality:
+        Line selection: :class:`~nmrpy.plotting.LineSelectorMixin`
+        Span selection: :class:`~nmrpy.plotting.SpanSelectorMixin`
+        Poly selection: :class:`~nmrpy.plotting.PolySelectorMixin`
+    """
 
     def __init__(self, 
                 data, 
