@@ -1627,12 +1627,41 @@ class FidArray(Base):
                 fid.peaks = peaks
                 fid.ranges = ranges
 
-    #def peakpicker_traces(self, voff=0.1, lw=1):
-    #    if self.data is None:
-    #        raise AttributeError('No FIDs.')
-    #    self._select_data_trace(lw=lw, voff=voff)
-    #    for trace in self._data_traces:
-    #        for  
+    def peakpicker_traces(self, 
+            voff=0.01, 
+            lw=1):
+        if self.data is None:
+            raise AttributeError('No FIDs.')
+        global _peakpicker_widget 
+        _peakpicker_widget = DataTraceRangeSelector(
+            self,
+            peaks=None,
+            ranges=None,
+            voff=voff,
+            lw=lw,
+            )
+
+        
+        self._set_all_peaks_ranges_from_traces_and_spans(
+            _peakpicker_widget.traces, 
+            _peakpicker_widget.spans)
+
+    def _set_all_peaks_ranges_from_traces_and_spans(self, traces, spans): 
+        if traces is None:
+            traces = []
+        if spans is None:
+            spans = []
+        traces = [dict(zip(i[1], i[0])) for i in traces]
+        fids = self.get_fids()
+        fids_i = range(len(self.data))
+        for i in fids_i:
+            peaks = []
+            for j in self._data_traces:
+                if i in j:
+                    peaks.append(j[i])
+            fids[i].peaks = peaks 
+            fids[i].ranges = spans 
+          
 
     def _get_all_summed_peakshapes(self):
         """

@@ -475,7 +475,7 @@ class Phaser:
         return False
 
 class DataTraceSelector:
-    """Interactive data-selection widget"""
+    """Interactive data-selection widget with traces"""
     def __init__(self, fid_array,
             extra_data=None,
             extra_data_colour='b',
@@ -491,7 +491,7 @@ class DataTraceSelector:
 
         ppm = numpy.linspace(sw_left-sw, sw_left, data.shape[1])[::-1]
        
-        self.integral_selector = DataSelector(
+        self.integral_selector = IntegralDataSelector(
                 fid_array.data, 
                 fid_array._params,
                 extra_data=extra_data,
@@ -503,6 +503,35 @@ class DataTraceSelector:
                 label=None)
 
         self.traces = self.integral_selector.psm.data_lines
+  
+class DataTraceRangeSelector:
+    """Interactive data-selection widget with traces and ranges"""
+    def __init__(self, fid_array,
+            peaks=None,
+            ranges=None,
+            voff=1e-3,
+            lw=1,
+            ):
+        if fid_array.data == [] or fid_array.data == None:
+            raise ValueError('data must exist.')
+        data = fid_array.data
+        params = fid_array._params
+        sw_left = params['sw_left']
+        sw = params['sw']
+
+        ppm = numpy.linspace(sw_left-sw, sw_left, data.shape[1])[::-1]
+       
+        self.peak_selector = PeakTraceDataSelector(
+                fid_array.data, 
+                fid_array._params,
+                peaks=peaks, 
+                ranges=ranges, 
+                title='peak and range trace selector', 
+                voff=voff,
+                label=None)
+
+        self.traces = self.peak_selector.psm.data_lines
+        self.spans = self.peak_selector.ssm.ranges
   
 
 #this is to catch 'home' events in the linebuilder 
@@ -912,8 +941,7 @@ def dataselector_zoom(self, *args, **kwargs):
     original_zoom(self, *args, **kwargs)
     self.canvas.callbacks.process(s, event)
 
-
-class DataSelector(PolySelectorMixin):
+class DataSelector():
     """
     Interactive selector widget. can inherit from various mixins for functionality:
         Line selection: :class:`~nmrpy.plotting.LineSelectorMixin`
@@ -1075,6 +1103,12 @@ class DataSelector(PolySelectorMixin):
              super().change_visible()
         except Exception as e:
             logging.error(traceback.format_exc())
+
+class IntegralDataSelector(DataSelector, PolySelectorMixin):
+    pass
+
+class PeakTraceDataSelector(DataSelector, PolySelectorMixin, SpanSelectorMixin):
+    pass
 
 if __name__ == '__main__':
     pass
