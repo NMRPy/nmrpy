@@ -492,20 +492,29 @@ class DataTraceSelector:
         sw = params['sw']
 
         ppm = numpy.linspace(sw_left-sw, sw_left, data.shape[1])[::-1]
-        
-        self.linebuilder = LineBuilder(
-            x=ppm, 
-            y=fid_array.data, 
-            x2=extra_x,
-            y2=extra_y,
-            ycolour=ycolour,
-            y2colour=y2colour,
-            invert_x=True,
-            xlabel='ppm',
-            voff=voff,
-            lw=lw,
-            )
-        self.traces = self.linebuilder.data_lines
+       
+        self.integral_selector = DataSelector(
+                fid_array.data, 
+                fid_array._params, 
+                peaks=None, 
+                ranges=None, 
+                title='integral trace selector', 
+                voff=0.001, 
+                label=None)
+
+        #self.linebuilder = LineBuilder(
+        #    x=ppm, 
+        #    y=fid_array.data, 
+        #    x2=extra_x,
+        #    y2=extra_y,
+        #    ycolour=ycolour,
+        #    y2colour=y2colour,
+        #    invert_x=True,
+        #    xlabel='ppm',
+        #    voff=voff,
+        #    lw=lw,
+        #    )
+        self.traces = self.integral_selector.psm.data_lines
   
 
 #this is to catch 'home' events in the linebuilder 
@@ -953,9 +962,9 @@ class PolySelectorMixin(BaseSelectorMixin):
             x = [self.ppm[0], self.ppm[-1], xs[0], xs[1]]    
             y = [self.y_indices[i], self.y_indices[i], ys[0], ys[1]]    
             x, y = self.get_intersection(x, y)
-            x = numpy.argmin(abs(self.ppm-x))
+            x = numpy.argmin(abs(self.ppm[::-1]-x))
             x_indices.append(x)
-            x_neighbours.append(self.ppm[x])
+            x_neighbours.append(self.ppm[::-1][x])
             y_neighbours.append(self.data[i][x]+self.y_indices[i])
         return x_neighbours, y_neighbours, x_indices, y_indices
 
