@@ -774,6 +774,8 @@ class BaseSelectorMixin:
     def redraw(self):
         pass
 
+    def change_visible(self):
+        pass
 
 class PolySelectorMixin(BaseSelectorMixin):
 
@@ -801,6 +803,14 @@ class PolySelectorMixin(BaseSelectorMixin):
                 self.ax.draw_artist(i)
             if self.psm.line is not None:
                 self.ax.draw_artist(self.psm.line)
+
+    def change_visible(self):
+        super().change_visible()
+        if hasattr(self, 'psm'):
+            for i in self.psm._visual_lines:
+                i.set_visible(not i.get_visible())
+            if self.psm.line is not None:
+                self.psm.line.set_visible(not self.psm.line.get_visible())
 
     def makepoly(self,
         xs=None,
@@ -866,7 +876,7 @@ class PolySelectorMixin(BaseSelectorMixin):
             else:
                 self.psm.xs, self.psm.ys = [], []
                 self.psm.line = None
-        self.redraw()
+        #self.redraw()
     
     def onmove(self, event):
         super().onmove(event)
@@ -876,7 +886,7 @@ class PolySelectorMixin(BaseSelectorMixin):
             xs = self.psm.xs+[self.psm._x]
             ys = self.psm.ys+[self.psm._y]
             self.psm.line.set_data(xs, ys)
-        self.redraw()
+        #self.redraw()
               
 
     #def on_release(self, event):
@@ -990,6 +1000,11 @@ class LineSelectorMixin(BaseSelectorMixin):
             for i, j in self.lsm.peaklines.items():
                 self.ax.draw_artist(j)
 
+    def change_visible(self):
+        super().change_visible()
+        if hasattr(self, 'lsm'):
+            for i, j in self.lsm.peaklines.items():
+                j.set_visible(not j.get_visible())
 
     def press(self, event):
         super().press(event)
@@ -1009,15 +1024,13 @@ class LineSelectorMixin(BaseSelectorMixin):
                     old_peak = self.lsm.peaks.pop(delete_peak)
                     peakline = self.lsm.peaklines.pop(old_peak)
                     peakline.remove()
-        self.redraw()
+        #self.redraw()
 
     def release(self, event):
         super().release(event)
-        self.redraw()
 
     def onmove(self, event):
         super().onmove(event)
-        self.redraw()
 
 
 class SpanSelectorMixin(BaseSelectorMixin):
@@ -1067,6 +1080,11 @@ class SpanSelectorMixin(BaseSelectorMixin):
             for i in self.ssm.rangespans:
                 self.ax.draw_artist(i)
 
+    def change_visible(self):
+        super().change_visible()
+        if hasattr(self, 'ssm'):
+            for i in self.ssm.rangespans:
+                i.set_visible(not i.get_visible())
 
     def press(self, event):
         super().press(event)
@@ -1085,7 +1103,7 @@ class SpanSelectorMixin(BaseSelectorMixin):
                         rangespan.remove()
                         break
                     rng += 1
-        self.redraw()
+        #self.redraw()
 
     def release(self, event):
         super().release(event)
@@ -1108,7 +1126,6 @@ class SpanSelectorMixin(BaseSelectorMixin):
             self.ssm.rangespans.append(self.makespan(vmin, span))
             print('range {} -> {}'.format(vmax, vmin))
         self.ssm.ranges = [numpy.sort(i)[::-1] for i in self.ssm.ranges]
-        self.redraw()
 
 
     def onmove(self, event):
@@ -1131,7 +1148,7 @@ class SpanSelectorMixin(BaseSelectorMixin):
             #self.canvas.restore_region(self.background)
             self.ax.draw_artist(self.ssm.rect)
             #self.canvas.blit(self.ax.bbox) 
-            self.redraw()
+
 
 #this is to catch 'home' events in the dataselector 
 def dataselector_home(self, *args, **kwargs):
@@ -1198,7 +1215,6 @@ class DataSelector(PolySelectorMixin, SpanSelectorMixin):
         self.canvas.mpl_connect('home_event', self.on_home) 
         self.canvas.mpl_connect('zoom_event', self.on_zoom) 
         self.canvas.mpl_connect('draw_event', self.on_draw) 
-        #self.ax.callbacks.connect('xlim_changed', dataselector_zoom)
         #cursor = Cursor(self.ax, useblit=True, color='k', linewidth=0.5)
         #cursor.horizOn = False
         self.canvas.draw()
@@ -1241,9 +1257,7 @@ class DataSelector(PolySelectorMixin, SpanSelectorMixin):
         return tb.mode
 
     def on_draw(self, event):
-        self.redraw()
         self.background = self.canvas.copy_from_bbox(self.ax.bbox)
-        self.redraw()
 
     def on_home(self, event):
         pass
@@ -1260,6 +1274,7 @@ class DataSelector(PolySelectorMixin, SpanSelectorMixin):
                 super().press(event)
             except Exception as e:
                 logging.error(traceback.format_exc())
+            self.redraw()
             self.canvas.blit(self.ax.bbox) 
 
     def release(self, event):
@@ -1271,6 +1286,7 @@ class DataSelector(PolySelectorMixin, SpanSelectorMixin):
             super().release(event)
         except Exception as e:
             logging.error(traceback.format_exc())
+        self.redraw()
         self.canvas.blit(self.ax.bbox) 
 
     def onmove(self, event):
@@ -1283,6 +1299,7 @@ class DataSelector(PolySelectorMixin, SpanSelectorMixin):
             super().onmove(event)
         except Exception as e:
             logging.error(traceback.format_exc())
+        self.redraw()
         self.canvas.blit(self.ax.bbox) 
 
     def redraw(self):
@@ -1291,6 +1308,11 @@ class DataSelector(PolySelectorMixin, SpanSelectorMixin):
         except Exception as e:
             logging.error(traceback.format_exc())
         
+    def change_visible(self):
+        try:
+             super().change_visible()
+        except Exception as e:
+            logging.error(traceback.format_exc())
 
 if __name__ == '__main__':
     pass
