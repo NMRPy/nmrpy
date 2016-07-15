@@ -1676,7 +1676,7 @@ class FidArray(Base):
             peakshapes_short_y.append(pk_y)
         return peakshapes_short_x, peakshapes_short_y
 
-    def select_integral_traces(self, voff=0.1, lw=1):
+    def select_integral_traces(self, voff=0.01, lw=1):
         if self.data is None:
             raise AttributeError('No FIDs.')
         if self.deconvoluted_integrals is None:

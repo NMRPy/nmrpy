@@ -481,7 +481,7 @@ class DataTraceSelector:
             extra_y=None,
             ycolour='k',
             y2colour='b',
-            voff=0.1,
+            voff=1e-3,
             lw=1,
             ):
         if fid_array.data == [] or fid_array.data == None:
@@ -499,7 +499,7 @@ class DataTraceSelector:
                 peaks=None, 
                 ranges=None, 
                 title='integral trace selector', 
-                voff=0.001, 
+                voff=voff,
                 label=None)
 
         #self.linebuilder = LineBuilder(
@@ -804,6 +804,7 @@ class PolySelectorMixin(BaseSelectorMixin):
         self.psm._visual_lines = []
         self.psm.line = None
         self.psm.lw = 1
+        self.blocking = False
 
     def redraw(self):
         super().redraw()
@@ -868,6 +869,7 @@ class PolySelectorMixin(BaseSelectorMixin):
                         self.psm.ys, 
                         lw=2*self.psm.lw,
                         )
+                    self.blocking = True
                 else:
                     self.psm.line.set_data(self.psm.xs, self.psm.ys)
         if event.button == 3 and self.psm.line is not None:
@@ -882,6 +884,7 @@ class PolySelectorMixin(BaseSelectorMixin):
                 self.psm.xs, self.psm.ys = [], []
                 self.psm.line = None
                 self.psm.data_lines.append(self.get_polygon_neighbours_indices(self.psm.lines[-1]))
+                self.blocking = False
             else:
                 self.psm.xs, self.psm.ys = [], []
                 self.psm.line = None
@@ -895,7 +898,6 @@ class PolySelectorMixin(BaseSelectorMixin):
             xs = self.psm.xs+[self.psm._x]
             ys = self.psm.ys+[self.psm._y]
             self.psm.line.set_data(xs, ys)
-        #self.redraw()
               
 
     #def on_release(self, event):
@@ -1097,6 +1099,8 @@ class SpanSelectorMixin(BaseSelectorMixin):
 
     def press(self, event):
         super().press(event)
+        if self.blocking:
+            return
         if event.button == 3:
             self.buttonDown = True
             self.pressv = event.xdata
@@ -1208,7 +1212,7 @@ class DataSelector(PolySelectorMixin, SpanSelectorMixin):
         self.pressv = None
         self.buttonDown = False
         self.prev = (0, 0)
-        
+        self.blocking = False        
         #self.canvas.restore_region(self.background)
         super().__init__() #calling parent init
         #self.canvas.blit(self.ax.bbox) 
@@ -1244,8 +1248,8 @@ class DataSelector(PolySelectorMixin, SpanSelectorMixin):
             for i,j in zip(range(len(self.data))[::-1], self.data[::-1]):
                 self.ax.plot(self.ppm[::-1], j+self.y_indices[i], color=cl[i], lw=1)
         self.ax.set_xlabel('ppm')
-        self.ylims = numpy.array([self.ax.get_ylim()[0], self.data.max() + abs(self.ax.get_ylim()[0])])
-        self.ax.set_ylim(self.ylims)#self.ax.get_ylim()[0], self.data.max()*1.1])
+        self.ylims = numpy.array(self.ax.get_ylim())#numpy.array([self.ax.get_ylim()[0], self.data.max() + abs(self.ax.get_ylim()[0])])
+        #self.ax.set_ylim(self.ylims)#self.ax.get_ylim()[0], self.data.max()*1.1])
         self.ax_lims = self.ax.get_ylim()
         self.xlims = [self.ppm[-1], self.ppm[0]]
         self.ax.set_xlim(self.xlims)
