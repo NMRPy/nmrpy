@@ -1647,8 +1647,6 @@ class FidArray(Base):
             _peakpicker_widget.spans)
 
     def _set_all_peaks_ranges_from_traces_and_spans(self, traces, spans): 
-        if spans == []:
-            spans = None
         traces = [dict(zip(i[1], i[0])) for i in traces]
         fids = self.get_fids()
         fids_i = range(len(self.data))
@@ -1656,9 +1654,18 @@ class FidArray(Base):
             peaks = []
             for j in traces:
                 if i in j:
-                    peaks.append(j[i])
+                    peak = j[i]
+                    for rng in spans:
+                        if peak >= min(rng) and peak <= max(rng):
+                            peaks.append(peak)
             fids[i].peaks = peaks 
-            fids[i].ranges = spans 
+            ranges = []
+            for rng in spans: 
+                if any((peaks>min(rng))*(peaks<max(rng))):
+                    ranges.append(rng)
+            if ranges == []:
+                ranges = None
+            fids[i].ranges = ranges 
           
 
     def _get_all_summed_peakshapes(self):

@@ -899,12 +899,12 @@ class SpanSelectorMixin(BaseSelectorMixin):
         span = vmax - vmin
         self.pressv = None
         spantest = False
-        if len(self.ssm.ranges) > 0:
-            for i in self.ssm.ranges:
-                if (vmin >= i[1]) and (vmin <= i[0]):
-                    spantest = True
-                if (vmax >= i[1]) and (vmax <= i[0]):
-                    spantest = True
+        #if len(self.ssm.ranges) > 0:
+        #    for i in self.ssm.ranges:
+        #        if (vmin >= i[1]) and (vmin <= i[0]):
+        #            spantest = True
+        #        if (vmax >= i[1]) and (vmax <= i[0]):
+        #            spantest = True
         if span > self.ssm.minspan and spantest is False:
             self.ssm.ranges.append([numpy.round(vmin, 2), numpy.round(vmax, 2)])
             self.ssm.rangespans.append(self.makespan(vmin, span))
