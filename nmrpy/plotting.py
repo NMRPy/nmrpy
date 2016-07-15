@@ -848,18 +848,15 @@ class PolySelectorMixin(BaseSelectorMixin):
             return
         if event.button == 1:
             if event.key == 'control':
-                pass
-                #if len(self.psm._visual_lines) > 0:
-                #    x = event.xdata
-                #    y = event.ydata
-                #    trace_dist = [[i[0]-x, i[1]-y] for i in self.psm.lines]
-                #    delete_trace = numpy.argmin([min(numpy.sqrt(i[0]**2+i[1]**2)) for i in trace_dist])
-                #    self.psm.lines.pop(delete_trace)
-                #    self.psm.data_lines.pop(delete_trace)
-                #    trace = self.psm._visual_lines.pop(delete_trace)
-                #    trace.remove()
-                #    self.canvas.draw()
-                #    self.background = self.canvas.copy_from_bbox(self.ax.bbox)
+                if len(self.psm._visual_lines) > 0:
+                    x = event.xdata
+                    y = event.ydata
+                    trace_dist = [[i[0]-x, i[1]-y] for i in self.psm.lines]
+                    delete_trace = numpy.argmin([min(numpy.sqrt(i[0]**2+i[1]**2)) for i in trace_dist])
+                    self.psm.lines.pop(delete_trace)
+                    self.psm.data_lines.pop(delete_trace)
+                    trace = self.psm._visual_lines.pop(delete_trace)
+                    trace.remove()
             else:
                 self.psm.xs.append(event.xdata)
                 self.psm.ys.append(event.ydata)
