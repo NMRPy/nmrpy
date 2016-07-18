@@ -474,108 +474,6 @@ class Phaser:
         self.canvas.draw()  # _idle()
         return False
 
-class DataTraceSelector:
-    """Interactive data-selection widget with traces"""
-    def __init__(self, fid_array,
-            extra_data=None,
-            extra_data_colour='b',
-            voff=1e-3,
-            lw=1,
-            ):
-        if fid_array.data == [] or fid_array.data == None:
-            raise ValueError('data must exist.')
-        data = fid_array.data
-        params = fid_array._params
-        sw_left = params['sw_left']
-        sw = params['sw']
-
-        ppm = numpy.linspace(sw_left-sw, sw_left, data.shape[1])[::-1]
-       
-        self.integral_selector = IntegralDataSelector(
-                fid_array.data, 
-                fid_array._params,
-                extra_data=extra_data,
-                extra_data_colour=extra_data_colour,
-                peaks=None, 
-                ranges=None, 
-                title='integral trace selector', 
-                voff=voff,
-                label=None)
-
-        self.traces = self.integral_selector.psm.data_lines
-  
-class DataTraceRangeSelector:
-    """Interactive data-selection widget with traces and ranges"""
-    def __init__(self, fid_array,
-            peaks=None,
-            ranges=None,
-            voff=1e-3,
-            lw=1,
-            ):
-        if fid_array.data == [] or fid_array.data == None:
-            raise ValueError('data must exist.')
-        data = fid_array.data
-        params = fid_array._params
-        sw_left = params['sw_left']
-        sw = params['sw']
-
-        ppm = numpy.linspace(sw_left-sw, sw_left, data.shape[1])[::-1]
-       
-        self.peak_selector = PeakTraceDataSelector(
-                fid_array.data, 
-                fid_array._params,
-                peaks=peaks, 
-                ranges=ranges, 
-                title='peak and range trace selector', 
-                voff=voff,
-                label=None)
-
-        self.data_traces = self.peak_selector.psm.data_lines
-        self.index_traces = self.peak_selector.psm.index_lines
-        self.spans = self.peak_selector.ssm.ranges
-  
-class DataPeakRangeSelector:
-    """Interactive data-selection widget with traces and ranges"""
-    def __init__(self, fid_array,
-            peaks=None,
-            ranges=None,
-            y_indices=None,
-            voff=1e-3,
-            lw=1,
-            label=None,
-            ):
-        if fid_array.data == [] or fid_array.data == None:
-            raise ValueError('data must exist.')
-        data = fid_array.data
-        if y_indices is not None:
-            data = fid_array.data[numpy.array(y_indices)]
-        params = fid_array._params
-        sw_left = params['sw_left']
-        sw = params['sw']
-
-        ppm = numpy.linspace(sw_left-sw, sw_left, data.shape[1])[::-1]
-       
-        self.peak_selector = LineSpanDataSelector(
-                data,
-                fid_array._params,
-                peaks=peaks, 
-                ranges=ranges, 
-                title='peak and range selector', 
-                voff=voff,
-                label=label)
-
-        self.peaks = self.peak_selector.lsm.peaks
-        self.ranges = self.peak_selector.ssm.ranges
-  
-
-#this is to catch 'home' events in the linebuilder 
-def linebuilder_home(self, *args, **kwargs):
-    s = 'home_event'
-    event = Event(s, self)
-    original_home(self, *args, **kwargs)
-    self.canvas.callbacks.process(s, event)
-
-
 
 class BaseSelectorMixin:
 
@@ -1194,5 +1092,99 @@ class PeakTraceDataSelector(DataSelector, PolySelectorMixin, SpanSelectorMixin):
 class LineSpanDataSelector(DataSelector, LineSelectorMixin, SpanSelectorMixin):
     pass
 
+class DataTraceSelector:
+    """Interactive data-selection widget with traces"""
+    def __init__(self, fid_array,
+            extra_data=None,
+            extra_data_colour='b',
+            voff=1e-3,
+            lw=1,
+            ):
+        if fid_array.data == [] or fid_array.data == None:
+            raise ValueError('data must exist.')
+        data = fid_array.data
+        params = fid_array._params
+        sw_left = params['sw_left']
+        sw = params['sw']
+
+        ppm = numpy.linspace(sw_left-sw, sw_left, data.shape[1])[::-1]
+       
+        self.integral_selector = IntegralDataSelector(
+                fid_array.data, 
+                fid_array._params,
+                extra_data=extra_data,
+                extra_data_colour=extra_data_colour,
+                peaks=None, 
+                ranges=None, 
+                title='integral trace selector', 
+                voff=voff,
+                label=None)
+
+        self.data_traces = self.integral_selector.psm.data_lines
+        self.index_traces = self.integral_selector.psm.index_lines
+  
+class DataTraceRangeSelector:
+    """Interactive data-selection widget with traces and ranges"""
+    def __init__(self, fid_array,
+            peaks=None,
+            ranges=None,
+            voff=1e-3,
+            lw=1,
+            ):
+        if fid_array.data == [] or fid_array.data == None:
+            raise ValueError('data must exist.')
+        data = fid_array.data
+        params = fid_array._params
+        sw_left = params['sw_left']
+        sw = params['sw']
+
+        ppm = numpy.linspace(sw_left-sw, sw_left, data.shape[1])[::-1]
+       
+        self.peak_selector = PeakTraceDataSelector(
+                fid_array.data, 
+                fid_array._params,
+                peaks=peaks, 
+                ranges=ranges, 
+                title='peak and range trace selector', 
+                voff=voff,
+                label=None)
+
+        self.data_traces = self.peak_selector.psm.data_lines
+        self.index_traces = self.peak_selector.psm.index_lines
+        self.spans = self.peak_selector.ssm.ranges
+  
+class DataPeakRangeSelector:
+    """Interactive data-selection widget with traces and ranges"""
+    def __init__(self, fid_array,
+            peaks=None,
+            ranges=None,
+            y_indices=None,
+            voff=1e-3,
+            lw=1,
+            label=None,
+            ):
+        if fid_array.data == [] or fid_array.data == None:
+            raise ValueError('data must exist.')
+        data = fid_array.data
+        if y_indices is not None:
+            data = fid_array.data[numpy.array(y_indices)]
+        params = fid_array._params
+        sw_left = params['sw_left']
+        sw = params['sw']
+
+        ppm = numpy.linspace(sw_left-sw, sw_left, data.shape[1])[::-1]
+       
+        self.peak_selector = LineSpanDataSelector(
+                data,
+                fid_array._params,
+                peaks=peaks, 
+                ranges=ranges, 
+                title='peak and range selector', 
+                voff=voff,
+                label=label)
+
+        self.peaks = self.peak_selector.lsm.peaks
+        self.ranges = self.peak_selector.ssm.ranges
+  
 if __name__ == '__main__':
     pass

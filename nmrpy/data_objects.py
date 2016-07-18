@@ -1029,6 +1029,8 @@ class Fid(Base):
     def _deconv_datum(cls, list_parameters):
         if len(list_parameters) != 5:
             raise ValueError('list_parameters must consist of five objects.')
+        if list_parameters[1] == [] or list_parameters[2] == []:
+            return []
 
         datum, peaks, ranges, frac_gauss, method = list_parameters
 
@@ -1429,34 +1431,20 @@ class FidArray(Base):
         self.__data_traces = data_traces 
 
     @property
+    def _index_traces(self):
+        return self.__index_traces
+
+    @_index_traces.setter
+    def _index_traces(self, index_traces):
+        self.__index_traces = index_traces 
+
+    @property
     def _integral_traces(self):
         return self.__integral_traces
 
     @_integral_traces.setter
     def _integral_traces(self, integral_traces):
         self.__integral_traces = integral_traces 
-
-    def _select_data_trace(self, 
-        extra_data=None, 
-        extra_data_colour='b',
-        lw=1, 
-        voff=0.1):
-        """
-        Instantiate an trace selection widget. This is useful for peak-picking
-        and integral-selection when data are subject to drift.
-        """
-        if not len(self.data):
-            raise AttributeError('data does not exist.')
-        if not len(self.deconvoluted_integrals):
-            raise AttributeError('no integration data')
-        global _select_trace_widget
-        _select_trace_widget = DataTraceSelector(self, 
-            extra_data=extra_data, 
-            extra_data_colour=extra_data_colour, 
-            voff=voff, 
-            lw=lw)
-        self._data_traces = [dict(zip(i[1], i[0])) for i in _select_trace_widget.traces]
-
 
     def deconv_fids(self, mp=True, cpus=None, method='leastsq', frac_gauss=0.0):
         """ 
@@ -1711,24 +1699,43 @@ class FidArray(Base):
         return peakshapes_short_x, peakshapes_short_y
 
     def select_integral_traces(self, voff=0.01, lw=1):
+        """
+        Instantiate an trace selection widget. This is useful for peak-picking
+        and integral-selection when data are subject to drift.
+        """
         if self.data is None:
             raise AttributeError('No FIDs.')
         if self.deconvoluted_integrals is None:
             raise AttributeError('No integrals.')
         peakshapes = self._get_all_summed_peakshapes()
         #pk_x, pk_y = self._get_truncated_peak_shapes_for_plotting()
-        self._select_data_trace(
+        global _select_trace_widget
+        _select_trace_widget = DataTraceSelector(self, 
             extra_data=peakshapes, 
-            extra_data_colour='b',
-            lw=0.5, 
-            voff=voff)
-        decon_peaks = numpy.array([i.transpose()[0] for i in self._deconvoluted_peaks])
+            extra_data_colour='b', 
+            voff=voff, 
+            lw=lw)
+
+        self._data_traces = [dict(zip(i[1], i[0])) for i in _select_trace_widget.data_traces]
+        self._index_traces = [dict(zip(i[1], i[0])) for i in _select_trace_widget.index_traces]
+
+        decon_peaks = []
+        for i in self._deconvoluted_peaks:
+            if len(i):
+                decon_peaks.append(i.transpose()[0])
+            else:
+                decon_peaks.append(None)
+
+        #traces = [[i[0], j[1]] for i, j in zip(_select_trace_widget.data_traces, _select_trace_widget.index_traces)]
         trace_dict = {}
-        for t in range(len(self._data_traces)):
-            trace = self._data_traces[t]
+        for t in range(len(self._index_traces)):
+            trace = self._index_traces[t]
             integrals = {}
             for fid, indx in trace.items():
-                integrals[fid] = numpy.argmin(abs(decon_peaks[fid]-indx))
+                try:
+                    integrals[fid] = numpy.argmin(abs(decon_peaks[fid]-indx))
+                except:
+                    integrals[fid] = None
             trace_dict[t] = integrals
         last_fid = (len(self.get_fids())-1)
         for i in trace_dict:
