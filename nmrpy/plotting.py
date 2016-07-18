@@ -922,7 +922,8 @@ class SpanSelectorMixin(BaseSelectorMixin):
         trans = blended_transform_factory(
             self.ax.transData,
             self.ax.transAxes)
-        bottom, height = self.ylims
+        bottom, top = self.ylims
+        height = top-bottom
         rect = Rectangle([left, bottom], width, height,
                               transform=trans,
                               visible=True,
