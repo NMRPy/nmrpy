@@ -1641,9 +1641,10 @@ class FidArray(Base):
             lw=lw,
             )
 
-        
+        traces = [[i[0], j[1]] for i, j in zip(_peakpicker_widget.data_traces, _peakpicker_widget.index_traces)]
+
         self._set_all_peaks_ranges_from_traces_and_spans(
-            _peakpicker_widget.traces, 
+            traces, 
             _peakpicker_widget.spans)
 
     def _set_all_peaks_ranges_from_traces_and_spans(self, traces, spans): 

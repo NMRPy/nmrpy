@@ -530,7 +530,8 @@ class DataTraceRangeSelector:
                 voff=voff,
                 label=None)
 
-        self.traces = self.peak_selector.psm.data_lines
+        self.data_traces = self.peak_selector.psm.data_lines
+        self.index_traces = self.peak_selector.psm.index_lines
         self.spans = self.peak_selector.ssm.ranges
   
 
@@ -576,18 +577,22 @@ class PolySelectorMixin(BaseSelectorMixin):
         self.psm.key_mod = 'control'
         self.psm.xs = []
         self.psm.ys = []
+        self.psm._xs = []
+        self.psm._ys = []
         self.psm._x = None
         self.psm._y = None
         self.psm.datax = None
         self.psm.datay = None
         self.psm.lines = []
         self.psm.data_lines = []
+        self.psm.index_lines = []
         self.psm._visual_lines = []
         self.psm.line = None
+        self.psm._yline = None
         self.psm.lw = 1
         self.blocking = False
-        if not hasattr(self, 'return_data'):
-            self.return_data = False
+        if not hasattr(self, 'show_tracedata'):
+            self.show_tracedata = False
 
     def redraw(self):
         super().redraw()
@@ -596,6 +601,8 @@ class PolySelectorMixin(BaseSelectorMixin):
                 self.ax.draw_artist(i)
             if self.psm.line is not None:
                 self.ax.draw_artist(self.psm.line)
+            if self.psm._yline is not None:
+                self.ax.draw_artist(self.psm._yline)
 
     def change_visible(self):
         super().change_visible()
@@ -632,15 +639,28 @@ class PolySelectorMixin(BaseSelectorMixin):
         if event.button == self.psm.btn_add and event.key != self.psm.key_mod:
                 self.psm.xs.append(event.xdata)
                 self.psm.ys.append(event.ydata)
+                if self.show_tracedata:
+                    self.psm._xs, self.psm._ys = self.get_line_ydata(self.psm.xs, self.psm.ys)
                 if self.psm.line is None:
                     self.psm.line, = self.makepoly(
                         self.psm.xs, 
                         self.psm.ys, 
-                        lw=2*self.psm.lw,
+                        lw=self.psm.lw,
                         )
                     self.blocking = True
+                    if self.show_tracedata:
+                        self.psm._yline, = self.makepoly(
+                            self.psm._xs,
+                            self.psm._ys,
+                            lw=self.psm.lw,
+                            ms='+',
+                            ls='-',
+                            colour='r',
+                            )
                 else:
                     self.psm.line.set_data(self.psm.xs, self.psm.ys)
+                    if self.show_tracedata:
+                        self.psm._yline.set_data(self.psm._xs, self.psm._ys)
         elif event.button == self.psm.btn_del and event.key == self.psm.key_mod:
             if len(self.psm._visual_lines) > 0:
                 x = event.xdata
@@ -662,10 +682,9 @@ class PolySelectorMixin(BaseSelectorMixin):
                 self.psm.lines.append(numpy.array([self.psm.xs, self.psm.ys]))
                 self.psm.xs, self.psm.ys = [], []
                 self.psm.line = None
-                if self.return_data:
-                    self.psm.data_lines.append(self.get_polygon_neighbours_data(self.psm.lines[-1]))
-                else:
-                    self.psm.data_lines.append(self.get_polygon_neighbours_indices(self.psm.lines[-1]))
+                self.psm._yline = None
+                self.psm.data_lines.append(self.get_polygon_neighbours_data(self.psm.lines[-1]))
+                self.psm.index_lines.append(self.get_polygon_neighbours_indices(self.psm.lines[-1]))
                 self.blocking = False
             else:
                 self.psm.xs, self.psm.ys = [], []
@@ -680,7 +699,28 @@ class PolySelectorMixin(BaseSelectorMixin):
             xs = self.psm.xs+[self.psm._x]
             ys = self.psm.ys+[self.psm._y]
             self.psm.line.set_data(xs, ys)
-              
+            if self.show_tracedata:
+                current_x_ydata = self.get_line_ydata(
+                    [self.psm.xs[-1]]+[self.psm._x],
+                    [self.psm.ys[-1]]+[self.psm._y],
+                    )
+                self.psm._yline.set_data(
+                    self.psm._xs+current_x_ydata[0], 
+                    self.psm._ys+current_x_ydata[1],
+                    )
+
+    def get_line_ydata(self, xs, ys):
+        xdata = []
+        ydata = []
+        for i in range(len(xs)-1):
+            current_xy_data = self.get_polygon_neighbours_data([
+                xs[i:i+2],
+                ys[i:i+2],
+                ])
+            xdata += current_xy_data[0]
+            ydata += current_xy_data[1]
+        return xdata, ydata
+
     def get_polygon_neighbours_data(self, line):
         """
         Returns the nearest datum in each spectrum as it is intersected by a
@@ -693,7 +733,7 @@ class PolySelectorMixin(BaseSelectorMixin):
             x, y, x_index, y_index = self.get_neighbours([x1, x2], [y1, y2])
             if x is not None and y is not None:
                 line_xs = line_xs+list(x)
-                line_ys = line_ys+y_index
+                line_ys = line_ys+list(y)
         return [line_xs, line_ys]
 
     def get_polygon_neighbours_indices(self, line):
@@ -726,6 +766,8 @@ class PolySelectorMixin(BaseSelectorMixin):
         x_neighbours = []
         y_neighbours = []
         y_indices = [i for i in range(y_lo, y_hi)]
+        if ys[0] > ys[1]:
+            y_indices = y_indices[::-1]
         x_indices = []
         for i in y_indices:
             x = [self.ppm[0], self.ppm[-1], xs[0], xs[1]]    
@@ -1113,7 +1155,7 @@ class IntegralDataSelector(DataSelector, PolySelectorMixin):
     pass
 
 class PeakTraceDataSelector(DataSelector, PolySelectorMixin, SpanSelectorMixin):
-    return_data = True
+    show_tracedata = True
 
 if __name__ == '__main__':
     pass
