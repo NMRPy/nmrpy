@@ -1621,6 +1621,11 @@ class FidArray(Base):
     def peakpicker_traces(self, 
             voff=0.01, 
             lw=1):
+        """
+        Instantiates a widget to pick peaks and ranges employing a polygon
+        shape. This is useful for picking peaks that are subject to drift and peaks
+        that appear (or disappear) during the course of an experiment.
+        """
         if self.data is None:
             raise AttributeError('No FIDs.')
         global _peakpicker_widget 

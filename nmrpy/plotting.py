@@ -1093,7 +1093,10 @@ class LineSpanDataSelector(DataSelector, LineSelectorMixin, SpanSelectorMixin):
     pass
 
 class DataTraceSelector:
-    """Interactive data-selection widget with traces"""
+    """
+    Interactive data-selection widget with traces and ranges. Traces are saved
+    as self.data_traces (WRT data) and self.index_traces (WRT index).    
+    """
     def __init__(self, fid_array,
             extra_data=None,
             extra_data_colour='b',
@@ -1124,7 +1127,11 @@ class DataTraceSelector:
         self.index_traces = self.integral_selector.psm.index_lines
   
 class DataTraceRangeSelector:
-    """Interactive data-selection widget with traces and ranges"""
+    """
+    Interactive data-selection widget with traces and ranges. Traces are saved
+    as self.data_traces (WRT data) and self.index_traces (WRT index). Spans are
+    saves as self.spans.
+    """
     def __init__(self, fid_array,
             peaks=None,
             ranges=None,
@@ -1154,7 +1161,7 @@ class DataTraceRangeSelector:
         self.spans = self.peak_selector.ssm.ranges
   
 class DataPeakRangeSelector:
-    """Interactive data-selection widget with traces and ranges"""
+    """Interactive data-selection widget with lines and ranges. Lines and spans are saved as self.peaks, self.ranges."""
     def __init__(self, fid_array,
             peaks=None,
             ranges=None,
