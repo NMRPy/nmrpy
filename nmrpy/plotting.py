@@ -534,6 +534,39 @@ class DataTraceRangeSelector:
         self.index_traces = self.peak_selector.psm.index_lines
         self.spans = self.peak_selector.ssm.ranges
   
+class DataPeakRangeSelector:
+    """Interactive data-selection widget with traces and ranges"""
+    def __init__(self, fid_array,
+            peaks=None,
+            ranges=None,
+            y_indices=None,
+            voff=1e-3,
+            lw=1,
+            label=None,
+            ):
+        if fid_array.data == [] or fid_array.data == None:
+            raise ValueError('data must exist.')
+        data = fid_array.data
+        if y_indices is not None:
+            data = fid_array.data[numpy.array(y_indices)]
+        params = fid_array._params
+        sw_left = params['sw_left']
+        sw = params['sw']
+
+        ppm = numpy.linspace(sw_left-sw, sw_left, data.shape[1])[::-1]
+       
+        self.peak_selector = LineSpanDataSelector(
+                data,
+                fid_array._params,
+                peaks=peaks, 
+                ranges=ranges, 
+                title='peak and range selector', 
+                voff=voff,
+                label=label)
+
+        self.peaks = self.peak_selector.lsm.peaks
+        self.ranges = self.peak_selector.ssm.ranges
+  
 
 #this is to catch 'home' events in the linebuilder 
 def linebuilder_home(self, *args, **kwargs):
@@ -1156,6 +1189,9 @@ class IntegralDataSelector(DataSelector, PolySelectorMixin):
 
 class PeakTraceDataSelector(DataSelector, PolySelectorMixin, SpanSelectorMixin):
     show_tracedata = True
+
+class LineSpanDataSelector(DataSelector, LineSelectorMixin, SpanSelectorMixin):
+    pass
 
 if __name__ == '__main__':
     pass

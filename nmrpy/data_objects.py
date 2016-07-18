@@ -1603,10 +1603,13 @@ class FidArray(Base):
                 fid_number = [fid_number]
         else:
             fid_number = range(len(fids))
-        data = numpy.array([fids[i].data for i in fid_number])
 
         plot_label = 'Left - select peak\nMiddle - delete nearest peak\nCtrl/Middle - delete range\nDrag Right - select range'
-        _peakpicker_widget = DataSelector(data, self._params, title="Peak-picking", voff=voff, label=plot_label)
+        _peakpicker_widget = DataPeakRangeSelector(self, 
+                y_indices=fid_number,
+                voff=voff, 
+                label=plot_label)
+
         if len(_peakpicker_widget.ranges) > 0 and len(_peakpicker_widget.peaks) > 0:
             ranges = _peakpicker_widget.ranges
             peaks = []
