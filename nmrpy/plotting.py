@@ -1084,7 +1084,7 @@ class DataSelector():
             logging.error(traceback.format_exc())
 
 class IntegralDataSelector(DataSelector, PolySelectorMixin):
-    pass
+    show_tracedata = True
 
 class PeakTraceDataSelector(DataSelector, PolySelectorMixin, SpanSelectorMixin):
     show_tracedata = True
@@ -1113,13 +1113,13 @@ class DataTraceSelector:
         ppm = numpy.linspace(sw_left-sw, sw_left, data.shape[1])[::-1]
        
         self.integral_selector = IntegralDataSelector(
-                fid_array.data, 
+                extra_data,
                 fid_array._params,
-                extra_data=extra_data,
+                extra_data=fid_array.data, 
                 extra_data_colour=extra_data_colour,
                 peaks=None, 
                 ranges=None, 
-                title='integral trace selector', 
+                title='Integral trace selector', 
                 voff=voff,
                 label=None)
 
