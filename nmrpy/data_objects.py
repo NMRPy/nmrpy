@@ -1128,6 +1128,8 @@ class Fid(Base):
 
         :keyword residual_colour: colour of the residual signal after subtracting deconvoluted peaks
         """
+        if not len(self._deconvoluted_peaks):
+            raise AttributeError('deconvolution not yet performed')
         plt = Plot()
         plt._plot_deconv(self, **kwargs)
         setattr(self, plt.id, plt)

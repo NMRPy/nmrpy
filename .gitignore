@@ -7,4 +7,3 @@
 coverage_html
 htmlcov
 quicktest.py
-*.nmrpy

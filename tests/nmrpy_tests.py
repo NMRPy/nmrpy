@@ -625,8 +625,15 @@ class TestPlottingUtils(unittest.TestCase):
 
     def setUp(self):
         path_varian = './tests/test_data/test1.fid'
-        self.fid_array_varian = FidArray.from_path(fid_path=path_varian, file_format='varian')
+        self.fid_array_varian_raw = FidArray.from_path(fid_path=path_varian, file_format='varian')
+        self.fid_array_varian = FidArray.from_path(fid_path='./tests/test_data/test1.nmrpy')
+
+
         path_bruker = './tests/test_data/bruker1'
+
+        self.fid_varian = self.fid_array_varian.get_fids()[0]
+        self.fid_varian_raw = self.fid_array_varian_raw.get_fids()[0]
+
         self.fid_array_bruker = FidArray.from_path(fid_path=path_bruker, file_format='bruker')
         peaks = [ 4.71,  4.64,  4.17,  0.57]
         ranges = [[ 5.29,  3.67], [1.05,  0.27]]
@@ -636,64 +643,39 @@ class TestPlottingUtils(unittest.TestCase):
         for fid in self.fid_array_bruker.get_fids():
             fid.peaks = peaks
             fid.ranges = ranges
-        self.fid_varian = self.fid_array_varian.get_fids()[0]
         self.fid_bruker = self.fid_array_bruker.get_fids()[0]
 
     def test_plot_ppm(self):
-        self.fid_varian.ft()
-        self.fid_varian.phase_correct()
-        self.fid_varian.plot_ppm()
-        self.fid_bruker.ft()
-        self.fid_bruker.phase_correct()
         self.fid_bruker.plot_ppm()
 
     def test_plot_deconv(self):
-        self.fid_varian.emhz()
-        self.fid_varian.ft()
-        self.fid_varian.phase_correct()
-        self.fid_varian.real()
-        self.fid_varian.deconv()
         self.fid_varian.plot_deconv()
 
     def test_plot_deconv_array(self):
-        self.fid_array_varian.emhz_fids()
-        self.fid_array_varian.ft_fids()
-        self.fid_array_varian.phase_correct_fids()
-        self.fid_array_varian.real_fids()
-        self.fid_array_varian.norm_fids()
-        self.fid_array_varian.deconv_fids()
         self.fid_array_varian.plot_deconv_array(upper_ppm=6, lower_ppm=3)
 
     def test_plot_array(self):
-        self.fid_array_varian.emhz_fids()
-        self.fid_array_varian.ft_fids()
-        self.fid_array_varian.phase_correct_fids()
         self.fid_array_varian.plot_array()
         self.fid_array_varian.plot_array(upper_ppm=6, lower_ppm=3, filled=True)
         
     def test_phaser(self):
-        self.fid_varian.emhz()
-        self.fid_varian.ft()
-        self.fid_varian.phaser()
+        self.fid_varian_raw.emhz()
+        self.fid_varian_raw.ft()
+        self.fid_varian_raw.phaser()
 
     def test_peakpicker(self):
-        self.fid_varian.emhz()
-        self.fid_varian.ft()
-        self.fid_varian.phase_correct()
         self.fid_varian.peakpicker()
         
-    def test_peakpicker(self):
-        self.fid_varian.emhz()
-        self.fid_varian.ft()
-        self.fid_varian.phase_correct()
-        self.fid_varian.real()
-        self.fid_varian.baseliner()
-        if self.fid_varian._bl_ppm is None:
-            ppm = self.fid_varian._ppm
-            narr = numpy.linspace(ppm[0], ppm[-2], 5)
-            self.fid_varian._bl_ppm = narr
-        self.fid_varian.baseline_correct()
+    #def test_baseliner(self):
+    #    self.fid_varian.baseliner()
+    #    if self.fid_varian._bl_ppm is None:
+    #        ppm = self.fid_varian._ppm
+    #        narr = numpy.linspace(ppm[0], ppm[-2], 5)
+    #        self.fid_varian._bl_ppm = narr
+    #    self.fid_varian.baseline_correct()
         
+    def test_peakpicker_traces(self):
+        self.fid_array_varian.peakpicker_traces()
 
 if __name__ == '__main__':
     unittest.main()
