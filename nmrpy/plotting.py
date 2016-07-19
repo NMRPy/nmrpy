@@ -220,7 +220,7 @@ class Plot():
                                             )
         if filename is not None:
             self.fig.savefig(filename, format='pdf')
-        self.fig.show()
+        pylab.show()
           
         
 
@@ -293,7 +293,7 @@ class Plot():
                                             )
         if filename is not None:
             self.fig.savefig(filename, format='pdf')
-        self.fig.show()
+        pylab.show()
 
     @staticmethod
     def _interleave_datasets(data):

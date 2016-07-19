@@ -1107,7 +1107,7 @@ class Fid(Base):
         plt = Plot()
         plt._plot_ppm(self.data, self._params, **kwargs)
         setattr(self, plt.id, plt)
-        plt.fig.show()
+        pylab.show()
 
     def plot_deconv(self, **kwargs):
         """
@@ -1130,7 +1130,7 @@ class Fid(Base):
         plt = Plot()
         plt._plot_deconv(self, **kwargs)
         setattr(self, plt.id, plt)
-        plt.fig.show()
+        pylab.show()
  
 class FidArray(Base):
     '''
@@ -1551,7 +1551,6 @@ class FidArray(Base):
         plt = Plot()
         plt._plot_array(self.data, self._params, **kwargs)
         setattr(self, plt.id, plt)
-        plt.fig.show()
 
     def plot_deconv_array(self, **kwargs):
         """
@@ -1592,7 +1591,7 @@ class FidArray(Base):
             summed_peak_filled=True,
             **kwargs)
         setattr(self, plt.id, plt)
-        plt.fig.show()
+        
 
     def peakpicker(self, fid_number=None, assign_only_to_index=True, voff=0.3):
         """
