@@ -706,25 +706,22 @@ class Fid(Base):
 
     def baseliner(self):
         """
-        Instantiate a baseline-correction GUI widget. Left-clicking selects an
-        index. Right-click-dragging defines a range. Middle-clicking deletes previously
-        selected peak. Indices selected either as individual selections (left-click) or
-        in ranges (right-click) are combined and stored in
-        :attr:`~nmrpy.data_objects.Fid._bl_ppm`, which is used for baseline-correction
-        (see :meth:`~nmrpy.data_objects.Fid.baseline_correction`).
+        Instantiate a baseline-correction GUI widget. Right-click-dragging
+        defines a range. Ctrl-Right click deletes previously selected range. Indices
+        selected are stored in :attr:`~nmrpy.data_objects.Fid._bl_ppm`, which is used
+        for baseline-correction (see
+        :meth:`~nmrpy.data_objects.Fid.baseline_correction`).
 
         """
         global _baseliner_widget
-        plot_label = 'Left - select datum\nMiddle - delete last selection\nDrag Right - select range'
+        plot_label = 'Drag Right - select range'
         plot_title = 'Select data for baseline-correction'
-        _baseliner_widget = DataSelector(self.data, self._params, title=plot_title, label=plot_label)
+        _baseliner_widget = FidRangeSelector(self.data, self._params, title=plot_title, label=plot_label)
         bl_ppm = []
         for rng in _baseliner_widget.ranges:
             peak_ind = (self._ppm > rng[1]) * (self._ppm < rng[0])
             cur_peaks = self._ppm[peak_ind]
             bl_ppm.append(cur_peaks)
-        if len(_baseliner_widget.peaks) > 0:
-            bl_ppm.append(_baseliner_widget.peaks)
         bl_ppm = numpy.array([j for i in bl_ppm for j in i])
         self._bl_ppm = bl_ppm
   
@@ -824,7 +821,7 @@ class Fid(Base):
         
         p = []
         for i in peaks:
-            pamp = 0.9*abs(data[i])
+            pamp = 0.9*abs(data[int(i)])
             single_peak = [i, 10, 0.1, pamp, frac_gauss]
             p.append(single_peak)
         return numpy.array(p)
@@ -1414,6 +1411,29 @@ class FidArray(Base):
                 fid.phase_correct(method=method)
         print('phase-correction completed')
 
+    def baseliner_fids(self):
+        """
+
+        Instantiate a baseline-correction GUI widget. Right-click-dragging
+        defines a range. Ctrl-Right click deletes previously selected range. Indices
+        selected are stored in :attr:`~nmrpy.data_objects.Fid._bl_ppm`, which is used
+        for baseline-correction (see
+        :meth:`~nmrpy.data_objects.Fid.baseline_correction`).
+
+        """
+        global _baseliner_widget
+        plot_label = 'Drag Right - select range'
+        plot_title = 'Select data for baseline-correction'
+        _baseliner_widget = FidArrayRangeSelector(self, title=plot_title, label=plot_label, voff=0.01)
+        for fid in self.get_fids():
+            bl_ppm = []
+            for rng in _baseliner_widget.ranges:
+                peak_ind = (fid._ppm > rng[1]) * (fid._ppm < rng[0])
+                cur_peaks = fid._ppm[peak_ind]
+                bl_ppm.append(cur_peaks)
+            bl_ppm = numpy.array([j for i in bl_ppm for j in i])
+            fid._bl_ppm = bl_ppm
+  
     def baseline_correct_fids(self, deg=2):
         """ 
         Apply baseline-correction to all :class:`~nmrpy.data_objects.Fid` objects owned by this :class:`~nmrpy.data_objects.FidArray`
@@ -1421,7 +1441,10 @@ class FidArray(Base):
         :keyword deg: degree of the baseline polynomial (see :meth:`~nmrpy.data_objects.Fid.baseline_correct`)
         """
         for fid in self.get_fids():
-            fid.baseline_correct(deg=deg)
+            try:
+                fid.baseline_correct(deg=deg)
+            except:
+                print('failed for {}. Perhaps first run baseliner_fids()'.format(fid.id))
         print('baseline-correction completed')
 
     @property

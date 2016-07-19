@@ -198,7 +198,6 @@ class TestFidInitialisation(unittest.TestCase):
         with self.assertRaises(TypeError):
             fid._f_pks([1,2], 4)
 
-
     def test_f_makep(self):
         fid = Fid()
         x = numpy.arange(100)
@@ -665,17 +664,22 @@ class TestPlottingUtils(unittest.TestCase):
 
     def test_peakpicker(self):
         self.fid_varian.peakpicker()
+        self.fid_array_varian.peakpicker()
         
-    #def test_baseliner(self):
-    #    self.fid_varian.baseliner()
-    #    if self.fid_varian._bl_ppm is None:
-    #        ppm = self.fid_varian._ppm
-    #        narr = numpy.linspace(ppm[0], ppm[-2], 5)
-    #        self.fid_varian._bl_ppm = narr
-    #    self.fid_varian.baseline_correct()
+    def test_baseliner(self):
+        self.fid_varian.baseliner()
+        if self.fid_varian._bl_ppm is None:
+            ppm = self.fid_varian._ppm
+            narr = numpy.linspace(ppm[0], ppm[-2], 5)
+            self.fid_varian._bl_ppm = narr
+        self.fid_varian.baseline_correct()
+        self.fid_array_varian.baseliner_fids()
         
     def test_peakpicker_traces(self):
         self.fid_array_varian.peakpicker_traces()
+
+    def test_select_integral_traces(self):
+        self.fid_array_varian.select_integral_traces()
 
 if __name__ == '__main__':
     unittest.main()

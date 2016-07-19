@@ -1092,6 +1092,9 @@ class PeakTraceDataSelector(DataSelector, PolySelectorMixin, SpanSelectorMixin):
 class LineSpanDataSelector(DataSelector, LineSelectorMixin, SpanSelectorMixin):
     pass
 
+class SpanDataSelector(DataSelector, SpanSelectorMixin):
+    pass
+
 class DataTraceSelector:
     """
     Interactive data-selection widget with traces and ranges. Traces are saved
@@ -1193,5 +1196,68 @@ class DataPeakRangeSelector:
         self.peaks = self.peak_selector.lsm.peaks
         self.ranges = self.peak_selector.ssm.ranges
   
+class FidArrayRangeSelector:
+    """Interactive data-selection widget with ranges. Spans are saved as self.ranges."""
+    def __init__(self, 
+            fid_array,
+            ranges=None,
+            y_indices=None,
+            voff=1e-3,
+            lw=1,
+            title=None,
+            label=None,
+            ):
+        if fid_array.data == [] or fid_array.data == None:
+            raise ValueError('data must exist.')
+        data = fid_array.data
+        if y_indices is not None:
+            data = fid_array.data[numpy.array(y_indices)]
+        params = fid_array._params
+        sw_left = params['sw_left']
+        sw = params['sw']
+
+        ppm = numpy.linspace(sw_left-sw, sw_left, data.shape[1])[::-1]
+       
+        self.span_selector = SpanDataSelector(
+                data,
+                fid_array._params,
+                ranges=ranges, 
+                title=title,
+                voff=voff,
+                label=label)
+
+        self.ranges = self.span_selector.ssm.ranges
+
+class FidRangeSelector:
+    """Interactive data-selection widget with ranges. Spans are saved as self.ranges."""
+    def __init__(self, 
+            data,
+            params,
+            title=None,
+            ranges=None,
+            y_indices=None,
+            voff=1e-3,
+            lw=1,
+            label=None,
+            ):
+        if data == [] or data == None:
+            raise ValueError('data must exist.')
+        if y_indices is not None:
+            data = data[numpy.array(y_indices)]
+        sw_left = params['sw_left']
+        sw = params['sw']
+
+        ppm = numpy.linspace(sw_left-sw, sw_left, len(data))[::-1]
+       
+        self.span_selector = SpanDataSelector(
+                data,
+                params,
+                ranges=ranges, 
+                title=title,
+                voff=voff,
+                label=label)
+
+        self.ranges = self.span_selector.ssm.ranges
+
 if __name__ == '__main__':
     pass
