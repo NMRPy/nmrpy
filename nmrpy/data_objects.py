@@ -1439,12 +1439,12 @@ class FidArray(Base):
         self.__index_traces = index_traces 
 
     @property
-    def _integral_traces(self):
-        return self.__integral_traces
+    def integral_traces(self):
+        return self._integral_traces
 
-    @_integral_traces.setter
-    def _integral_traces(self, integral_traces):
-        self.__integral_traces = integral_traces 
+    @integral_traces.setter
+    def integral_traces(self, integral_traces):
+        self._integral_traces = integral_traces 
 
     def deconv_fids(self, mp=True, cpus=None, method='leastsq', frac_gauss=0.0):
         """ 
@@ -1688,6 +1688,9 @@ class FidArray(Base):
         return peaks
 
     def _get_truncated_peak_shapes_for_plotting(self):
+        """
+        Produces a set of truncated deconvoluted peaks for plotting.
+        """
         peakshapes = self._get_all_list_peakshapes()
         ppms = [fid._ppm for fid in self.get_fids()]
         peakshapes_short_x = []
@@ -1705,8 +1708,15 @@ class FidArray(Base):
 
     def select_integral_traces(self, voff=0.01, lw=1):
         """
-        Instantiate an trace selection widget. This is useful for peak-picking
-        and integral-selection when data are subject to drift.
+
+        Instantiate a trace-selection widget to identify deconvoluted peaks.
+        This can be useful when data are subject to drift. Selected traces on the data
+        array are translated into a set of nearest deconvoluted peaks, and saved in a
+        dictionary: :attr:`~nmrpy.data_objects.FidArray.integral_traces`.
+
+        :keyword voff: vertical offset fraction (0.01)
+
+        :keyword lw: linewidth of plot
         """
         if self.data is None:
             raise AttributeError('No FIDs.')
@@ -1754,16 +1764,21 @@ class FidArray(Base):
             if tmax < last_fid:
                 for j in range(tmax, last_fid+1):
                     trace_dict[i][j] = tmaxval
-        self._integral_traces = trace_dict
+        self.integral_traces = trace_dict
                 
     def get_integrals_from_traces(self):
+        """
+        Returns a dictionary of integral values for all
+        :class:`~nmrpy.data_objects.Fid` objects calculated from trace dictionary
+        :attr:`~nmrpy.data_objects.FidArray.integral_traces`.
+        """
         if self.deconvoluted_integrals is None:
             raise AttributeError('No integrals.')
-        if self._integral_traces is None:
+        if self.integral_traces is None:
             raise AttributeError('No integral traces. First run select_integral_traces().')
         integrals_set = {}
         decon_set = self.deconvoluted_integrals 
-        for i, tr in self._integral_traces.items():
+        for i, tr in self.integral_traces.items():
             tr_keys = numpy.array([fid for fid in tr.keys()])
             tr_vals = numpy.array([val for val in tr.values()])
             tr_sort = numpy.argsort(tr_keys)
