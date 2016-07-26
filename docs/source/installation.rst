@@ -16,9 +16,9 @@ Note: the following instructions may require Python C-extensions: ::
 
     $ sudo apt-get install build-essential python3-dev
 
-...and GIT: ::
+...and some other dependencies: ::
 
-    $ sudo apt-get install git
+    $ sudo apt-get install git libpng12-dev zlib1g-dev libfreetype6-dev
 
 Virtual environments
 ====================
