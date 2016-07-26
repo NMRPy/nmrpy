@@ -1,2 +1,0 @@
-requirements/primary.txt
-requirements/secondary.txt
