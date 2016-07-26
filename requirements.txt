@@ -1,2 +1,2 @@
--r requirements/primary.txt
--r requirements/secondary.txt
+requirements/primary.txt
+requirements/secondary.txt
