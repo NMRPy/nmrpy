@@ -3,10 +3,8 @@ try:
 except ImportError:
     from distutils.core import setup
 
-with open('requirements/primary.txt') as f:
-    requirements_primary = f.read().splitlines()
-with open('requirements/secondary.txt') as f:
-    requirements_secondary = f.read().splitlines()
+with open('requirements.txt') as f:
+    requirements = f.read().splitlines()
 
 config = {
     'description': 'A suite of tools for processing and analysing NMR spectra in Python.',
@@ -15,7 +13,7 @@ config = {
     'url': 'fake.address.com',
     #'download_url': 'Where to download it.',
     'version': '0.1',
-    'install_requires': requirements_primary+requirements_secondary,
+    'install_requires': requirements,
     'packages': ['nmrpy', 'tests'],
     'license': 'New BSD',
     #'scripts': [],
