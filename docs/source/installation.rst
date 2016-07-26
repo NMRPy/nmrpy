@@ -16,6 +16,10 @@ Note: the following instructions may require Python C-extensions: ::
 
     $ sudo apt-get install build-essential python3-dev
 
+...and GIT: ::
+
+    $ sudo apt-get install git
+
 Virtual environments
 ====================
 
