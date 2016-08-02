@@ -18,7 +18,7 @@ Note: the following instructions may require Python C-extensions: ::
 
 ...and some other dependencies: ::
 
-    $ sudo apt-get install git libpng12-dev zlib1g-dev libfreetype6-dev
+    $ sudo apt-get install git libpng12-dev zlib1g-dev libfreetype6-dev tk-dev
 
 Virtual environments
 ====================
