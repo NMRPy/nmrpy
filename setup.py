@@ -14,7 +14,7 @@ config = {
     #'download_url': 'Where to download it.',
     'version': '0.1',
     'install_requires': requirements,
-    'packages': ['nmrpy', 'tests'],
+    'packages': ['nmrpy'],
     'license': 'New BSD',
     #'scripts': [],
     'name': 'nmrpy'
