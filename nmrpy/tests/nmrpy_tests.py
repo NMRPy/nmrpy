@@ -91,7 +91,7 @@ class TestFidInitialisation(unittest.TestCase):
             fid.peaks = [[1,2], [3,4]]
     
     def test_fid_ranges_setter(self):
-        path = './tests/test_data/test2.fid'
+        path = './nmrpy/tests/test_data/test2.fid'
         fid_array = FidArray.from_path(fid_path=path)
         fid = fid_array.get_fids()[0]
         fid.peaks = [ 4.71,  4.64,  4.17,  0.57]
@@ -328,7 +328,7 @@ class TestFidArrayInitialisation(unittest.TestCase):
             self.assertIsInstance(fid, Fid)
 
     def test_from_path_single(self):
-        path = './tests/test_data/test2.fid'
+        path = './nmrpy/tests/test_data/test2.fid'
         fid_array = FidArray.from_path(fid_path=path)
         self.assertIsInstance(fid_array._procpar, dict)
         self.assertIsInstance(fid_array._params, dict)
@@ -339,51 +339,51 @@ class TestFidArrayInitialisation(unittest.TestCase):
             fid._params = 'not a dictionary'
  
     def test_from_path_array(self):
-        path = './tests/test_data/test1.fid'
+        path = './nmrpy/tests/test_data/test1.fid'
         fid_array = FidArray.from_path(fid_path=path)
         self.assertIsInstance(fid_array._procpar, dict)
         self.assertIsInstance(fid_array._params, dict)
-        path = './tests/test_data/bruker1'
+        path = './nmrpy/tests/test_data/bruker1'
         fid_array = FidArray.from_path(fid_path=path)
         self.assertIsInstance(fid_array._procpar, dict)
         self.assertIsInstance(fid_array._params, dict)
 
     def test_from_path_array_varian(self):
-        path = './tests/test_data/test1.fid'
+        path = './nmrpy/tests/test_data/test1.fid'
         fid_array = FidArray.from_path(fid_path=path, file_format='varian')
         self.assertIsInstance(fid_array._procpar, dict)
         self.assertIsInstance(fid_array._params, dict)
 
     def test_from_path_array_bruker(self):
-        path = './tests/test_data/bruker1'
+        path = './nmrpy/tests/test_data/bruker1'
         fid_array = FidArray.from_path(fid_path=path, file_format='bruker')
         self.assertIsInstance(fid_array._procpar, dict)
         self.assertIsInstance(fid_array._params, dict)
 
     def test_failed_from_path_array_varian(self):
-        path = './tests/test_data/bruker1'
+        path = './nmrpy/tests/test_data/bruker1'
         with self.assertRaises(AttributeError):
             fid_array = FidArray.from_path(fid_path=path, file_format='varian')
-        path = './tests/test_data/non_existent'
+        path = './nmrpy/tests/test_data/non_existent'
         with self.assertRaises(FileNotFoundError):
             fid_array = FidArray.from_path(fid_path=path, file_format='varian')
 
     def test_failed_from_path_array_bruker(self):
-        path = './tests/test_data/test1.fid'
+        path = './nmrpy/tests/test_data/test1.fid'
         with self.assertRaises(AttributeError):
             fid_array = FidArray.from_path(fid_path=path, file_format='bruker')
-        path = './tests/test_data/non_existent'
+        path = './nmrpy/tests/test_data/non_existent'
         with self.assertRaises(FileNotFoundError):
             fid_array = FidArray.from_path(fid_path=path, file_format='bruker')
 
     def test_array_procpar(self):
-        path = './tests/test_data/test2.fid'
+        path = './nmrpy/tests/test_data/test2.fid'
         fid_array = FidArray.from_path(path)
         self.assertIsInstance(fid_array._procpar, dict)
         self.assertIsInstance(fid_array._params, dict)
 
     def test_data_property(self):
-        path = './tests/test_data/test1.fid'
+        path = './nmrpy/tests/test_data/test1.fid'
         fid_array = FidArray.from_path(path)
         self.assertIsInstance(fid_array.data, numpy.ndarray)
 
@@ -440,9 +440,9 @@ class TestFidArrayInitialisation(unittest.TestCase):
 class TestFidUtils(unittest.TestCase):
 
     def setUp(self):
-        path_varian = './tests/test_data/test1.fid'
+        path_varian = './nmrpy/tests/test_data/test1.fid'
         self.fid_array_varian = FidArray.from_path(fid_path=path_varian, file_format='varian')
-        path_bruker = './tests/test_data/bruker1'
+        path_bruker = './nmrpy/tests/test_data/bruker1'
         self.fid_array_bruker = FidArray.from_path(fid_path=path_bruker, file_format='bruker')
         peaks = [ 4.71,  4.64,  4.17,  0.57]
         ranges = [[ 5.29,  3.67], [1.05,  0.27]]
@@ -561,9 +561,9 @@ class TestFidUtils(unittest.TestCase):
 class TestFidArrayUtils(unittest.TestCase):
 
     def setUp(self):
-        path_varian = './tests/test_data/test1.fid'
+        path_varian = './nmrpy/tests/test_data/test1.fid'
         self.fid_array_varian = FidArray.from_path(fid_path=path_varian, file_format='varian')
-        path_bruker = './tests/test_data/bruker1'
+        path_bruker = './nmrpy/tests/test_data/bruker1'
         self.fid_array_bruker = FidArray.from_path(fid_path=path_bruker, file_format='bruker')
         peaks = [ 4.71,  4.64,  4.17,  0.57]
         ranges = [[ 5.29,  3.67], [1.05,  0.27]]
@@ -623,12 +623,12 @@ class TestFidArrayUtils(unittest.TestCase):
 class TestPlottingUtils(unittest.TestCase):
 
     def setUp(self):
-        path_varian = './tests/test_data/test1.fid'
+        path_varian = './nmrpy/tests/test_data/test1.fid'
         self.fid_array_varian_raw = FidArray.from_path(fid_path=path_varian, file_format='varian')
         self.fid_array_varian = FidArray.from_path(fid_path='./tests/test_data/test1.nmrpy')
 
 
-        path_bruker = './tests/test_data/bruker1'
+        path_bruker = './nmrpy/tests/test_data/bruker1'
 
         self.fid_varian = self.fid_array_varian.get_fids()[0]
         self.fid_varian_raw = self.fid_array_varian_raw.get_fids()[0]

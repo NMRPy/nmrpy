@@ -1,4 +1,4 @@
-coverage run --source=. -m unittest discover -s tests/ -p "nmrpy_tests.py"
+coverage run --source=. -m unittest discover -s nmrpy/tests/ -p "nmrpy_tests.py"
 coverage report
-coverage html -d tests/coverage_html
-echo "coverage html stored in tests/coverage_html"
+coverage html -d nmrpy/tests/coverage_html
+echo "coverage html stored in nmrpy/tests/coverage_html"
