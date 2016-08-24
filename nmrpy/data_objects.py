@@ -564,6 +564,8 @@ class Fid(Base):
             phased_data = Fid._ps(data, p0=mz.params['p0'].value, p1=mz.params['p1'].value)
             if abs(phased_data.min()) > abs(phased_data.max()):
                     phased_data *= -1
+            if sum(phased_data) < 0.0:
+                    phased_data *= -1
             print('%d\t%d'%(mz.params['p0'].value, mz.params['p1'].value))
             return phased_data
         
