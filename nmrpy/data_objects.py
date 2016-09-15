@@ -689,7 +689,7 @@ class Fid(Base):
         """
         global _peakpicker_widget
         plot_label = 'Left - select peak\nMiddle - delete nearest peak\nCtrl/Middle - delete range\nDrag Right - select range'
-        _peakpicker_widget = DataSelector(self.data, self._params, 
+        _peakpicker_widget = LineSpanDataSelector(self.data, self._params, 
                             peaks=self.peaks,
                             ranges=self.ranges,
                             title="Peak-picking {}".format(self.id), 

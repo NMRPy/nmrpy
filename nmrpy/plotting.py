@@ -926,6 +926,7 @@ class DataSelector():
         Line selection: :class:`~nmrpy.plotting.LineSelectorMixin`
         Span selection: :class:`~nmrpy.plotting.SpanSelectorMixin`
         Poly selection: :class:`~nmrpy.plotting.PolySelectorMixin`
+    This class is not intended to be used without inheriting at least one mixin.
     """
 
     def __init__(self, 
