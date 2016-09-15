@@ -6,7 +6,7 @@ cycler==0.10.0
 decorator==4.0.10
 docutils==0.12
 imagesize==0.7.1
-ipython==5.0.0
+ipython==4.2.1
 ipython-genutils==0.1.0
 Jinja2==2.8
 lmfit==0.9.3
