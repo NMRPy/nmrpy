@@ -760,6 +760,7 @@ class LineSelectorMixin(BaseSelectorMixin):
         super().change_visible()
         if hasattr(self, 'lsm'):
             for i, j in self.lsm.peaklines.items():
+                j.set_visible(True)
                 j.set_visible(not j.get_visible())
 
     def press(self, event):
@@ -783,6 +784,7 @@ class LineSelectorMixin(BaseSelectorMixin):
                     peakline.remove()
                 except:
                     print('Could not remove peakline')
+            self.canvas.draw()
         #self.redraw()
 
     def release(self, event):
@@ -868,6 +870,7 @@ class SpanSelectorMixin(BaseSelectorMixin):
                         rangespan.remove()
                         break
                     rng += 1
+                self.canvas.draw()
 
     def release(self, event):
         super().release(event)
@@ -984,8 +987,8 @@ class DataSelector():
         self.canvas.mpl_connect('draw_event', self.on_draw) 
         #cursor = Cursor(self.ax, useblit=True, color='k', linewidth=0.5)
         #cursor.horizOn = False
-        #self.canvas.draw()
-        self.redraw()
+        self.canvas.draw()
+        #self.redraw()
         pylab.show()
 
 
@@ -1034,7 +1037,7 @@ class DataSelector():
         return tb.mode
 
     def on_draw(self, event):
-        #self.background = self.canvas.copy_from_bbox(self.ax.bbox)
+        self.background = self.canvas.copy_from_bbox(self.ax.bbox)
         pass
 
     def on_home(self, event):
@@ -1079,6 +1082,18 @@ class DataSelector():
             logging.error(traceback.format_exc())
         self.redraw()
         self.canvas.blit(self.ax.bbox) 
+
+    def make_invisible(self):
+        try:
+             super().make_invisible()
+        except Exception as e:
+            logging.error(traceback.format_exc())
+
+    def make_visible(self):
+        try:
+             super().make_visible()
+        except Exception as e:
+            logging.error(traceback.format_exc())
 
     def redraw(self):
         try:
