@@ -694,10 +694,10 @@ class Fid(Base):
                             ranges=self.ranges,
                             title="Peak-picking {}".format(self.id), 
                             label=plot_label)
-        if len(_peakpicker_widget.ranges) > 0 and len(_peakpicker_widget.peaks) > 0:
-            self.ranges = _peakpicker_widget.ranges
+        if len(_peakpicker_widget.ssm.ranges) > 0 and len(_peakpicker_widget.lsm.peaks) > 0:
+            self.ranges = _peakpicker_widget.ssm.ranges
             peaks = []
-            for peak in _peakpicker_widget.peaks:
+            for peak in _peakpicker_widget.lsm.peaks:
                 for rng in self.ranges:
                     if peak >= rng[1] and peak <= rng[0]:
                         peaks.append(peak)

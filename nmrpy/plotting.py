@@ -734,10 +734,12 @@ class LineSelectorMixin(BaseSelectorMixin):
         self.lsm.btn_del = 1
         self.lsm.key_mod = 'control'
         self.lsm.peaklines = {}
-        self.lsm.peaks = self.peaks
-        for x in self.lsm.peaks:
+        self.lsm.peaks = []
+        for x in self.peaks:
+            self.lsm.peaks.append(x)
             self.lsm.peaklines[x] = self.makeline(x)
-            self.ax.draw_artist(self.lsm.peaklines[x])
+            #self.ax.draw_artist(self.lsm.peaklines[x])
+        self.lsm.peaks = sorted(self.lsm.peaks)[::-1]
                 
     def makeline(self, x):
         return self.ax.plot(
@@ -765,18 +767,22 @@ class LineSelectorMixin(BaseSelectorMixin):
         x = numpy.round(event.xdata, 2)
         if event.button == self.lsm.btn_add and event.key != self.lsm.key_mod  and (x >= self.xlims[1]) and (x <= self.xlims[0]):
             print('peak {}'.format(x))
-            self.lsm.peaks.append(x)
-            self.lsm.peaklines[x] = self.makeline(x)
-            self.lsm.peaks = sorted(self.lsm.peaks)[::-1]
-            #self.ax.draw_artist(self.lsm.peaklines[x])
+            if x not in self.lsm.peaks:
+                self.lsm.peaks.append(x)
+                self.lsm.peaklines[x] = self.makeline(x)
+                self.lsm.peaks = sorted(self.lsm.peaks)[::-1]
+                #self.ax.draw_artist(self.lsm.peaklines[x])
         #middle
         elif event.button == self.lsm.btn_del and event.key == self.lsm.key_mod:
             #find and delete nearest peakline
             if len(self.lsm.peaks) > 0:
                 delete_peak = numpy.argmin([abs(i-x) for i in self.lsm.peaks])
                 old_peak = self.lsm.peaks.pop(delete_peak)
-                peakline = self.lsm.peaklines.pop(old_peak)
-                peakline.remove()
+                try: 
+                    peakline = self.lsm.peaklines.pop(old_peak)
+                    peakline.remove()
+                except:
+                    print('Could not remove peakline')
         #self.redraw()
 
     def release(self, event):
@@ -978,7 +984,8 @@ class DataSelector():
         self.canvas.mpl_connect('draw_event', self.on_draw) 
         #cursor = Cursor(self.ax, useblit=True, color='k', linewidth=0.5)
         #cursor.horizOn = False
-        self.canvas.draw()
+        #self.canvas.draw()
+        self.redraw()
         pylab.show()
 
 
@@ -1027,7 +1034,8 @@ class DataSelector():
         return tb.mode
 
     def on_draw(self, event):
-        self.background = self.canvas.copy_from_bbox(self.ax.bbox)
+        #self.background = self.canvas.copy_from_bbox(self.ax.bbox)
+        pass
 
     def on_home(self, event):
         pass
