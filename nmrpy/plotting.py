@@ -1130,7 +1130,7 @@ class DataTraceSelector:
             voff=1e-3,
             lw=1,
             ):
-        if fid_array.data == [] or fid_array.data == None:
+        if fid_array.data is [] or fid_array.data is None:
             raise ValueError('data must exist.')
         data = fid_array.data
         params = fid_array._params
@@ -1165,7 +1165,7 @@ class DataTraceRangeSelector:
             voff=1e-3,
             lw=1,
             ):
-        if fid_array.data == [] or fid_array.data == None:
+        if fid_array.data is [] or fid_array.data is None:
             raise ValueError('data must exist.')
         data = fid_array.data
         params = fid_array._params
@@ -1197,7 +1197,7 @@ class DataPeakRangeSelector:
             lw=1,
             label=None,
             ):
-        if fid_array.data == [] or fid_array.data == None:
+        if fid_array.data is [] or fid_array.data is None:
             raise ValueError('data must exist.')
         data = fid_array.data
         if y_indices is not None:
@@ -1231,7 +1231,7 @@ class FidArrayRangeSelector:
             title=None,
             label=None,
             ):
-        if fid_array.data == [] or fid_array.data == None:
+        if fid_array.data is [] or fid_array.data is None:
             raise ValueError('data must exist.')
         data = fid_array.data
         if y_indices is not None:
