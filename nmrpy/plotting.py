@@ -413,7 +413,7 @@ class Phaser:
     def __init__(self, fid):
         if not Plot._is_flat_iter(fid.data): 
             raise ValueError('data must be flat iterable.')
-        if fid.data == [] or fid.data == None:
+        if fid.data is [] or fid.data is None:
             raise ValueError('data must exist.')
         self.fid = fid
         self.fig = pylab.figure(figsize=[15, 7.5])
@@ -1264,7 +1264,7 @@ class FidRangeSelector:
             lw=1,
             label=None,
             ):
-        if data == [] or data == None:
+        if data is [] or data is None:
             raise ValueError('data must exist.')
         if y_indices is not None:
             data = data[numpy.array(y_indices)]
