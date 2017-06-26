@@ -1262,7 +1262,7 @@ class FidArray(Base):
         """
         Add a list of :class:`~nmrpy.data_objects.Fid` objects to this :class:`~nmrpy.data_objects.FidArray`.
         
-        :arg fid: a list of :class:`~nmrpy.data_objects.Fid` instances
+        :arg fids: a list of :class:`~nmrpy.data_objects.Fid` instances
         """
         if FidArray._is_iter(fids):
             num_fids = len(fids)
@@ -1299,9 +1299,9 @@ class FidArray(Base):
         """
         Instantiate a new :class:`~nmrpy.data_objects.FidArray` object from a .fid directory.
 
-        :keyword fidpath: filepath to .fid directory
+        :keyword fid_path: filepath to .fid directory
 
-        :keyword file_path: 'varian' or 'bruker', usually unnecessary
+        :keyword file_format: 'varian' or 'bruker', usually unnecessary
 
         """
         if not file_format:
@@ -1396,7 +1396,7 @@ class FidArray(Base):
 
         :keyword mp: parallelise the phasing process over multiple processors, significantly reducing computation time
 
-        :keyword cores: defines number of CPUs to utilise if 'mp' is set to True
+        :keyword cpus: defines number of CPUs to utilise if 'mp' is set to True
         """
         if mp: 
             fids = self.get_fids()
@@ -1502,7 +1502,7 @@ class FidArray(Base):
 
         :keyword mp: parallelise the phasing process over multiple processors, significantly reduces computation time
 
-        :keyword cores: defines number of CPUs to utilise if 'mp' is set to True, default is n-1 cores
+        :keyword cpus: defines number of CPUs to utilise if 'mp' is set to True, default is n-1 cores
         """
         if mp: 
             fids = self.get_fids()
