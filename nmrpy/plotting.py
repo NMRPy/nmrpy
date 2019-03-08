@@ -808,9 +808,6 @@ class SpanSelectorMixin(BaseSelectorMixin):
         self.ssm.rect = None
         self.ssm.rangespans = []
         self.ssm.rectprops = dict(facecolor='0.5', alpha=0.2)
-        self.ssm.ppm = self.ppm
-        self.ssm.bl_ppm = []
-        print('post-init', id(self.ssm.bl_ppm))
         self.ssm.ranges = self.ranges
         for rng in self.ssm.ranges:
             self.ssm.rangespans.append(self.makespan(rng[1], rng[0]-rng[1]))
@@ -895,20 +892,7 @@ class SpanSelectorMixin(BaseSelectorMixin):
             self.ssm.ranges.append([numpy.round(vmin, 2), numpy.round(vmax, 2)])
             self.ssm.rangespans.append(self.makespan(vmin, span))
             print('range {} -> {}'.format(vmax, vmin))
-            print('inside ',self.ssm.ranges)
         self.ssm.ranges = [numpy.sort(i)[::-1] for i in self.ssm.ranges]
-        print('outside',self.ssm.ranges)
-        self.ssm.bl_ppm.clear()
-        for rng in self.ssm.ranges:
-            peak_ind = (self.ssm.ppm > rng[1]) * (self.ssm.ppm < rng[0])
-            cur_peaks = self.ssm.ppm[peak_ind]
-            # self.ssm.bl_ppm.append(cur_peaks)
-            print('pre-append', id(self.ssm.bl_ppm))
-            self.ssm.bl_ppm.extend([i for i in cur_peaks])
-            print('post-append', id(self.ssm.bl_ppm))
-            print('length ',len(self.ssm.bl_ppm))
-            # print(self.ssm.bl_ppm)
-        # self.ssm.bl_ppm_ar = numpy.array([j for i in self.ssm.bl_ppm for j in i])
 
 
     def onmove(self, event):
@@ -956,8 +940,7 @@ class DataSelector():
 
     def __init__(self, 
                 data, 
-                params,
-                ppm,
+                params, 
                 extra_data=None,
                 extra_data_colour='k',
                 peaks=None, 
@@ -968,7 +951,6 @@ class DataSelector():
         if not Plot._is_iter(data):
             raise AttributeError('data must be iterable.')
         self.data = numpy.array(data)
-        self.ppm = ppm
         self.extra_data = extra_data
         self.extra_data_colour = extra_data_colour
         self.params = params
@@ -1294,13 +1276,12 @@ class FidRangeSelector:
         self.span_selector = SpanDataSelector(
                 data,
                 params,
-                ppm,
                 ranges=ranges, 
                 title=title,
                 voff=voff,
                 label=label)
 
-        # self.ranges = self.span_selector.ssm.ranges
+        self.ranges = self.span_selector.ssm.ranges
 
 if __name__ == '__main__':
     pass
