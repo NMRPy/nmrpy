@@ -715,18 +715,18 @@ class Fid(Base):
         :meth:`~nmrpy.data_objects.Fid.baseline_correction`).
 
         """
-        # global _baseliner_widget
+        global _baseliner_widget
         plot_label = 'Drag Right - select range'
         plot_title = 'Select data for baseline-correction'
-        self._baseliner_widget = FidRangeSelector(self.data, self._params, title=plot_title, label=plot_label)
-        # for rng in self._baseliner_widget.span_selector.ssm.ranges:
-        #     peak_ind = (self._ppm > rng[1]) * (self._ppm < rng[0])
-        #     cur_peaks = self._ppm[peak_ind]
-        #     bl_ppm.append(cur_peaks)
-        # bl_ppm = numpy.array([j for i in bl_ppm for j in i])
-        self._bl_ppm = self._baseliner_widget.span_selector.ssm.bl_ppm
-        print('fin-2', id(self._baseliner_widget.span_selector.ssm.bl_ppm))
-        print('fin-1', id(self._bl_ppm))
+        _baseliner_widget = FidRangeSelector(self.data, self._params, title=plot_title, label=plot_label)
+        bl_ppm = []
+        for rng in _baseliner_widget.ranges:
+            peak_ind = (self._ppm > rng[1]) * (self._ppm < rng[0])
+            cur_peaks = self._ppm[peak_ind]
+            bl_ppm.append(cur_peaks)
+        bl_ppm = numpy.array([j for i in bl_ppm for j in i])
+        self._bl_ppm = bl_ppm
+  
 
     @classmethod
     def _f_gauss(cls, offset, amplitude, gauss_sigma, x):
