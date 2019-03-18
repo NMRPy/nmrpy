@@ -29,4 +29,4 @@ Sphinx>=1.4.3
 traitlets>=4.2.2
 wcwidth>=0.1.7
 scipy>=0.17.0
-matplotlib>=1.5.1
+matplotlib==1.5.1

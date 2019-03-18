@@ -1,4 +1,4 @@
-README.txt
+README.md
 setup.py
 nmrpy/__init__.py
 nmrpy/data_objects.py
