@@ -8,3 +8,4 @@ coverage_html
 htmlcov
 quicktest.py
 .idea
+/dist
