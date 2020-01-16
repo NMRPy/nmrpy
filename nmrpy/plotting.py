@@ -75,7 +75,7 @@ class Plot():
         ppm = ppm[ppm_bool_index]
         data = data[ppm_bool_index]
 
-        self.fig = pylab.figure(figsize=[10,5])
+        self.fig = pylab.figure(figsize=[9,5])
         ax = self.fig.add_subplot(111)
         ax.plot(ppm, data, color=color, lw=lw)
         ax.invert_xaxis()
@@ -135,7 +135,7 @@ class Plot():
                                                                                 upper_ppm=upper_ppm,
                                                                                 lower_ppm=lower_ppm)
 
-        self.fig = pylab.figure(figsize=[10,5])
+        self.fig = pylab.figure(figsize=[9,5])
         ax = self.fig.add_subplot(111)
         ax.plot(ppm, residual, color=residual_colour, lw=lw)
         ax.plot(ppm, data, color=colour, lw=lw)
@@ -162,7 +162,7 @@ class Plot():
             data_filled=False,
             summed_peak_filled=True,
             residual_filled=False,
-            figsize=[15, 7.5],
+            figsize=[9, 6],
             lw=0.3, 
             azim=-90, 
             elev=20, 
@@ -229,7 +229,7 @@ class Plot():
                 lower_index=None, 
                 upper_ppm=None, 
                 lower_ppm=None, 
-                figsize=[15, 7.5],
+                figsize=[9, 6],
                 lw=0.3, 
                 azim=-90, 
                 elev=20, 
@@ -416,7 +416,7 @@ class Phaser:
         if fid.data is [] or fid.data is None:
             raise ValueError('data must exist.')
         self.fid = fid
-        self.fig = pylab.figure(figsize=[15, 7.5])
+        self.fig = pylab.figure(figsize=[9, 6])
         self.phases = numpy.array([0.0, 0.0])
         self.y = 0.0
         self.ax = self.fig.add_subplot(111)
@@ -993,7 +993,7 @@ class DataSelector():
 
 
     def _make_basic_fig(self, *args, **kwargs):
-        self.fig = pylab.figure(figsize=[15, 7.5])
+        self.fig = pylab.figure(figsize=[9, 6])
         self.ax = self.fig.add_subplot(111)
         if len(self.data.shape)==1:
             self.ppm = numpy.mgrid[self.params['sw_left']-self.params['sw']:self.params['sw_left']:complex(self.data.shape[0])]
