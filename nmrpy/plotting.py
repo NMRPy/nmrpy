@@ -9,7 +9,7 @@ from mpl_toolkits.mplot3d import Axes3D
 from matplotlib.collections import PolyCollection
 import copy
 
-from matplotlib.mlab import dist
+#from matplotlib.mlab import dist
 from matplotlib.patches import Circle, Rectangle
 from matplotlib.lines import Line2D
 from matplotlib.transforms import blended_transform_factory
