@@ -964,8 +964,6 @@ class DataSelector():
                 params, 
                 extra_data=None,
                 extra_data_colour='k',
-                peaks=None, 
-                ranges=None, 
                 title=None, 
                 voff=0.001, 
                 label=None,
@@ -978,10 +976,10 @@ class DataSelector():
         self.params = params
         self.ranges = []
         self.peaks = []
-        if peaks is not None:
-            self.peaks = list(peaks)
-        if ranges is not None:
-            self.ranges = list(ranges)
+        if self.fid.peaks is not None:
+            self.peaks = list(self.fid.peaks)
+        if self.fid.ranges is not None:
+            self.ranges = list(self.fid.ranges)
         self.voff = voff
         self.title = title
         self.label = label
