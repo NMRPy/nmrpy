@@ -1116,7 +1116,35 @@ class PeakTraceDataSelector(DataSelector, PolySelectorMixin, SpanSelectorMixin):
     show_tracedata = True
 
 class LineSpanDataSelector(DataSelector, LineSelectorMixin, SpanSelectorMixin):
-    pass
+    """
+    Peak-picking GUI widget.
+    """
+    def __init__(self, fid, data, params, **kwargs):
+        self.fid = fid
+        super().__init__(data, params, **kwargs)
+        self.btn_assign = 3
+        self.key_mod1 = 'ctrl+alt'
+        self.key_mod2 = 'alt+control'
+
+    def press(self, event):
+        super().press(event)
+        if event.button == self.btn_assign and (event.key == self.key_mod1 \
+                                        or event.key == self.key_mod2):
+            print('assigned peaks and ranges')
+            self.assign() 
+
+    def assign(self):
+        if len(self.ssm.ranges) > 0 and len(self.lsm.peaks) > 0:
+            self.fid.ranges = self.ssm.ranges
+            peaks = []
+            for peak in self.lsm.peaks:
+                for rng in self.ssm.ranges:
+                    if peak >= rng[1] and peak <= rng[0]:
+                        peaks.append(peak)
+            self.fid.peaks = peaks
+        else:
+            self.fid.peaks = None
+            self.fid.ranges = None
 
 class SpanDataSelector(DataSelector, SpanSelectorMixin):
     pass
