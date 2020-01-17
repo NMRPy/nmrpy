@@ -687,24 +687,20 @@ class Fid(Base):
         :meth:`~nmrpy.data_objects.Fid.deconv`).
 
         """
-        global _peakpicker_widget
-        plot_label = 'Left - select peak\nMiddle - delete nearest peak\nCtrl/Middle - delete range\nDrag Right - select range'
-        _peakpicker_widget = LineSpanDataSelector(self.data, self._params, 
+        plot_label = \
+'''
+Left - select peak
+Ctrl+Left - delete nearest peak
+Drag Right - select range
+Ctrl+Right - delete range
+Ctrl+Alt+Right - assign
+'''
+        self._peakpicker_widget = LineSpanDataSelector(self, self.data, self._params, 
                             peaks=self.peaks,
                             ranges=self.ranges,
                             title="Peak-picking {}".format(self.id), 
-                            label=plot_label)
-        if len(_peakpicker_widget.ssm.ranges) > 0 and len(_peakpicker_widget.lsm.peaks) > 0:
-            self.ranges = _peakpicker_widget.ssm.ranges
-            peaks = []
-            for peak in _peakpicker_widget.lsm.peaks:
-                for rng in self.ranges:
-                    if peak >= rng[1] and peak <= rng[0]:
-                        peaks.append(peak)
-            self.peaks = peaks
-        else:
-            self.peaks = None
-            self.ranges = None
+                            label=plot_label,
+                            )
 
     def baseliner(self):
         """
