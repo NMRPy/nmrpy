@@ -696,8 +696,6 @@ Ctrl+Right - delete range
 Ctrl+Alt+Right - assign
 '''
         self._peakpicker_widget = LineSpanDataSelector(self, self.data, self._params, 
-                            peaks=self.peaks,
-                            ranges=self.ranges,
                             title="Peak-picking {}".format(self.id), 
                             label=plot_label,
                             )
