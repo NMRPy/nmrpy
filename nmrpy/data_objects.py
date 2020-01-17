@@ -1643,39 +1643,20 @@ class FidArray(Base):
 
         :keyword voff: vertical offset for spectra
         """
-        global _peakpicker_widget
-        fids = self.get_fids()
-        if fid_number is not None:
-            if not Fid._is_iter(fid_number):
-                fid_number = [fid_number]
-        else:
-            fid_number = range(len(fids))
 
-        plot_label = 'Left - select peak\nMiddle - delete nearest peak\nCtrl/Middle - delete range\nDrag Right - select range'
-        _peakpicker_widget = DataPeakRangeSelector(self, 
+        plot_label = \
+'''
+Left - select peak
+Ctrl+Left - delete nearest peak
+Drag Right - select range
+Ctrl+Right - delete range
+Ctrl+Alt+Right - assign
+'''
+        self._peakpicker_widget = DataPeakRangeSelector(self, 
                 y_indices=fid_number,
+                aoti=assign_only_to_index,
                 voff=voff, 
                 label=plot_label)
-
-        if len(_peakpicker_widget.ranges) > 0 and len(_peakpicker_widget.peaks) > 0:
-            ranges = _peakpicker_widget.ranges
-            peaks = []
-            for peak in _peakpicker_widget.peaks:
-                for rng in ranges:
-                    if peak >= rng[1] and peak <= rng[0]:
-                        peaks.append(peak)
-        else:
-            peaks = None
-            ranges = None
-
-        if assign_only_to_index:
-            for fid in [fids[i] for i in fid_number]:
-                fid.peaks = peaks
-                fid.ranges = ranges
-        else:       
-            for fid in fids:
-                fid.peaks = peaks
-                fid.ranges = ranges
 
     def peakpicker_traces(self, 
             voff=0.01, 
