@@ -1,7 +1,7 @@
 import logging, traceback
 import numpy
 import scipy
-import pylab
+from matplotlib import pyplot as plt
 import numbers
 from datetime import datetime
 from matplotlib.figure import Figure
@@ -75,7 +75,7 @@ class Plot():
         ppm = ppm[ppm_bool_index]
         data = data[ppm_bool_index]
 
-        self.fig = pylab.figure(figsize=[9,5])
+        self.fig = plt.figure(figsize=[9,5])
         ax = self.fig.add_subplot(111)
         ax.plot(ppm, data, color=color, lw=lw)
         ax.invert_xaxis()
@@ -135,7 +135,7 @@ class Plot():
                                                                                 upper_ppm=upper_ppm,
                                                                                 lower_ppm=lower_ppm)
 
-        self.fig = pylab.figure(figsize=[9,5])
+        self.fig = plt.figure(figsize=[9,5])
         ax = self.fig.add_subplot(111)
         ax.plot(ppm, residual, color=residual_colour, lw=lw)
         ax.plot(ppm, data, color=colour, lw=lw)
@@ -220,7 +220,7 @@ class Plot():
                                             )
         if filename is not None:
             self.fig.savefig(filename, format='pdf')
-        pylab.show()
+        plt.show()
           
         
 
@@ -272,7 +272,7 @@ class Plot():
             data = data[:, ppm_bool_index]
 
         if colour:
-            colours_list = [pylab.cm.viridis(numpy.linspace(0, 1, len(data)))]
+            colours_list = [plt.cm.viridis(numpy.linspace(0, 1, len(data)))]
         else:
             colours_list = None
 
@@ -293,7 +293,7 @@ class Plot():
                                             )
         if filename is not None:
             self.fig.savefig(filename, format='pdf')
-        pylab.show()
+        plt.show()
 
     @staticmethod
     def _interleave_datasets(data):
@@ -340,7 +340,7 @@ class Plot():
             filled_list = [False]*len(zlist)
 
 
-        fig = pylab.figure(figsize=figsize)
+        fig = plt.figure(figsize=figsize)
         ax = fig.add_subplot(111, projection='3d', azim=azim, elev=elev)
 
         for data_n in range(len(zlist)):
@@ -416,7 +416,7 @@ class Phaser:
         if fid.data is [] or fid.data is None:
             raise ValueError('data must exist.')
         self.fid = fid
-        self.fig = pylab.figure(figsize=[9, 6])
+        self.fig = plt.figure(figsize=[9, 6])
         self.phases = numpy.array([0.0, 0.0])
         self.y = 0.0
         self.ax = self.fig.add_subplot(111)
@@ -442,10 +442,10 @@ class Phaser:
         self.ax.text(0.05 *self.ax.get_xlim()[1],0.7 *self.ax.get_ylim()[1],'phasing\nleft - zero-order\nright - first order')
         cursor = Cursor(self.ax, useblit=True, color='k', linewidth=0.5)
         cursor.horizOn = False
-        pylab.show()
+        plt.show()
 
     def press(self, event):
-        tb = pylab.get_current_fig_manager().toolbar
+        tb = plt.get_current_fig_manager().toolbar
         if tb.mode == '':
             x, y = event.xdata, event.ydata
             if event.inaxes is not None:
@@ -766,6 +766,7 @@ class LineSelectorMixin(BaseSelectorMixin):
     def press(self, event):
         super().press(event)
         x = numpy.round(event.xdata, 2)
+        # left
         if event.button == self.lsm.btn_add and event.key != self.lsm.key_mod  and (x >= self.xlims[1]) and (x <= self.xlims[0]):
             print('peak {}'.format(x))
             if x not in self.lsm.peaks:
@@ -773,7 +774,7 @@ class LineSelectorMixin(BaseSelectorMixin):
                 self.lsm.peaklines[x] = self.makeline(x)
                 self.lsm.peaks = sorted(self.lsm.peaks)[::-1]
                 #self.ax.draw_artist(self.lsm.peaklines[x])
-        #middle
+        #Ctrl+left
         elif event.button == self.lsm.btn_del and event.key == self.lsm.key_mod:
             #find and delete nearest peakline
             if len(self.lsm.peaks) > 0:
@@ -947,7 +948,8 @@ class DataSelector():
                 ranges=None, 
                 title=None, 
                 voff=0.001, 
-                label=None):
+                label=None,
+                ):
         if not Plot._is_iter(data):
             raise AttributeError('data must be iterable.')
         self.data = numpy.array(data)
@@ -989,11 +991,11 @@ class DataSelector():
         #cursor.horizOn = False
         self.canvas.draw()
         #self.redraw()
-        pylab.show()
+        plt.show()
 
 
     def _make_basic_fig(self, *args, **kwargs):
-        self.fig = pylab.figure(figsize=[9, 6])
+        self.fig = plt.figure(figsize=[9, 6])
         self.ax = self.fig.add_subplot(111)
         if len(self.data.shape)==1:
             self.ppm = numpy.mgrid[self.params['sw_left']-self.params['sw']:self.params['sw_left']:complex(self.data.shape[0])]
@@ -1003,7 +1005,7 @@ class DataSelector():
             #data
             self.ax.plot(self.ppm[::-1], self.data, color='k', lw=1)
         elif len(self.data.shape)==2:
-            cl = dict(zip(range(len(self.data)), pylab.cm.viridis(numpy.linspace(0,1,len(self.data)))))
+            cl = dict(zip(range(len(self.data)), plt.cm.viridis(numpy.linspace(0,1,len(self.data)))))
             self.ppm = numpy.mgrid[self.params['sw_left']-self.params['sw']:self.params['sw_left']:complex(self.data.shape[1])]
             self.y_indices = numpy.arange(len(self.data))*self.voff#max(self.data)
             #this is reversed for zorder
@@ -1033,7 +1035,7 @@ class DataSelector():
         self.background = self.canvas.copy_from_bbox(self.ax.bbox)
 
     def check_mode(self):
-        tb = pylab.get_current_fig_manager().toolbar
+        tb = plt.get_current_fig_manager().toolbar
         return tb.mode
 
     def on_draw(self, event):
@@ -1047,7 +1049,7 @@ class DataSelector():
         pass
 
     def press(self, event):
-        tb = pylab.get_current_fig_manager().toolbar
+        tb = plt.get_current_fig_manager().toolbar
         if tb.mode == '' and event.xdata is not None:
             x = numpy.round(event.xdata, 2)
             self.canvas.restore_region(self.background)
