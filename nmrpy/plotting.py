@@ -1,3 +1,4 @@
+import nmrpy.data_objects
 import logging, traceback
 import numpy
 import scipy
@@ -976,10 +977,11 @@ class DataSelector():
         self.params = params
         self.ranges = []
         self.peaks = []
-        if self.fid.peaks is not None:
-            self.peaks = list(self.fid.peaks)
-        if self.fid.ranges is not None:
-            self.ranges = list(self.fid.ranges)
+        if isinstance(self.fid, nmrpy.data_objects.Fid):
+            if self.fid.peaks is not None:
+                self.peaks = list(self.fid.peaks)
+            if self.fid.ranges is not None:
+                self.ranges = list(self.fid.ranges)
         self.voff = voff
         self.title = title
         self.label = label
@@ -1135,7 +1137,8 @@ class PeakTraceDataSelector(DataSelector, PolySelectorMixin, SpanSelectorMixin):
 
 class LineSpanDataSelector(DataSelector, LineSelectorMixin, SpanSelectorMixin, AssignMixin):
     """
-    Peak-picking GUI widget.
+    Interactive data-selection widget with lines and ranges for a single Fid.
+    Lines and spans are saved as self.peaks, self.ranges.
     """
     def __init__(self, fid, data, params, **kwargs):
         self.fid = fid
@@ -1231,10 +1234,14 @@ class DataPeakRangeSelector:
             peaks=None,
             ranges=None,
             y_indices=None,
+            aoti=True,
             voff=1e-3,
             lw=1,
             label=None,
             ):
+        self.fids = fid_array.get_fids()
+        self.assign_only_to_index = aoti
+        self.fid_number = y_indices
         if fid_array.data is [] or fid_array.data is None:
             raise ValueError('data must exist.')
         data = fid_array.data
@@ -1247,16 +1254,45 @@ class DataPeakRangeSelector:
         ppm = numpy.linspace(sw_left-sw, sw_left, data.shape[1])[::-1]
        
         self.peak_selector = LineSpanDataSelector(
+                fid_array,
                 data,
                 fid_array._params,
-                peaks=peaks, 
-                ranges=ranges, 
-                title='peak and range selector', 
+                #peaks=peaks, 
+                #ranges=ranges, 
+                title='Peak and range selector', 
                 voff=voff,
                 label=label)
-
+        self.peak_selector.assign = self.assign
+        
+    def assign(self):
         self.peaks = self.peak_selector.lsm.peaks
         self.ranges = self.peak_selector.ssm.ranges
+
+        if self.fid_number is not None:
+            if not nmrpy.data_objects.Fid._is_iter(self.fid_number):
+                self.fid_number = [self.fid_number]
+        else:
+            self.fid_number = range(len(self.fids))
+        
+        if len(self.ranges) > 0 and len(self.peaks) > 0:
+            ranges = self.ranges
+            peaks = []
+            for peak in self.peaks:
+                for rng in ranges:
+                    if peak >= rng[1] and peak <= rng[0]:
+                        peaks.append(peak)
+        else:
+            peaks = None
+            ranges = None
+
+        if self.assign_only_to_index:
+            for fid in [self.fids[i] for i in self.fid_number]:
+                fid.peaks = peaks
+                fid.ranges = ranges
+        else:       
+            for fid in self.fids:
+                fid.peaks = peaks
+                fid.ranges = ranges        
   
 class FidArrayRangeSelector:
     """Interactive data-selection widget with ranges. Spans are saved as self.ranges."""
