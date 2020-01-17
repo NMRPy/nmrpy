@@ -915,7 +915,27 @@ class SpanSelectorMixin(BaseSelectorMixin):
             self.ssm.rect.set_width(maxv-minv)
             self.ax.draw_artist(self.ssm.rect)
 
+class AssignMixin(BaseSelectorMixin):
 
+    def __init__(self):
+        super().__init__()
+        class Am:
+            pass
+        self.am = Am()
+        self.am.btn_assign = 3
+        self.am.key_mod1 = 'ctrl+alt'
+        self.am.key_mod2 = 'alt+control'
+
+    def press(self, event):
+        super().press(event)
+        if event.button == self.am.btn_assign and (event.key == self.am.key_mod1 \
+                                        or event.key == self.am.key_mod2):
+            print('assigned peaks and ranges')
+            self.assign() 
+
+    def assign(self):
+        pass
+        
 #this is to catch 'home' events in the dataselector 
 def dataselector_home(self, *args, **kwargs):
     s = 'home_event'
@@ -1115,23 +1135,13 @@ class IntegralDataSelector(DataSelector, PolySelectorMixin):
 class PeakTraceDataSelector(DataSelector, PolySelectorMixin, SpanSelectorMixin):
     show_tracedata = True
 
-class LineSpanDataSelector(DataSelector, LineSelectorMixin, SpanSelectorMixin):
+class LineSpanDataSelector(DataSelector, LineSelectorMixin, SpanSelectorMixin, AssignMixin):
     """
     Peak-picking GUI widget.
     """
     def __init__(self, fid, data, params, **kwargs):
         self.fid = fid
         super().__init__(data, params, **kwargs)
-        self.btn_assign = 3
-        self.key_mod1 = 'ctrl+alt'
-        self.key_mod2 = 'alt+control'
-
-    def press(self, event):
-        super().press(event)
-        if event.button == self.btn_assign and (event.key == self.key_mod1 \
-                                        or event.key == self.key_mod2):
-            print('assigned peaks and ranges')
-            self.assign() 
 
     def assign(self):
         if len(self.ssm.ranges) > 0 and len(self.lsm.peaks) > 0:
