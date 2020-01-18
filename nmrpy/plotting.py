@@ -1157,8 +1157,10 @@ class LineSpanDataSelector(DataSelector, LineSelectorMixin, SpanSelectorMixin, A
             self.fid.peaks = None
             self.fid.ranges = None
 
-class SpanDataSelector(DataSelector, SpanSelectorMixin):
-    pass
+class SpanDataSelector(DataSelector, SpanSelectorMixin, AssignMixin):
+    def __init__(self, fid, data, params, **kwargs):
+        self.fid = fid
+        super().__init__(data, params, **kwargs)
 
 class DataTraceSelector:
     """
@@ -1329,6 +1331,7 @@ class FidArrayRangeSelector:
 class FidRangeSelector:
     """Interactive data-selection widget with ranges. Spans are saved as self.ranges."""
     def __init__(self, 
+            fid,
             data,
             params,
             title=None,
@@ -1338,6 +1341,7 @@ class FidRangeSelector:
             lw=1,
             label=None,
             ):
+        self.fid=fid
         if data is [] or data is None:
             raise ValueError('data must exist.')
         if y_indices is not None:
@@ -1345,17 +1349,27 @@ class FidRangeSelector:
         sw_left = params['sw_left']
         sw = params['sw']
 
-        ppm = numpy.linspace(sw_left-sw, sw_left, len(data))[::-1]
+        self.ppm = numpy.linspace(sw_left-sw, sw_left, len(data))[::-1]
        
         self.span_selector = SpanDataSelector(
+                fid,
                 data,
                 params,
-                ranges=ranges, 
+                #ranges=ranges, 
                 title=title,
                 voff=voff,
                 label=label)
+        self.span_selector.assign = self.assign
 
+    def assign(self):
         self.ranges = self.span_selector.ssm.ranges
-
+        bl_ppm = []
+        for rng in self.ranges:
+            peak_ind = (self.ppm > rng[1]) * (self.ppm < rng[0])
+            cur_peaks = self.ppm[peak_ind]
+            bl_ppm.append(cur_peaks)
+        bl_ppm = numpy.array([j for i in bl_ppm for j in i])
+        self.fid._bl_ppm = bl_ppm
+        
 if __name__ == '__main__':
     pass
