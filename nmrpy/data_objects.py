@@ -643,7 +643,7 @@ class Fid(Base):
             raise AttributeError('No points selected for baseline correction. Run fid.baseliner()')
         if not len(self.data):
             raise AttributeError('data does not exist.')
-        if self.data.dtype in self._complex_dtypes:
+        if self.data.dtype not in self._complex_dtypes:
             raise TypeError('data must be not be complex.')
         if not Fid._is_flat_iter(self.data):
             raise AttributeError('data must be 1 dimensional.')
