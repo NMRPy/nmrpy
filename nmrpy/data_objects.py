@@ -625,8 +625,7 @@ class Fid(Base):
             raise TypeError('data must be complex.')
         if not Fid._is_flat_iter(self.data):
             raise AttributeError('data must be 1 dimensional.')
-        global _phaser_widget
-        _phaser_widget = Phaser(self)
+        self._phaser_widget = Phaser(self)
 
     def baseline_correct(self, deg=2):
         """
@@ -695,7 +694,8 @@ Drag Right - select range
 Ctrl+Right - delete range
 Ctrl+Alt+Right - assign
 '''
-        self._peakpicker_widget = LineSpanDataSelector(self, self.data, self._params, 
+        self._peakpicker_widget = LineSpanDataSelector(self, 
+                            self.data, self._params, 
                             title="Peak-picking {}".format(self.id), 
                             label=plot_label,
                             )
@@ -709,19 +709,15 @@ Ctrl+Alt+Right - assign
         :meth:`~nmrpy.data_objects.Fid.baseline_correction`).
 
         """
-        global _baseliner_widget
-        plot_label = 'Drag Right - select range'
+        plot_label = \
+'''
+Drag Right - select range
+Ctrl+Right - delete range
+Ctrl+Alt+Right - assign
+'''
         plot_title = 'Select data for baseline-correction'
-        _baseliner_widget = FidRangeSelector(self.data, self._params, title=plot_title, label=plot_label)
-        bl_ppm = []
-        for rng in _baseliner_widget.ranges:
-            peak_ind = (self._ppm > rng[1]) * (self._ppm < rng[0])
-            cur_peaks = self._ppm[peak_ind]
-            bl_ppm.append(cur_peaks)
-        bl_ppm = numpy.array([j for i in bl_ppm for j in i])
-        self._bl_ppm = bl_ppm
+        self._baseliner_widget = FidRangeSelector(self, self.data, self._params, title=plot_title, label=plot_label)
   
-
     @classmethod
     def _f_gauss(cls, offset, amplitude, gauss_sigma, x):
         return amplitude*numpy.exp(-((offset-x)**2.0)/(2.0*gauss_sigma**2.0))
