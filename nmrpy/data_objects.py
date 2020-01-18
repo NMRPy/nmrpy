@@ -1413,18 +1413,14 @@ class FidArray(Base):
         :meth:`~nmrpy.data_objects.Fid.baseline_correction`).
 
         """
-        global _baseliner_widget
-        plot_label = 'Drag Right - select range'
+        plot_label = \
+'''
+Drag Right - select range
+Ctrl+Right - delete range
+Ctrl+Alt+Right - assign
+'''
         plot_title = 'Select data for baseline-correction'
-        _baseliner_widget = FidArrayRangeSelector(self, title=plot_title, label=plot_label, voff=0.01)
-        for fid in self.get_fids():
-            bl_ppm = []
-            for rng in _baseliner_widget.ranges:
-                peak_ind = (fid._ppm > rng[1]) * (fid._ppm < rng[0])
-                cur_peaks = fid._ppm[peak_ind]
-                bl_ppm.append(cur_peaks)
-            bl_ppm = numpy.array([j for i in bl_ppm for j in i])
-            fid._bl_ppm = bl_ppm
+        self._baseliner_widget = FidArrayRangeSelector(self, title=plot_title, label=plot_label, voff=0.01)
   
     def baseline_correct_fids(self, deg=2):
         """ 
