@@ -965,6 +965,8 @@ class DataSelector():
                 params, 
                 extra_data=None,
                 extra_data_colour='k',
+                peaks=None, 
+                ranges=None, 
                 title=None, 
                 voff=0.001, 
                 label=None,
@@ -975,10 +977,12 @@ class DataSelector():
         self.extra_data = extra_data
         self.extra_data_colour = extra_data_colour
         self.params = params
-        if not hasattr(self, 'ranges'):
-            self.ranges = []
-        if not hasattr(self, 'peaks'):
-            self.peaks = []
+        self.ranges = []
+        self.peaks = []
+        if peaks is not None:
+            self.peaks = list(peaks)
+        if ranges is not None:
+            self.ranges = list(ranges)
         self.voff = voff
         self.title = title
         self.label = label
@@ -1139,12 +1143,12 @@ class LineSpanDataSelector(DataSelector, LineSelectorMixin, SpanSelectorMixin, A
     """
     def __init__(self, fid_or_array, data, params, **kwargs):
         self.foa = fid_or_array
+        super().__init__(data, params, **kwargs)
         if isinstance(self.foa, nmrpy.data_objects.Fid):
             if self.foa.peaks is not None:
                 self.peaks = list(self.foa.peaks)
             if self.foa.ranges is not None:
                 self.ranges = list(self.foa.ranges)   
-        super().__init__(data, params, **kwargs)
 
     def assign(self):
         if len(self.ssm.ranges) > 0 and len(self.lsm.peaks) > 0:
@@ -1259,8 +1263,8 @@ class DataPeakRangeSelector:
                 fid_array,
                 data,
                 fid_array._params,
-                #peaks=peaks, 
-                #ranges=ranges, 
+                peaks=peaks, 
+                ranges=ranges, 
                 title='Peak and range selector', 
                 voff=voff,
                 label=label)
@@ -1322,7 +1326,7 @@ class FidArrayRangeSelector:
         self.span_selector = SpanDataSelector(
                 data,
                 fid_array._params,
-                #ranges=ranges, 
+                ranges=ranges, 
                 title=title,
                 voff=voff,
                 label=label)
@@ -1366,7 +1370,7 @@ class FidRangeSelector:
         self.span_selector = SpanDataSelector(
                 data,
                 params,
-                #ranges=ranges, 
+                ranges=ranges, 
                 title=title,
                 voff=voff,
                 label=label)
