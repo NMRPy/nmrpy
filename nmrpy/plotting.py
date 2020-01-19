@@ -597,8 +597,10 @@ class PolySelectorMixin(BaseSelectorMixin):
             if len(self.psm._visual_lines) > 0:
                 x = event.xdata
                 y = event.ydata
-                trace_dist = [[i[0]-x, i[1]-y] for i in self.psm.lines]
-                delete_trace = numpy.argmin([min(numpy.sqrt(i[0]**2+i[1]**2)) for i in trace_dist])
+                #trace_dist = [[i[0]-x, i[1]-y] for i in self.psm.lines]
+                trace_dist = [[i[0]-x] for i in self.psm.lines]
+                #delete_trace = numpy.argmin([min(numpy.sqrt(i[0]**2+i[1]**2))                 
+                delete_trace = numpy.argmin([min(numpy.sqrt(i[0]**2)) for i in trace_dist])
                 self.psm.lines.pop(delete_trace)
                 self.psm.data_lines.pop(delete_trace)
                 trace = self.psm._visual_lines.pop(delete_trace)
@@ -613,7 +615,9 @@ class PolySelectorMixin(BaseSelectorMixin):
                         )[0])
                 self.psm.lines.append(numpy.array([self.psm.xs, self.psm.ys]))
                 self.psm.xs, self.psm.ys = [], []
+                self.psm.line.remove()
                 self.psm.line = None
+                self.psm._yline.remove()
                 self.psm._yline = None
                 self.psm.data_lines.append(self.get_polygon_neighbours_data(self.psm.lines[-1]))
                 self.psm.index_lines.append(self.get_polygon_neighbours_indices(self.psm.lines[-1]))
@@ -1133,7 +1137,7 @@ class DataSelector():
 class IntegralDataSelector(DataSelector, PolySelectorMixin):
     show_tracedata = True
 
-class PeakTraceDataSelector(DataSelector, PolySelectorMixin, SpanSelectorMixin):
+class PeakTraceDataSelector(DataSelector, PolySelectorMixin, SpanSelectorMixin, AssignMixin):
     show_tracedata = True
 
 class LineSpanDataSelector(DataSelector, LineSelectorMixin, SpanSelectorMixin, AssignMixin):
@@ -1212,6 +1216,7 @@ class DataTraceRangeSelector:
             voff=1e-3,
             lw=1,
             ):
+        self.fid_array = fid_array
         if fid_array.data is [] or fid_array.data is None:
             raise ValueError('data must exist.')
         data = fid_array.data
@@ -1219,20 +1224,30 @@ class DataTraceRangeSelector:
         sw_left = params['sw_left']
         sw = params['sw']
 
-        ppm = numpy.linspace(sw_left-sw, sw_left, data.shape[1])[::-1]
+        self.ppm = numpy.linspace(sw_left-sw, sw_left, data.shape[1])[::-1]
        
         self.peak_selector = PeakTraceDataSelector(
                 fid_array.data, 
                 fid_array._params,
                 peaks=peaks, 
                 ranges=ranges, 
-                title='peak and range trace selector', 
+                title='Peak and range trace selector', 
                 voff=voff,
                 label=None)
+        self.peak_selector.assign = self.assign
 
-        self.data_traces = self.peak_selector.psm.data_lines
-        self.index_traces = self.peak_selector.psm.index_lines
-        self.spans = self.peak_selector.ssm.ranges
+    def assign(self):
+        data_traces = self.peak_selector.psm.data_lines
+        index_traces = self.peak_selector.psm.index_lines
+        spans = self.peak_selector.ssm.ranges
+        
+        traces = [[i[0], j[1]] for i, j in zip(data_traces,  index_traces)]
+
+        self.fid_array.traces = traces
+        self.fid_array._trace_mask = self.fid_array._generate_trace_mask(traces)
+
+        self.fid_array._set_all_peaks_ranges_from_traces_and_spans(
+                traces, spans)
   
 class DataPeakRangeSelector:
     """Interactive data-selection widget with lines and ranges. Lines and spans are saved as self.peaks, self.ranges."""

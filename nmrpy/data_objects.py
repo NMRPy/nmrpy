@@ -1665,23 +1665,13 @@ Ctrl+Alt+Right - assign
         """
         if self.data is None:
             raise AttributeError('No FIDs.')
-        global _peakpicker_widget 
-        _peakpicker_widget = DataTraceRangeSelector(
+        self._peakpicker_widget = DataTraceRangeSelector(
             self,
             peaks=None,
             ranges=None,
             voff=voff,
             lw=lw,
             )
-
-        traces = [[i[0], j[1]] for i, j in zip(_peakpicker_widget.data_traces, _peakpicker_widget.index_traces)]
-
-        self.traces = traces
-        self._trace_mask = self._generate_trace_mask(traces)
-
-        self._set_all_peaks_ranges_from_traces_and_spans(
-            traces, 
-            _peakpicker_widget.spans)
 
     def _generate_trace_mask(self, traces): 
         ppm = [numpy.round(numpy.mean(i[0]), 2) for i in traces]
