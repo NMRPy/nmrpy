@@ -1665,12 +1665,22 @@ Ctrl+Alt+Right - assign
         """
         if self.data is None:
             raise AttributeError('No FIDs.')
+        plot_label = \
+'''
+Left - add trace point
+Right - finalize trace
+Ctrl+Left - delete nearest trace
+Drag Right - select range
+Ctrl+Right - delete range
+Ctrl+Alt+Right - assign
+'''
         self._peakpicker_widget = DataTraceRangeSelector(
             self,
             peaks=None,
             ranges=None,
             voff=voff,
             lw=lw,
+            label=plot_label,
             )
 
     def _generate_trace_mask(self, traces): 

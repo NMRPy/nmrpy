@@ -1215,6 +1215,7 @@ class DataTraceRangeSelector:
             ranges=None,
             voff=1e-3,
             lw=1,
+            label=None,
             ):
         self.fid_array = fid_array
         if fid_array.data is [] or fid_array.data is None:
@@ -1233,7 +1234,7 @@ class DataTraceRangeSelector:
                 ranges=ranges, 
                 title='Peak and range trace selector', 
                 voff=voff,
-                label=None)
+                label=label)
         self.peak_selector.assign = self.assign
 
     def assign(self):
