@@ -254,7 +254,7 @@ class Fid(Base):
     
     @ranges.setter    
     def ranges(self, ranges):
-        if ranges == None:
+        if ranges is None:
             self._ranges = None
             return
         if not Fid._is_iter_of_iters(ranges) or ranges is None:
@@ -677,10 +677,9 @@ class Fid(Base):
 
     def peakpicker(self):
         """
-
         Instantiate a peak-picking GUI widget. Left-clicking selects a peak.
-        Right-click-dragging defines a range. Middle-clicking deletes nearest peak;
-        ctrl-middle click deletes range. Peaks are stored in
+        Right-click-dragging defines a range. Ctrl-left click deletes nearest peak;
+        ctrl-right click deletes range. Peaks are stored in
         :attr:`~nmrpy.data_objects.Fid.peaks`; ranges are stored in
         :attr:`~nmrpy.data_objects.Fid.ranges`: both are used for deconvolution (see
         :meth:`~nmrpy.data_objects.Fid.deconv`).
@@ -694,10 +693,7 @@ Drag Right - select range
 Ctrl+Right - delete range
 Ctrl+Alt+Right - assign
 '''
-        global _peakpicker_widget
-        _peakpicker_widget = LineSpanDataSelector(self, 
-                            self.data, self._params, 
-                            title="Peak-picking {}".format(self.id), 
+        _peakpicker_widget = DataPeakSelector(self, 
                             label=plot_label,
                             )
 

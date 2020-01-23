@@ -1141,31 +1141,7 @@ class PeakTraceDataSelector(DataSelector, PolySelectorMixin, SpanSelectorMixin, 
     show_tracedata = True
 
 class LineSpanDataSelector(DataSelector, LineSelectorMixin, SpanSelectorMixin, AssignMixin):
-    """
-    Interactive data-selection widget with lines and ranges for a single Fid.
-    Lines and spans are saved as self.peaks, self.ranges.
-    """
-    def __init__(self, fid_or_array, data, params, **kwargs):
-        self.foa = fid_or_array
-        super().__init__(data, params, **kwargs)
-        if isinstance(self.foa, nmrpy.data_objects.Fid):
-            if self.foa.peaks is not None:
-                self.peaks = list(self.foa.peaks)
-            if self.foa.ranges is not None:
-                self.ranges = list(self.foa.ranges)   
-
-    def assign(self):
-        if len(self.ssm.ranges) > 0 and len(self.lsm.peaks) > 0:
-            self.foa.ranges = self.ssm.ranges
-            peaks = []
-            for peak in self.lsm.peaks:
-                for rng in self.ssm.ranges:
-                    if peak >= rng[1] and peak <= rng[0]:
-                        peaks.append(peak)
-            self.foa.peaks = peaks
-        else:
-            self.foa.peaks = None
-            self.foa.ranges = None
+    pass
 
 class SpanDataSelector(DataSelector, SpanSelectorMixin, AssignMixin):
     pass
@@ -1250,6 +1226,55 @@ class DataTraceRangeSelector:
         self.fid_array._set_all_peaks_ranges_from_traces_and_spans(
                 traces, spans)
   
+class DataPeakSelector:
+    """
+    Interactive data-selection widget with lines and ranges for a single Fid.
+    Lines and spans are saved as self.peaks, self.ranges.
+    """
+    def __init__(self, fid,
+            peaks=None,
+            ranges=None,
+            voff=1e-3,
+            lw=1,
+            label=None,
+            ):
+        self.fid = fid
+        if fid.data is [] or fid.data is None:
+            raise ValueError('data must exist.')
+        data = fid.data
+        params = fid._params
+        sw_left = params['sw_left']
+        sw = params['sw']
+        ppm = numpy.linspace(sw_left-sw, sw_left, len(data))[::-1]
+
+        if fid.peaks is not None:
+            peaks = list(fid.peaks)
+        if fid.ranges is not None:
+            ranges = list(fid.ranges)   
+       
+        self.peak_selector = LineSpanDataSelector(
+                data,
+                params,
+                peaks=peaks, 
+                ranges=ranges, 
+                title="Peak-picking {}".format(fid.id), 
+                voff=voff,
+                label=label)
+        self.peak_selector.assign = self.assign
+        
+    def assign(self):
+        if len(self.peak_selector.ssm.ranges) > 0 and len(self.peak_selector.lsm.peaks) > 0:
+            self.fid.ranges = self.peak_selector.ssm.ranges
+            peaks = []
+            for peak in self.peak_selector.lsm.peaks:
+                for rng in self.peak_selector.ssm.ranges:
+                    if peak >= rng[1] and peak <= rng[0]:
+                        peaks.append(peak)
+            self.fid.peaks = peaks
+        else:
+            self.fid.peaks = None
+            self.fid.ranges = None
+
 class DataPeakRangeSelector:
     """Interactive data-selection widget with lines and ranges. Lines and spans are saved as self.peaks, self.ranges."""
     def __init__(self, fid_array,
