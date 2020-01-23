@@ -1287,6 +1287,7 @@ class DataPeakRangeSelector:
             lw=1,
             label=None,
             ):
+        self.fid_array = fid_array
         self.fids = fid_array.get_fids()
         self.assign_only_to_index = aoti
         self.fid_number = y_indices
@@ -1302,9 +1303,8 @@ class DataPeakRangeSelector:
         ppm = numpy.linspace(sw_left-sw, sw_left, data.shape[1])[::-1]
        
         self.peak_selector = LineSpanDataSelector(
-                fid_array,
                 data,
-                fid_array._params,
+                params,
                 peaks=peaks, 
                 ranges=ranges, 
                 title='Peak and range selector', 
