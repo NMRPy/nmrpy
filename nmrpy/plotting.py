@@ -1353,21 +1353,22 @@ class FidArrayRangeSelector:
             title=None,
             label=None,
             ):
-        if fid_array.data is [] or fid_array.data is None:
-            raise ValueError('data must exist.')
         self.fid_array = fid_array
+        self.fids = fid_array.get_fids()
         data = fid_array.data
-        if y_indices is not None:
-            data = fid_array.data[numpy.array(y_indices)]
         params = fid_array._params
+        if data is [] or data is None:
+            raise ValueError('data must exist.')
+        if y_indices is not None:
+            data = data[numpy.array(y_indices)]
         sw_left = params['sw_left']
         sw = params['sw']
 
-        self.ppm = numpy.linspace(sw_left-sw, sw_left, data.shape[1])[::-1]
+        ppm = numpy.linspace(sw_left-sw, sw_left, data.shape[1])[::-1]
        
         self.span_selector = SpanDataSelector(
                 data,
-                fid_array._params,
+                params,
                 ranges=ranges, 
                 title=title,
                 voff=voff,
