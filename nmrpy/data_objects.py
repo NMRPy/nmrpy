@@ -693,7 +693,9 @@ Drag Right - select range
 Ctrl+Right - delete range
 Ctrl+Alt+Right - assign
 '''
-        _peakpicker_widget = DataPeakSelector(self, 
+        plot_title = "Peak-picking {}".format(self.id)
+        _peakpicker_widget = DataPeakSelector(self,
+                            title=plot_title,
                             label=plot_label,
                             )
 
@@ -712,8 +714,11 @@ Drag Right - select range
 Ctrl+Right - delete range
 Ctrl+Alt+Right - assign
 '''
-        plot_title = 'Select data for baseline-correction'
-        _baseliner_widget = FidRangeSelector(self, self.data, self._params, title=plot_title, label=plot_label)
+        plot_title = "Baseline correction {}".format(self.id)
+        _baseliner_widget = FidRangeSelector(self,
+                                title=plot_title,
+                                label=plot_label,
+                                )
   
     @classmethod
     def _f_gauss(cls, offset, amplitude, gauss_sigma, x):
