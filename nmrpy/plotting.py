@@ -1237,6 +1237,7 @@ class DataPeakSelector:
             voff=1e-3,
             lw=1,
             label=None,
+            title=None,
             ):
         self.fid = fid
         if fid.data is [] or fid.data is None:
@@ -1257,7 +1258,7 @@ class DataPeakSelector:
                 params,
                 peaks=peaks, 
                 ranges=ranges, 
-                title="Peak-picking {}".format(fid.id), 
+                title=title, 
                 voff=voff,
                 label=label)
         self.peak_selector.assign = self.assign
@@ -1389,8 +1390,6 @@ class FidRangeSelector:
     """Interactive data-selection widget with ranges. Spans are saved as self.ranges."""
     def __init__(self, 
             fid,
-            data,
-            params,
             title=None,
             ranges=None,
             y_indices=None,
@@ -1399,6 +1398,8 @@ class FidRangeSelector:
             label=None,
             ):
         self.fid=fid
+        data = fid.data
+        params = fid._params
         if data is [] or data is None:
             raise ValueError('data must exist.')
         if y_indices is not None:
