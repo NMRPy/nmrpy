@@ -1134,7 +1134,7 @@ class DataSelector():
         except Exception as e:
             logging.error(traceback.format_exc())
 
-class IntegralDataSelector(DataSelector, PolySelectorMixin):
+class IntegralDataSelector(DataSelector, PolySelectorMixin, AssignMixin):
     show_tracedata = True
 
 class PeakTraceDataSelector(DataSelector, PolySelectorMixin, SpanSelectorMixin, AssignMixin):
@@ -1156,7 +1156,9 @@ class DataTraceSelector:
             extra_data_colour='b',
             voff=1e-3,
             lw=1,
+            label=None,
             ):
+        self.fid_array = fid_array
         if fid_array.data is [] or fid_array.data is None:
             raise ValueError('data must exist.')
         data = fid_array.data
@@ -1168,17 +1170,53 @@ class DataTraceSelector:
        
         self.integral_selector = IntegralDataSelector(
                 extra_data,
-                fid_array._params,
-                extra_data=fid_array.data, 
+                params,
+                extra_data=data, 
                 extra_data_colour=extra_data_colour,
                 peaks=None, 
                 ranges=None, 
                 title='Integral trace selector', 
                 voff=voff,
-                label=None)
+                label=label)
+        self.integral_selector.assign = self.assign
+        
+    def assign(self):
+        data_traces = self.integral_selector.psm.data_lines
+        index_traces = self.integral_selector.psm.index_lines
+        
+        self.fid_array._data_traces = [dict(zip(i[1], i[0])) for i in data_traces]
+        self.fid_array._index_traces = [dict(zip(i[1], i[0])) for i in index_traces]
 
-        self.data_traces = self.integral_selector.psm.data_lines
-        self.index_traces = self.integral_selector.psm.index_lines
+        decon_peaks = []
+        for i in self.fid_array._deconvoluted_peaks:
+            if len(i):
+                decon_peaks.append(i.transpose()[0])
+            else:
+                decon_peaks.append(None)
+
+        trace_dict = {}
+        for t in range(len(self.fid_array._index_traces)):
+            trace = self.fid_array._index_traces[t]
+            integrals = {}
+            for fid, indx in trace.items():
+                try:
+                    integrals[fid] = numpy.argmin(abs(decon_peaks[fid]-indx))
+                except:
+                    integrals[fid] = None
+            trace_dict[t] = integrals
+        last_fid = (len(self.fid_array.get_fids())-1)
+        for i in trace_dict:
+            tmin = min(trace_dict[i])
+            tminval = trace_dict[i][tmin]
+            if tmin > 0:
+                for j in range(0, tmin):
+                    trace_dict[i][j] = tminval
+            tmax = max(trace_dict[i])
+            tmaxval = trace_dict[i][tmax]
+            if tmax < last_fid:
+                for j in range(tmax, last_fid+1):
+                    trace_dict[i][j] = tmaxval
+        self.fid_array.integral_traces = trace_dict
   
 class DataTraceRangeSelector:
     """

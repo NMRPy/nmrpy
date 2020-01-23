@@ -1778,47 +1778,54 @@ Ctrl+Alt+Right - assign
             raise AttributeError('No integrals.')
         peakshapes = self._get_all_summed_peakshapes()
         #pk_x, pk_y = self._get_truncated_peak_shapes_for_plotting()
-        global _select_trace_widget
+        plot_label = \
+'''
+Left - add trace point
+Right - finalize trace
+Ctrl+Left - delete nearest trace
+Ctrl+Alt+Right - assign
+'''
         _select_trace_widget = DataTraceSelector(self, 
             extra_data=peakshapes, 
             extra_data_colour='b', 
             voff=voff, 
+            label=plot_label,
             lw=lw)
 
-        self._data_traces = [dict(zip(i[1], i[0])) for i in _select_trace_widget.data_traces]
-        self._index_traces = [dict(zip(i[1], i[0])) for i in _select_trace_widget.index_traces]
+###### move to assign() method of DataTraceSelector ######
+        #self._data_traces = [dict(zip(i[1], i[0])) for i in _select_trace_widget.data_traces]
+        #self._index_traces = [dict(zip(i[1], i[0])) for i in _select_trace_widget.index_traces]
 
-        decon_peaks = []
-        for i in self._deconvoluted_peaks:
-            if len(i):
-                decon_peaks.append(i.transpose()[0])
-            else:
-                decon_peaks.append(None)
+        #decon_peaks = []
+        #for i in self._deconvoluted_peaks:
+            #if len(i):
+                #decon_peaks.append(i.transpose()[0])
+            #else:
+                #decon_peaks.append(None)
 
-        #traces = [[i[0], j[1]] for i, j in zip(_select_trace_widget.data_traces, _select_trace_widget.index_traces)]
-        trace_dict = {}
-        for t in range(len(self._index_traces)):
-            trace = self._index_traces[t]
-            integrals = {}
-            for fid, indx in trace.items():
-                try:
-                    integrals[fid] = numpy.argmin(abs(decon_peaks[fid]-indx))
-                except:
-                    integrals[fid] = None
-            trace_dict[t] = integrals
-        last_fid = (len(self.get_fids())-1)
-        for i in trace_dict:
-            tmin = min(trace_dict[i])
-            tminval = trace_dict[i][tmin]
-            if tmin > 0:
-                for j in range(0, tmin):
-                    trace_dict[i][j] = tminval
-            tmax = max(trace_dict[i])
-            tmaxval = trace_dict[i][tmax]
-            if tmax < last_fid:
-                for j in range(tmax, last_fid+1):
-                    trace_dict[i][j] = tmaxval
-        self.integral_traces = trace_dict
+        #trace_dict = {}
+        #for t in range(len(self._index_traces)):
+            #trace = self._index_traces[t]
+            #integrals = {}
+            #for fid, indx in trace.items():
+                #try:
+                    #integrals[fid] = numpy.argmin(abs(decon_peaks[fid]-indx))
+                #except:
+                    #integrals[fid] = None
+            #trace_dict[t] = integrals
+        #last_fid = (len(self.get_fids())-1)
+        #for i in trace_dict:
+            #tmin = min(trace_dict[i])
+            #tminval = trace_dict[i][tmin]
+            #if tmin > 0:
+                #for j in range(0, tmin):
+                    #trace_dict[i][j] = tminval
+            #tmax = max(trace_dict[i])
+            #tmaxval = trace_dict[i][tmax]
+            #if tmax < last_fid:
+                #for j in range(tmax, last_fid+1):
+                    #trace_dict[i][j] = tmaxval
+        #self.integral_traces = trace_dict
                 
     def get_integrals_from_traces(self):
         """
