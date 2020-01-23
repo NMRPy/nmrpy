@@ -1201,11 +1201,11 @@ class DataTraceRangeSelector:
         sw_left = params['sw_left']
         sw = params['sw']
 
-        self.ppm = numpy.linspace(sw_left-sw, sw_left, data.shape[1])[::-1]
+        ppm = numpy.linspace(sw_left-sw, sw_left, data.shape[1])[::-1]
        
         self.peak_selector = PeakTraceDataSelector(
-                fid_array.data, 
-                fid_array._params,
+                data, 
+                params,
                 peaks=peaks, 
                 ranges=ranges, 
                 title='Peak and range trace selector', 

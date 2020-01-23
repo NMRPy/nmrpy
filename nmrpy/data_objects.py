@@ -1678,8 +1678,6 @@ Ctrl+Alt+Right - assign
 '''
         _peakpicker_widget = DataTraceRangeSelector(
             self,
-            peaks=None,
-            ranges=None,
             voff=voff,
             lw=lw,
             label=plot_label,
