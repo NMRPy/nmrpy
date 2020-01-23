@@ -694,7 +694,8 @@ Drag Right - select range
 Ctrl+Right - delete range
 Ctrl+Alt+Right - assign
 '''
-        self._peakpicker_widget = LineSpanDataSelector(self, 
+        global _peakpicker_widget
+        _peakpicker_widget = LineSpanDataSelector(self, 
                             self.data, self._params, 
                             title="Peak-picking {}".format(self.id), 
                             label=plot_label,
@@ -716,7 +717,7 @@ Ctrl+Right - delete range
 Ctrl+Alt+Right - assign
 '''
         plot_title = 'Select data for baseline-correction'
-        self._baseliner_widget = FidRangeSelector(self, self.data, self._params, title=plot_title, label=plot_label)
+        _baseliner_widget = FidRangeSelector(self, self.data, self._params, title=plot_title, label=plot_label)
   
     @classmethod
     def _f_gauss(cls, offset, amplitude, gauss_sigma, x):
@@ -1420,7 +1421,7 @@ Ctrl+Right - delete range
 Ctrl+Alt+Right - assign
 '''
         plot_title = 'Select data for baseline-correction'
-        self._baseliner_widget = FidArrayRangeSelector(self, title=plot_title, label=plot_label, voff=0.01)
+        _baseliner_widget = FidArrayRangeSelector(self, title=plot_title, label=plot_label, voff=0.01)
   
     def baseline_correct_fids(self, deg=2):
         """ 
@@ -1595,7 +1596,7 @@ Ctrl+Alt+Right - assign
 
         :keyword data_filled: fill state of the plotted data (False)
 
-        :keyword summed_peak_filled: fill state of the plotted summed peaks (False)
+        :keyword summed_peak_filled: fill state of the plotted summed peaks (True)
 
         :keyword residual_filled: fill state of the plotted residuals (False)
 
@@ -1644,7 +1645,7 @@ Drag Right - select range
 Ctrl+Right - delete range
 Ctrl+Alt+Right - assign
 '''
-        self._peakpicker_widget = DataPeakRangeSelector(self, 
+        _peakpicker_widget = DataPeakRangeSelector(self, 
                 y_indices=fid_number,
                 aoti=assign_only_to_index,
                 voff=voff, 
@@ -1674,7 +1675,7 @@ Drag Right - select range
 Ctrl+Right - delete range
 Ctrl+Alt+Right - assign
 '''
-        self._peakpicker_widget = DataTraceRangeSelector(
+        _peakpicker_widget = DataTraceRangeSelector(
             self,
             peaks=None,
             ranges=None,
@@ -1774,7 +1775,7 @@ Ctrl+Alt+Right - assign
         """
         if self.data is None:
             raise AttributeError('No FIDs.')
-        if self.deconvoluted_integrals is None:
+        if (self.deconvoluted_integrals==None).any():
             raise AttributeError('No integrals.')
         peakshapes = self._get_all_summed_peakshapes()
         #pk_x, pk_y = self._get_truncated_peak_shapes_for_plotting()

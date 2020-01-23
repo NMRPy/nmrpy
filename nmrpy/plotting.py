@@ -1314,7 +1314,7 @@ class DataPeakRangeSelector:
         else:       
             for fid in self.fids:
                 fid.peaks = peaks
-                fid.ranges = ranges        
+                fid.ranges = ranges
   
 class FidArrayRangeSelector:
     """Interactive data-selection widget with ranges. Spans are saved as self.ranges."""
