@@ -1618,7 +1618,7 @@ Ctrl+Alt+Right - assign
         setattr(self, plt.id, plt)
         
 
-    def peakpicker(self, fid_number=None, assign_only_to_index=True, voff=0.3):
+    def peakpicker(self, fid_number=None, assign_only_to_index=True, voff=0.02):
         """
 
         Instantiate peak-picker widget for 
@@ -1653,7 +1653,7 @@ Ctrl+Alt+Right - assign
                 label=plot_label)
 
     def peakpicker_traces(self, 
-            voff=0.01, 
+            voff=0.02, 
             lw=1):
         """
         Instantiates a widget to pick peaks and ranges employing a polygon
@@ -1760,7 +1760,7 @@ Ctrl+Alt+Right - assign
             peakshapes_short_y.append(pk_y)
         return peakshapes_short_x, peakshapes_short_y
 
-    def select_integral_traces(self, voff=0.01, lw=1):
+    def select_integral_traces(self, voff=0.02, lw=1):
         """
 
         Instantiate a trace-selection widget to identify deconvoluted peaks.
