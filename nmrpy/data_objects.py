@@ -1,6 +1,6 @@
 import numpy
 import scipy
-import pylab
+from matplotlib import pyplot as plt
 import lmfit
 import nmrglue
 import numbers
@@ -1101,7 +1101,7 @@ Ctrl+Alt+Right - assign
         plt = Plot()
         plt._plot_ppm(self.data, self._params, **kwargs)
         setattr(self, plt.id, plt)
-        pylab.show()
+        plt.show()
 
     def plot_deconv(self, **kwargs):
         """
@@ -1124,7 +1124,7 @@ Ctrl+Alt+Right - assign
         plt = Plot()
         plt._plot_deconv(self, **kwargs)
         setattr(self, plt.id, plt)
-        pylab.show()
+        plt.show()
  
 class FidArray(Base):
     '''
@@ -1792,41 +1792,6 @@ Ctrl+Alt+Right - assign
             label=plot_label,
             lw=lw)
 
-###### move to assign() method of DataTraceSelector ######
-        #self._data_traces = [dict(zip(i[1], i[0])) for i in _select_trace_widget.data_traces]
-        #self._index_traces = [dict(zip(i[1], i[0])) for i in _select_trace_widget.index_traces]
-
-        #decon_peaks = []
-        #for i in self._deconvoluted_peaks:
-            #if len(i):
-                #decon_peaks.append(i.transpose()[0])
-            #else:
-                #decon_peaks.append(None)
-
-        #trace_dict = {}
-        #for t in range(len(self._index_traces)):
-            #trace = self._index_traces[t]
-            #integrals = {}
-            #for fid, indx in trace.items():
-                #try:
-                    #integrals[fid] = numpy.argmin(abs(decon_peaks[fid]-indx))
-                #except:
-                    #integrals[fid] = None
-            #trace_dict[t] = integrals
-        #last_fid = (len(self.get_fids())-1)
-        #for i in trace_dict:
-            #tmin = min(trace_dict[i])
-            #tminval = trace_dict[i][tmin]
-            #if tmin > 0:
-                #for j in range(0, tmin):
-                    #trace_dict[i][j] = tminval
-            #tmax = max(trace_dict[i])
-            #tmaxval = trace_dict[i][tmax]
-            #if tmax < last_fid:
-                #for j in range(tmax, last_fid+1):
-                    #trace_dict[i][j] = tmaxval
-        #self.integral_traces = trace_dict
-                
     def get_integrals_from_traces(self):
         """
         Returns a dictionary of integral values for all
