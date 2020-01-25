@@ -1,6 +1,6 @@
 import numpy
 import scipy
-from matplotlib import pyplot as plt
+from matplotlib import pyplot
 import lmfit
 import nmrglue
 import numbers
@@ -1101,7 +1101,7 @@ Ctrl+Alt+Right - assign
         plt = Plot()
         plt._plot_ppm(self.data, self._params, **kwargs)
         setattr(self, plt.id, plt)
-        plt.show()
+        pyplot.show()
 
     def plot_deconv(self, **kwargs):
         """
@@ -1124,7 +1124,7 @@ Ctrl+Alt+Right - assign
         plt = Plot()
         plt._plot_deconv(self, **kwargs)
         setattr(self, plt.id, plt)
-        plt.show()
+        pyplot.show()
  
 class FidArray(Base):
     '''
