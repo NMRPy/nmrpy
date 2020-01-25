@@ -1031,7 +1031,7 @@ class DataSelector():
         elif len(self.data.shape)==2:
             cl = dict(zip(range(len(self.data)), plt.cm.viridis(numpy.linspace(0,1,len(self.data)))))
             self.ppm = numpy.mgrid[self.params['sw_left']-self.params['sw']:self.params['sw_left']:complex(self.data.shape[1])]
-            self.y_indices = numpy.arange(len(self.data))*self.voff#max(self.data)
+            self.y_indices = numpy.arange(len(self.data))*self.voff*self.data.max()
             #this is reversed for zorder
             #extra_data
             if self.extra_data is not None:
