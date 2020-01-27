@@ -8,15 +8,13 @@ with open('requirements.txt') as f:
 
 config = {
     'description': 'A suite of tools for processing and analysing NMR spectra in Python.',
-    'author': 'Johann Eicher',
-    'author_email': 'johanneicher@gmail.com',
-    'url': 'fake.address.com',
-    #'download_url': 'Where to download it.',
+    'author': 'Johann Eicher <johanneicher@gmail.com>, Johann Rohwer <j.m.rohwer@gmail.com>',
+    'author_email': 'johanneicher@gmail.com, j.m.rohwer@gmail.com',
+    'url': 'https://github.com/NMRPy/nmrpy',
     'version': '0.1',
     'install_requires': requirements,
     'packages': ['nmrpy'],
     'license': 'New BSD',
-    #'scripts': [],
     'name': 'nmrpy'
 }
 
