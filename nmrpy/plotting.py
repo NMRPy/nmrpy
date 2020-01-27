@@ -1,7 +1,8 @@
+import nmrpy.data_objects
 import logging, traceback
 import numpy
 import scipy
-import pylab
+from matplotlib import pyplot as plt
 import numbers
 from datetime import datetime
 from matplotlib.figure import Figure
@@ -9,7 +10,6 @@ from mpl_toolkits.mplot3d import Axes3D
 from matplotlib.collections import PolyCollection
 import copy
 
-from matplotlib.mlab import dist
 from matplotlib.patches import Circle, Rectangle
 from matplotlib.lines import Line2D
 from matplotlib.transforms import blended_transform_factory
@@ -75,7 +75,7 @@ class Plot():
         ppm = ppm[ppm_bool_index]
         data = data[ppm_bool_index]
 
-        self.fig = pylab.figure(figsize=[10,5])
+        self.fig = plt.figure(figsize=[9,5])
         ax = self.fig.add_subplot(111)
         ax.plot(ppm, data, color=color, lw=lw)
         ax.invert_xaxis()
@@ -135,7 +135,7 @@ class Plot():
                                                                                 upper_ppm=upper_ppm,
                                                                                 lower_ppm=lower_ppm)
 
-        self.fig = pylab.figure(figsize=[10,5])
+        self.fig = plt.figure(figsize=[9,5])
         ax = self.fig.add_subplot(111)
         ax.plot(ppm, residual, color=residual_colour, lw=lw)
         ax.plot(ppm, data, color=colour, lw=lw)
@@ -162,7 +162,7 @@ class Plot():
             data_filled=False,
             summed_peak_filled=True,
             residual_filled=False,
-            figsize=[15, 7.5],
+            figsize=[9, 6],
             lw=0.3, 
             azim=-90, 
             elev=20, 
@@ -220,7 +220,7 @@ class Plot():
                                             )
         if filename is not None:
             self.fig.savefig(filename, format='pdf')
-        pylab.show()
+        plt.show()
           
         
 
@@ -229,7 +229,7 @@ class Plot():
                 lower_index=None, 
                 upper_ppm=None, 
                 lower_ppm=None, 
-                figsize=[15, 7.5],
+                figsize=[9, 6],
                 lw=0.3, 
                 azim=-90, 
                 elev=20, 
@@ -272,7 +272,7 @@ class Plot():
             data = data[:, ppm_bool_index]
 
         if colour:
-            colours_list = [pylab.cm.viridis(numpy.linspace(0, 1, len(data)))]
+            colours_list = [plt.cm.viridis(numpy.linspace(0, 1, len(data)))]
         else:
             colours_list = None
 
@@ -293,7 +293,7 @@ class Plot():
                                             )
         if filename is not None:
             self.fig.savefig(filename, format='pdf')
-        pylab.show()
+        plt.show()
 
     @staticmethod
     def _interleave_datasets(data):
@@ -340,7 +340,7 @@ class Plot():
             filled_list = [False]*len(zlist)
 
 
-        fig = pylab.figure(figsize=figsize)
+        fig = plt.figure(figsize=figsize)
         ax = fig.add_subplot(111, projection='3d', azim=azim, elev=elev)
 
         for data_n in range(len(zlist)):
@@ -413,10 +413,10 @@ class Phaser:
     def __init__(self, fid):
         if not Plot._is_flat_iter(fid.data): 
             raise ValueError('data must be flat iterable.')
-        if fid.data == [] or fid.data == None:
+        if fid.data is [] or fid.data is None:
             raise ValueError('data must exist.')
         self.fid = fid
-        self.fig = pylab.figure(figsize=[15, 7.5])
+        self.fig = plt.figure(figsize=[9, 6])
         self.phases = numpy.array([0.0, 0.0])
         self.y = 0.0
         self.ax = self.fig.add_subplot(111)
@@ -442,10 +442,10 @@ class Phaser:
         self.ax.text(0.05 *self.ax.get_xlim()[1],0.7 *self.ax.get_ylim()[1],'phasing\nleft - zero-order\nright - first order')
         cursor = Cursor(self.ax, useblit=True, color='k', linewidth=0.5)
         cursor.horizOn = False
-        pylab.show()
+        plt.show()
 
     def press(self, event):
-        tb = pylab.get_current_fig_manager().toolbar
+        tb = plt.get_current_fig_manager().toolbar
         if tb.mode == '':
             x, y = event.xdata, event.ydata
             if event.inaxes is not None:
@@ -596,8 +596,10 @@ class PolySelectorMixin(BaseSelectorMixin):
             if len(self.psm._visual_lines) > 0:
                 x = event.xdata
                 y = event.ydata
-                trace_dist = [[i[0]-x, i[1]-y] for i in self.psm.lines]
-                delete_trace = numpy.argmin([min(numpy.sqrt(i[0]**2+i[1]**2)) for i in trace_dist])
+                #trace_dist = [[i[0]-x, i[1]-y] for i in self.psm.lines]
+                trace_dist = [[i[0]-x] for i in self.psm.lines]
+                #delete_trace = numpy.argmin([min(numpy.sqrt(i[0]**2+i[1]**2))                 
+                delete_trace = numpy.argmin([min(numpy.sqrt(i[0]**2)) for i in trace_dist])
                 self.psm.lines.pop(delete_trace)
                 self.psm.data_lines.pop(delete_trace)
                 trace = self.psm._visual_lines.pop(delete_trace)
@@ -612,7 +614,9 @@ class PolySelectorMixin(BaseSelectorMixin):
                         )[0])
                 self.psm.lines.append(numpy.array([self.psm.xs, self.psm.ys]))
                 self.psm.xs, self.psm.ys = [], []
+                self.psm.line.remove()
                 self.psm.line = None
+                self.psm._yline.remove()
                 self.psm._yline = None
                 self.psm.data_lines.append(self.get_polygon_neighbours_data(self.psm.lines[-1]))
                 self.psm.index_lines.append(self.get_polygon_neighbours_indices(self.psm.lines[-1]))
@@ -766,6 +770,7 @@ class LineSelectorMixin(BaseSelectorMixin):
     def press(self, event):
         super().press(event)
         x = numpy.round(event.xdata, 2)
+        # left
         if event.button == self.lsm.btn_add and event.key != self.lsm.key_mod  and (x >= self.xlims[1]) and (x <= self.xlims[0]):
             print('peak {}'.format(x))
             if x not in self.lsm.peaks:
@@ -773,7 +778,7 @@ class LineSelectorMixin(BaseSelectorMixin):
                 self.lsm.peaklines[x] = self.makeline(x)
                 self.lsm.peaks = sorted(self.lsm.peaks)[::-1]
                 #self.ax.draw_artist(self.lsm.peaklines[x])
-        #middle
+        #Ctrl+left
         elif event.button == self.lsm.btn_del and event.key == self.lsm.key_mod:
             #find and delete nearest peakline
             if len(self.lsm.peaks) > 0:
@@ -914,7 +919,27 @@ class SpanSelectorMixin(BaseSelectorMixin):
             self.ssm.rect.set_width(maxv-minv)
             self.ax.draw_artist(self.ssm.rect)
 
+class AssignMixin(BaseSelectorMixin):
 
+    def __init__(self):
+        super().__init__()
+        class Am:
+            pass
+        self.am = Am()
+        self.am.btn_assign = 3
+        self.am.key_mod1 = 'ctrl+alt'
+        self.am.key_mod2 = 'alt+control'
+
+    def press(self, event):
+        super().press(event)
+        if event.button == self.am.btn_assign and (event.key == self.am.key_mod1 \
+                                        or event.key == self.am.key_mod2):
+            print('assigned peaks and ranges')
+            self.assign() 
+
+    def assign(self):
+        pass
+        
 #this is to catch 'home' events in the dataselector 
 def dataselector_home(self, *args, **kwargs):
     s = 'home_event'
@@ -947,7 +972,8 @@ class DataSelector():
                 ranges=None, 
                 title=None, 
                 voff=0.001, 
-                label=None):
+                label=None,
+                ):
         if not Plot._is_iter(data):
             raise AttributeError('data must be iterable.')
         self.data = numpy.array(data)
@@ -989,11 +1015,11 @@ class DataSelector():
         #cursor.horizOn = False
         self.canvas.draw()
         #self.redraw()
-        pylab.show()
+        plt.show()
 
 
     def _make_basic_fig(self, *args, **kwargs):
-        self.fig = pylab.figure(figsize=[15, 7.5])
+        self.fig = plt.figure(figsize=[9, 6])
         self.ax = self.fig.add_subplot(111)
         if len(self.data.shape)==1:
             self.ppm = numpy.mgrid[self.params['sw_left']-self.params['sw']:self.params['sw_left']:complex(self.data.shape[0])]
@@ -1003,9 +1029,9 @@ class DataSelector():
             #data
             self.ax.plot(self.ppm[::-1], self.data, color='k', lw=1)
         elif len(self.data.shape)==2:
-            cl = dict(zip(range(len(self.data)), pylab.cm.viridis(numpy.linspace(0,1,len(self.data)))))
+            cl = dict(zip(range(len(self.data)), plt.cm.viridis(numpy.linspace(0,1,len(self.data)))))
             self.ppm = numpy.mgrid[self.params['sw_left']-self.params['sw']:self.params['sw_left']:complex(self.data.shape[1])]
-            self.y_indices = numpy.arange(len(self.data))*self.voff#max(self.data)
+            self.y_indices = numpy.arange(len(self.data))*self.voff*self.data.max()
             #this is reversed for zorder
             #extra_data
             if self.extra_data is not None:
@@ -1033,7 +1059,7 @@ class DataSelector():
         self.background = self.canvas.copy_from_bbox(self.ax.bbox)
 
     def check_mode(self):
-        tb = pylab.get_current_fig_manager().toolbar
+        tb = plt.get_current_fig_manager().toolbar
         return tb.mode
 
     def on_draw(self, event):
@@ -1047,7 +1073,7 @@ class DataSelector():
         pass
 
     def press(self, event):
-        tb = pylab.get_current_fig_manager().toolbar
+        tb = plt.get_current_fig_manager().toolbar
         if tb.mode == '' and event.xdata is not None:
             x = numpy.round(event.xdata, 2)
             self.canvas.restore_region(self.background)
@@ -1107,16 +1133,16 @@ class DataSelector():
         except Exception as e:
             logging.error(traceback.format_exc())
 
-class IntegralDataSelector(DataSelector, PolySelectorMixin):
+class IntegralDataSelector(DataSelector, PolySelectorMixin, AssignMixin):
     show_tracedata = True
 
-class PeakTraceDataSelector(DataSelector, PolySelectorMixin, SpanSelectorMixin):
+class PeakTraceDataSelector(DataSelector, PolySelectorMixin, SpanSelectorMixin, AssignMixin):
     show_tracedata = True
 
-class LineSpanDataSelector(DataSelector, LineSelectorMixin, SpanSelectorMixin):
+class LineSpanDataSelector(DataSelector, LineSelectorMixin, SpanSelectorMixin, AssignMixin):
     pass
 
-class SpanDataSelector(DataSelector, SpanSelectorMixin):
+class SpanDataSelector(DataSelector, SpanSelectorMixin, AssignMixin):
     pass
 
 class DataTraceSelector:
@@ -1129,8 +1155,10 @@ class DataTraceSelector:
             extra_data_colour='b',
             voff=1e-3,
             lw=1,
+            label=None,
             ):
-        if fid_array.data == [] or fid_array.data == None:
+        self.fid_array = fid_array
+        if fid_array.data is [] or fid_array.data is None:
             raise ValueError('data must exist.')
         data = fid_array.data
         params = fid_array._params
@@ -1141,17 +1169,53 @@ class DataTraceSelector:
        
         self.integral_selector = IntegralDataSelector(
                 extra_data,
-                fid_array._params,
-                extra_data=fid_array.data, 
+                params,
+                extra_data=data, 
                 extra_data_colour=extra_data_colour,
                 peaks=None, 
                 ranges=None, 
                 title='Integral trace selector', 
                 voff=voff,
-                label=None)
+                label=label)
+        self.integral_selector.assign = self.assign
+        
+    def assign(self):
+        data_traces = self.integral_selector.psm.data_lines
+        index_traces = self.integral_selector.psm.index_lines
+        
+        self.fid_array._data_traces = [dict(zip(i[1], i[0])) for i in data_traces]
+        self.fid_array._index_traces = [dict(zip(i[1], i[0])) for i in index_traces]
 
-        self.data_traces = self.integral_selector.psm.data_lines
-        self.index_traces = self.integral_selector.psm.index_lines
+        decon_peaks = []
+        for i in self.fid_array._deconvoluted_peaks:
+            if len(i):
+                decon_peaks.append(i.transpose()[0])
+            else:
+                decon_peaks.append(None)
+
+        trace_dict = {}
+        for t in range(len(self.fid_array._index_traces)):
+            trace = self.fid_array._index_traces[t]
+            integrals = {}
+            for fid, indx in trace.items():
+                try:
+                    integrals[fid] = numpy.argmin(abs(decon_peaks[fid]-indx))
+                except:
+                    integrals[fid] = None
+            trace_dict[t] = integrals
+        last_fid = (len(self.fid_array.get_fids())-1)
+        for i in trace_dict:
+            tmin = min(trace_dict[i])
+            tminval = trace_dict[i][tmin]
+            if tmin > 0:
+                for j in range(0, tmin):
+                    trace_dict[i][j] = tminval
+            tmax = max(trace_dict[i])
+            tmaxval = trace_dict[i][tmax]
+            if tmax < last_fid:
+                for j in range(tmax, last_fid+1):
+                    trace_dict[i][j] = tmaxval
+        self.fid_array.integral_traces = trace_dict
   
 class DataTraceRangeSelector:
     """
@@ -1164,8 +1228,10 @@ class DataTraceRangeSelector:
             ranges=None,
             voff=1e-3,
             lw=1,
+            label=None,
             ):
-        if fid_array.data == [] or fid_array.data == None:
+        self.fid_array = fid_array
+        if fid_array.data is [] or fid_array.data is None:
             raise ValueError('data must exist.')
         data = fid_array.data
         params = fid_array._params
@@ -1175,29 +1241,94 @@ class DataTraceRangeSelector:
         ppm = numpy.linspace(sw_left-sw, sw_left, data.shape[1])[::-1]
        
         self.peak_selector = PeakTraceDataSelector(
-                fid_array.data, 
-                fid_array._params,
+                data, 
+                params,
                 peaks=peaks, 
                 ranges=ranges, 
-                title='peak and range trace selector', 
+                title='Peak and range trace selector', 
                 voff=voff,
-                label=None)
+                label=label)
+        self.peak_selector.assign = self.assign
 
-        self.data_traces = self.peak_selector.psm.data_lines
-        self.index_traces = self.peak_selector.psm.index_lines
-        self.spans = self.peak_selector.ssm.ranges
+    def assign(self):
+        data_traces = self.peak_selector.psm.data_lines
+        index_traces = self.peak_selector.psm.index_lines
+        spans = self.peak_selector.ssm.ranges
+        
+        traces = [[i[0], j[1]] for i, j in zip(data_traces,  index_traces)]
+
+        self.fid_array.traces = traces
+        self.fid_array._trace_mask = self.fid_array._generate_trace_mask(traces)
+
+        self.fid_array._set_all_peaks_ranges_from_traces_and_spans(
+                traces, spans)
   
+class DataPeakSelector:
+    """
+    Interactive data-selection widget with lines and ranges for a single Fid.
+    Lines and spans are saved as self.peaks, self.ranges.
+    """
+    def __init__(self, fid,
+            peaks=None,
+            ranges=None,
+            voff=1e-3,
+            lw=1,
+            label=None,
+            title=None,
+            ):
+        self.fid = fid
+        if fid.data is [] or fid.data is None:
+            raise ValueError('data must exist.')
+        data = fid.data
+        params = fid._params
+        sw_left = params['sw_left']
+        sw = params['sw']
+        ppm = numpy.linspace(sw_left-sw, sw_left, len(data))[::-1]
+
+        if fid.peaks is not None:
+            peaks = list(fid.peaks)
+        if fid.ranges is not None:
+            ranges = list(fid.ranges)   
+       
+        self.peak_selector = LineSpanDataSelector(
+                data,
+                params,
+                peaks=peaks, 
+                ranges=ranges, 
+                title=title, 
+                voff=voff,
+                label=label)
+        self.peak_selector.assign = self.assign
+        
+    def assign(self):
+        if len(self.peak_selector.ssm.ranges) > 0 and len(self.peak_selector.lsm.peaks) > 0:
+            self.fid.ranges = self.peak_selector.ssm.ranges
+            peaks = []
+            for peak in self.peak_selector.lsm.peaks:
+                for rng in self.peak_selector.ssm.ranges:
+                    if peak >= rng[1] and peak <= rng[0]:
+                        peaks.append(peak)
+            self.fid.peaks = peaks
+        else:
+            self.fid.peaks = None
+            self.fid.ranges = None
+
 class DataPeakRangeSelector:
     """Interactive data-selection widget with lines and ranges. Lines and spans are saved as self.peaks, self.ranges."""
     def __init__(self, fid_array,
             peaks=None,
             ranges=None,
             y_indices=None,
+            aoti=True,
             voff=1e-3,
             lw=1,
             label=None,
             ):
-        if fid_array.data == [] or fid_array.data == None:
+        self.fid_array = fid_array
+        self.fids = fid_array.get_fids()
+        self.assign_only_to_index = aoti
+        self.fid_number = y_indices
+        if fid_array.data is [] or fid_array.data is None:
             raise ValueError('data must exist.')
         data = fid_array.data
         if y_indices is not None:
@@ -1210,15 +1341,43 @@ class DataPeakRangeSelector:
        
         self.peak_selector = LineSpanDataSelector(
                 data,
-                fid_array._params,
+                params,
                 peaks=peaks, 
                 ranges=ranges, 
-                title='peak and range selector', 
+                title='Peak and range selector', 
                 voff=voff,
                 label=label)
-
+        self.peak_selector.assign = self.assign
+        
+    def assign(self):
         self.peaks = self.peak_selector.lsm.peaks
         self.ranges = self.peak_selector.ssm.ranges
+
+        if self.fid_number is not None:
+            if not nmrpy.data_objects.Fid._is_iter(self.fid_number):
+                self.fid_number = [self.fid_number]
+        else:
+            self.fid_number = range(len(self.fids))
+        
+        if len(self.ranges) > 0 and len(self.peaks) > 0:
+            ranges = self.ranges
+            peaks = []
+            for peak in self.peaks:
+                for rng in ranges:
+                    if peak >= rng[1] and peak <= rng[0]:
+                        peaks.append(peak)
+        else:
+            peaks = None
+            ranges = None
+
+        if self.assign_only_to_index:
+            for fid in [self.fids[i] for i in self.fid_number]:
+                fid.peaks = peaks
+                fid.ranges = ranges
+        else:       
+            for fid in self.fids:
+                fid.peaks = peaks
+                fid.ranges = ranges
   
 class FidArrayRangeSelector:
     """Interactive data-selection widget with ranges. Spans are saved as self.ranges."""
@@ -1231,47 +1390,18 @@ class FidArrayRangeSelector:
             title=None,
             label=None,
             ):
-        if fid_array.data == [] or fid_array.data == None:
-            raise ValueError('data must exist.')
+        self.fid_array = fid_array
+        self.fids = fid_array.get_fids()
         data = fid_array.data
-        if y_indices is not None:
-            data = fid_array.data[numpy.array(y_indices)]
         params = fid_array._params
-        sw_left = params['sw_left']
-        sw = params['sw']
-
-        ppm = numpy.linspace(sw_left-sw, sw_left, data.shape[1])[::-1]
-       
-        self.span_selector = SpanDataSelector(
-                data,
-                fid_array._params,
-                ranges=ranges, 
-                title=title,
-                voff=voff,
-                label=label)
-
-        self.ranges = self.span_selector.ssm.ranges
-
-class FidRangeSelector:
-    """Interactive data-selection widget with ranges. Spans are saved as self.ranges."""
-    def __init__(self, 
-            data,
-            params,
-            title=None,
-            ranges=None,
-            y_indices=None,
-            voff=1e-3,
-            lw=1,
-            label=None,
-            ):
-        if data == [] or data == None:
+        if data is [] or data is None:
             raise ValueError('data must exist.')
         if y_indices is not None:
             data = data[numpy.array(y_indices)]
         sw_left = params['sw_left']
         sw = params['sw']
 
-        ppm = numpy.linspace(sw_left-sw, sw_left, len(data))[::-1]
+        ppm = numpy.linspace(sw_left-sw, sw_left, data.shape[1])[::-1]
        
         self.span_selector = SpanDataSelector(
                 data,
@@ -1280,8 +1410,61 @@ class FidRangeSelector:
                 title=title,
                 voff=voff,
                 label=label)
+        self.span_selector.assign = self.assign
 
+    def assign(self):
         self.ranges = self.span_selector.ssm.ranges
+        for fid in self.fid_array.get_fids():
+            bl_ppm = []
+            for rng in self.ranges:
+                peak_ind = (fid._ppm > rng[1]) * (fid._ppm < rng[0])
+                cur_peaks = fid._ppm[peak_ind]
+                bl_ppm.append(cur_peaks)
+            bl_ppm = numpy.array([j for i in bl_ppm for j in i])
+            fid._bl_ppm = bl_ppm
 
+
+class FidRangeSelector:
+    """Interactive data-selection widget with ranges. Spans are saved as self.ranges."""
+    def __init__(self, 
+            fid,
+            title=None,
+            ranges=None,
+            y_indices=None,
+            voff=1e-3,
+            lw=1,
+            label=None,
+            ):
+        self.fid=fid
+        data = fid.data
+        params = fid._params
+        if data is [] or data is None:
+            raise ValueError('data must exist.')
+        if y_indices is not None:
+            data = data[numpy.array(y_indices)]
+        sw_left = params['sw_left']
+        sw = params['sw']
+
+        self.ppm = numpy.linspace(sw_left-sw, sw_left, len(data))[::-1]
+       
+        self.span_selector = SpanDataSelector(
+                data,
+                params,
+                ranges=ranges, 
+                title=title,
+                voff=voff,
+                label=label)
+        self.span_selector.assign = self.assign
+
+    def assign(self):
+        self.ranges = self.span_selector.ssm.ranges
+        bl_ppm = []
+        for rng in self.ranges:
+            peak_ind = (self.ppm > rng[1]) * (self.ppm < rng[0])
+            cur_peaks = self.ppm[peak_ind]
+            bl_ppm.append(cur_peaks)
+        bl_ppm = numpy.array([j for i in bl_ppm for j in i])
+        self.fid._bl_ppm = bl_ppm
+        
 if __name__ == '__main__':
     pass

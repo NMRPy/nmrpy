@@ -1,6 +1,6 @@
 import numpy
 import scipy
-import pylab
+from matplotlib import pyplot
 import lmfit
 import nmrglue
 import numbers
@@ -254,7 +254,7 @@ class Fid(Base):
     
     @ranges.setter    
     def ranges(self, ranges):
-        if ranges == None:
+        if ranges is None:
             self._ranges = None
             return
         if not Fid._is_iter_of_iters(ranges) or ranges is None:
@@ -625,8 +625,7 @@ class Fid(Base):
             raise TypeError('data must be complex.')
         if not Fid._is_flat_iter(self.data):
             raise AttributeError('data must be 1 dimensional.')
-        global _phaser_widget
-        _phaser_widget = Phaser(self)
+        self._phaser_widget = Phaser(self)
 
     def baseline_correct(self, deg=2):
         """
@@ -644,7 +643,7 @@ class Fid(Base):
             raise AttributeError('No points selected for baseline correction. Run fid.baseliner()')
         if not len(self.data):
             raise AttributeError('data does not exist.')
-        if self.data.dtype in self._complex_dtypes:
+        if self.data.dtype not in self._complex_dtypes:
             raise TypeError('data must be not be complex.')
         if not Fid._is_flat_iter(self.data):
             raise AttributeError('data must be 1 dimensional.')
@@ -678,33 +677,27 @@ class Fid(Base):
 
     def peakpicker(self):
         """
-
         Instantiate a peak-picking GUI widget. Left-clicking selects a peak.
-        Right-click-dragging defines a range. Middle-clicking deletes nearest peak;
-        ctrl-middle click deletes range. Peaks are stored in
+        Right-click-dragging defines a range. Ctrl-left click deletes nearest peak;
+        ctrl-right click deletes range. Peaks are stored in
         :attr:`~nmrpy.data_objects.Fid.peaks`; ranges are stored in
         :attr:`~nmrpy.data_objects.Fid.ranges`: both are used for deconvolution (see
         :meth:`~nmrpy.data_objects.Fid.deconv`).
 
         """
-        global _peakpicker_widget
-        plot_label = 'Left - select peak\nMiddle - delete nearest peak\nCtrl/Middle - delete range\nDrag Right - select range'
-        _peakpicker_widget = LineSpanDataSelector(self.data, self._params, 
-                            peaks=self.peaks,
-                            ranges=self.ranges,
-                            title="Peak-picking {}".format(self.id), 
-                            label=plot_label)
-        if len(_peakpicker_widget.ssm.ranges) > 0 and len(_peakpicker_widget.lsm.peaks) > 0:
-            self.ranges = _peakpicker_widget.ssm.ranges
-            peaks = []
-            for peak in _peakpicker_widget.lsm.peaks:
-                for rng in self.ranges:
-                    if peak >= rng[1] and peak <= rng[0]:
-                        peaks.append(peak)
-            self.peaks = peaks
-        else:
-            self.peaks = None
-            self.ranges = None
+        plot_label = \
+'''
+Left - select peak
+Ctrl+Left - delete nearest peak
+Drag Right - select range
+Ctrl+Right - delete range
+Ctrl+Alt+Right - assign
+'''
+        plot_title = "Peak-picking {}".format(self.id)
+        _peakpicker_widget = DataPeakSelector(self,
+                            title=plot_title,
+                            label=plot_label,
+                            )
 
     def baseliner(self):
         """
@@ -715,19 +708,18 @@ class Fid(Base):
         :meth:`~nmrpy.data_objects.Fid.baseline_correction`).
 
         """
-        global _baseliner_widget
-        plot_label = 'Drag Right - select range'
-        plot_title = 'Select data for baseline-correction'
-        _baseliner_widget = FidRangeSelector(self.data, self._params, title=plot_title, label=plot_label)
-        bl_ppm = []
-        for rng in _baseliner_widget.ranges:
-            peak_ind = (self._ppm > rng[1]) * (self._ppm < rng[0])
-            cur_peaks = self._ppm[peak_ind]
-            bl_ppm.append(cur_peaks)
-        bl_ppm = numpy.array([j for i in bl_ppm for j in i])
-        self._bl_ppm = bl_ppm
+        plot_label = \
+'''
+Drag Right - select range
+Ctrl+Right - delete range
+Ctrl+Alt+Right - assign
+'''
+        plot_title = "Baseline correction {}".format(self.id)
+        _baseliner_widget = FidRangeSelector(self,
+                                title=plot_title,
+                                label=plot_label,
+                                )
   
-
     @classmethod
     def _f_gauss(cls, offset, amplitude, gauss_sigma, x):
         return amplitude*numpy.exp(-((offset-x)**2.0)/(2.0*gauss_sigma**2.0))
@@ -1109,7 +1101,7 @@ class Fid(Base):
         plt = Plot()
         plt._plot_ppm(self.data, self._params, **kwargs)
         setattr(self, plt.id, plt)
-        pylab.show()
+        pyplot.show()
 
     def plot_deconv(self, **kwargs):
         """
@@ -1132,7 +1124,7 @@ class Fid(Base):
         plt = Plot()
         plt._plot_deconv(self, **kwargs)
         setattr(self, plt.id, plt)
-        pylab.show()
+        pyplot.show()
  
 class FidArray(Base):
     '''
@@ -1262,7 +1254,7 @@ class FidArray(Base):
         """
         Add a list of :class:`~nmrpy.data_objects.Fid` objects to this :class:`~nmrpy.data_objects.FidArray`.
         
-        :arg fid: a list of :class:`~nmrpy.data_objects.Fid` instances
+        :arg fids: a list of :class:`~nmrpy.data_objects.Fid` instances
         """
         if FidArray._is_iter(fids):
             num_fids = len(fids)
@@ -1299,9 +1291,9 @@ class FidArray(Base):
         """
         Instantiate a new :class:`~nmrpy.data_objects.FidArray` object from a .fid directory.
 
-        :keyword fidpath: filepath to .fid directory
+        :keyword fid_path: filepath to .fid directory
 
-        :keyword file_path: 'varian' or 'bruker', usually unnecessary
+        :keyword file_format: 'varian' or 'bruker', usually unnecessary
 
         """
         if not file_format:
@@ -1396,7 +1388,7 @@ class FidArray(Base):
 
         :keyword mp: parallelise the phasing process over multiple processors, significantly reducing computation time
 
-        :keyword cores: defines number of CPUs to utilise if 'mp' is set to True
+        :keyword cpus: defines number of CPUs to utilise if 'mp' is set to True
         """
         if mp: 
             fids = self.get_fids()
@@ -1423,18 +1415,14 @@ class FidArray(Base):
         :meth:`~nmrpy.data_objects.Fid.baseline_correction`).
 
         """
-        global _baseliner_widget
-        plot_label = 'Drag Right - select range'
+        plot_label = \
+'''
+Drag Right - select range
+Ctrl+Right - delete range
+Ctrl+Alt+Right - assign
+'''
         plot_title = 'Select data for baseline-correction'
         _baseliner_widget = FidArrayRangeSelector(self, title=plot_title, label=plot_label, voff=0.01)
-        for fid in self.get_fids():
-            bl_ppm = []
-            for rng in _baseliner_widget.ranges:
-                peak_ind = (fid._ppm > rng[1]) * (fid._ppm < rng[0])
-                cur_peaks = fid._ppm[peak_ind]
-                bl_ppm.append(cur_peaks)
-            bl_ppm = numpy.array([j for i in bl_ppm for j in i])
-            fid._bl_ppm = bl_ppm
   
     def baseline_correct_fids(self, deg=2):
         """ 
@@ -1502,7 +1490,7 @@ class FidArray(Base):
 
         :keyword mp: parallelise the phasing process over multiple processors, significantly reduces computation time
 
-        :keyword cores: defines number of CPUs to utilise if 'mp' is set to True, default is n-1 cores
+        :keyword cpus: defines number of CPUs to utilise if 'mp' is set to True, default is n-1 cores
         """
         if mp: 
             fids = self.get_fids()
@@ -1609,7 +1597,7 @@ class FidArray(Base):
 
         :keyword data_filled: fill state of the plotted data (False)
 
-        :keyword summed_peak_filled: fill state of the plotted summed peaks (False)
+        :keyword summed_peak_filled: fill state of the plotted summed peaks (True)
 
         :keyword residual_filled: fill state of the plotted residuals (False)
 
@@ -1630,7 +1618,7 @@ class FidArray(Base):
         setattr(self, plt.id, plt)
         
 
-    def peakpicker(self, fid_number=None, assign_only_to_index=True, voff=0.3):
+    def peakpicker(self, fid_number=None, assign_only_to_index=True, voff=0.02):
         """
 
         Instantiate peak-picker widget for 
@@ -1649,42 +1637,23 @@ class FidArray(Base):
 
         :keyword voff: vertical offset for spectra
         """
-        global _peakpicker_widget
-        fids = self.get_fids()
-        if fid_number is not None:
-            if not Fid._is_iter(fid_number):
-                fid_number = [fid_number]
-        else:
-            fid_number = range(len(fids))
 
-        plot_label = 'Left - select peak\nMiddle - delete nearest peak\nCtrl/Middle - delete range\nDrag Right - select range'
+        plot_label = \
+'''
+Left - select peak
+Ctrl+Left - delete nearest peak
+Drag Right - select range
+Ctrl+Right - delete range
+Ctrl+Alt+Right - assign
+'''
         _peakpicker_widget = DataPeakRangeSelector(self, 
                 y_indices=fid_number,
+                aoti=assign_only_to_index,
                 voff=voff, 
                 label=plot_label)
 
-        if len(_peakpicker_widget.ranges) > 0 and len(_peakpicker_widget.peaks) > 0:
-            ranges = _peakpicker_widget.ranges
-            peaks = []
-            for peak in _peakpicker_widget.peaks:
-                for rng in ranges:
-                    if peak >= rng[1] and peak <= rng[0]:
-                        peaks.append(peak)
-        else:
-            peaks = None
-            ranges = None
-
-        if assign_only_to_index:
-            for fid in [fids[i] for i in fid_number]:
-                fid.peaks = peaks
-                fid.ranges = ranges
-        else:       
-            for fid in fids:
-                fid.peaks = peaks
-                fid.ranges = ranges
-
     def peakpicker_traces(self, 
-            voff=0.01, 
+            voff=0.02, 
             lw=1):
         """
         Instantiates a widget to pick peaks and ranges employing a polygon
@@ -1698,23 +1667,21 @@ class FidArray(Base):
         """
         if self.data is None:
             raise AttributeError('No FIDs.')
-        global _peakpicker_widget 
+        plot_label = \
+'''
+Left - add trace point
+Right - finalize trace
+Ctrl+Left - delete nearest trace
+Drag Right - select range
+Ctrl+Right - delete range
+Ctrl+Alt+Right - assign
+'''
         _peakpicker_widget = DataTraceRangeSelector(
             self,
-            peaks=None,
-            ranges=None,
             voff=voff,
             lw=lw,
+            label=plot_label,
             )
-
-        traces = [[i[0], j[1]] for i, j in zip(_peakpicker_widget.data_traces, _peakpicker_widget.index_traces)]
-
-        self.traces = traces
-        self._trace_mask = self._generate_trace_mask(traces)
-
-        self._set_all_peaks_ranges_from_traces_and_spans(
-            traces, 
-            _peakpicker_widget.spans)
 
     def _generate_trace_mask(self, traces): 
         ppm = [numpy.round(numpy.mean(i[0]), 2) for i in traces]
@@ -1793,7 +1760,7 @@ class FidArray(Base):
             peakshapes_short_y.append(pk_y)
         return peakshapes_short_x, peakshapes_short_y
 
-    def select_integral_traces(self, voff=0.01, lw=1):
+    def select_integral_traces(self, voff=0.02, lw=1):
         """
 
         Instantiate a trace-selection widget to identify deconvoluted peaks.
@@ -1807,52 +1774,24 @@ class FidArray(Base):
         """
         if self.data is None:
             raise AttributeError('No FIDs.')
-        if self.deconvoluted_integrals is None:
+        if (self.deconvoluted_integrals==None).any():
             raise AttributeError('No integrals.')
         peakshapes = self._get_all_summed_peakshapes()
         #pk_x, pk_y = self._get_truncated_peak_shapes_for_plotting()
-        global _select_trace_widget
+        plot_label = \
+'''
+Left - add trace point
+Right - finalize trace
+Ctrl+Left - delete nearest trace
+Ctrl+Alt+Right - assign
+'''
         _select_trace_widget = DataTraceSelector(self, 
             extra_data=peakshapes, 
             extra_data_colour='b', 
             voff=voff, 
+            label=plot_label,
             lw=lw)
 
-        self._data_traces = [dict(zip(i[1], i[0])) for i in _select_trace_widget.data_traces]
-        self._index_traces = [dict(zip(i[1], i[0])) for i in _select_trace_widget.index_traces]
-
-        decon_peaks = []
-        for i in self._deconvoluted_peaks:
-            if len(i):
-                decon_peaks.append(i.transpose()[0])
-            else:
-                decon_peaks.append(None)
-
-        #traces = [[i[0], j[1]] for i, j in zip(_select_trace_widget.data_traces, _select_trace_widget.index_traces)]
-        trace_dict = {}
-        for t in range(len(self._index_traces)):
-            trace = self._index_traces[t]
-            integrals = {}
-            for fid, indx in trace.items():
-                try:
-                    integrals[fid] = numpy.argmin(abs(decon_peaks[fid]-indx))
-                except:
-                    integrals[fid] = None
-            trace_dict[t] = integrals
-        last_fid = (len(self.get_fids())-1)
-        for i in trace_dict:
-            tmin = min(trace_dict[i])
-            tminval = trace_dict[i][tmin]
-            if tmin > 0:
-                for j in range(0, tmin):
-                    trace_dict[i][j] = tminval
-            tmax = max(trace_dict[i])
-            tmaxval = trace_dict[i][tmax]
-            if tmax < last_fid:
-                for j in range(tmax, last_fid+1):
-                    trace_dict[i][j] = tmaxval
-        self.integral_traces = trace_dict
-                
     def get_integrals_from_traces(self):
         """
         Returns a dictionary of integral values for all
