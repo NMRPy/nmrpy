@@ -9,3 +9,4 @@ htmlcov
 quicktest.py
 .idea
 /dist
+nmrpy.egg-info
