@@ -11,9 +11,9 @@ import pickle
 
 class Base():
     _complex_dtypes = [
-                    numpy.dtype('complex64'),
-                    numpy.dtype('complex128'),
-                    numpy.dtype('complex256'),
+                    numpy.dtype('csingle'),
+                    numpy.dtype('cdouble'),
+                    numpy.dtype('clongdouble'),
                     ]
 
     _file_formats = ['varian', 'bruker', None]
