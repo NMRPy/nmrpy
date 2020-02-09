@@ -1328,11 +1328,16 @@ class DataPeakRangeSelector:
         self.fids = fid_array.get_fids()
         self.assign_only_to_index = aoti
         self.fid_number = y_indices
+        if self.fid_number is not None:
+            if not nmrpy.data_objects.Fid._is_iter(self.fid_number):
+                self.fid_number = [self.fid_number]
+        else:
+            self.fid_number = range(len(self.fids))
         if fid_array.data is [] or fid_array.data is None:
             raise ValueError('data must exist.')
         data = fid_array.data
         if y_indices is not None:
-            data = fid_array.data[numpy.array(y_indices)]
+            data = fid_array.data[numpy.array(self.fid_number)]
         params = fid_array._params
         sw_left = params['sw_left']
         sw = params['sw']
@@ -1352,12 +1357,6 @@ class DataPeakRangeSelector:
     def assign(self):
         self.peaks = self.peak_selector.lsm.peaks
         self.ranges = self.peak_selector.ssm.ranges
-
-        if self.fid_number is not None:
-            if not nmrpy.data_objects.Fid._is_iter(self.fid_number):
-                self.fid_number = [self.fid_number]
-        else:
-            self.fid_number = range(len(self.fids))
         
         if len(self.ranges) > 0 and len(self.peaks) > 0:
             ranges = self.ranges
