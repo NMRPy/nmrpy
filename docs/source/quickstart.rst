@@ -2,7 +2,8 @@
 Quickstart Tutorial
 ###################
 
-This is a "quickstart" tutorial for NMRPy in which an Agilent (Varian) NMR dataset will be processed. The following topics are explored:
+This is a "quickstart" tutorial for NMRPy in which an Agilent (Varian) NMR 
+dataset will be processed. The following topics are explored:
 
     * :ref:`quickstart_importing`
     * :ref:`quickstart_apodisation`
@@ -16,7 +17,8 @@ This tutorial will use the test data in the nmrpy install directory: ::
     
     nmrpy/tests/test_data/test1.fid
 
-The dataset consists of a time array of spectra of the phosphoglucose-isomerase reaction:
+The dataset consists of a time array of spectra of the phosphoglucose isomerase 
+reaction:
 
     *fructose-6-phosphate -> glucose-6-phosphate*
 
@@ -37,8 +39,8 @@ the path of the *.fid* directory: ::
     import nmrpy
     fid_array = nmrpy.data_objects.FidArray.from_path(fid_path='./tests/test_data/test1.fid')
 
-You will notice that the *fid_array* object is instantiated and now owns
-several attributes, amongst others, which are of the form *fidXX* where *XX* is
+You will notice that the ``fid_array`` object is instantiated and now owns
+several attributes, most of which are of the form ``fidXX`` where *XX* is
 a number starting at 00. These are the individual arrayed
 :class:`~nmrpy.data_objects.Fid` objects.
 
@@ -57,7 +59,8 @@ imaginary portion of the data: ::
 
 .. image:: images/quickstart_1.png
 
-We now perform apodisation of the FIDs using the default value of 5 Hz, and visualise the result: ::
+We now perform apodisation of the FIDs using the default value of 5 Hz, and 
+visualise the result: ::
 
     fid_array.emhz_fids()
     fid_array.fid00.plot_ppm()
@@ -80,14 +83,14 @@ Phase-correction
 It is clear from the data visualisation that at this stage the spectra require
 phase-correction. NMRPy provides a number of GUI widgets for manual processing
 of data. In this case we will use the :meth:`~nmrpy.data_objects.Fid.phaser`
-method on *fid00*: ::
+method on ``fid00``: ::
 
     fid_array.fid00.phaser()
 
 .. image:: images/quickstart_4.png
 
 Dragging with the left mouse button and right mouse button will apply zero- and
-first-order phase-correction respectively.
+first-order phase-correction, respectively.
 
 .. image:: images/quickstart_5.png
 
@@ -103,7 +106,8 @@ And plot an array of the phase-corrected data: ::
 
 .. image:: images/quickstart_6.png
 
-Zooming in on the relevant peaks, and filling the spectra produces a more interesting plot: ::
+Zooming in on the relevant peaks, changing the view perspective, and filling 
+the spectra produces a more interesting plot: ::
 
     fid_array.plot_array(upper_ppm=7, lower_ppm=-1, filled=True, azim=-76, elev=23)
 
@@ -122,10 +126,11 @@ Peak-picking
 ============
 
 To begin the process of integrating peaks by deconvolution, we will need to
-pick some peaks. The :attr:`~nmrpy.data_objects.Fid.peaks` object is an array
+pick some peaks. The :attr:`~nmrpy.data_objects.Fid.peaks` attribute of a 
+:class:`~nmrpy.data_objects.Fid` is an array
 of peak positions, and :attr:`~nmrpy.data_objects.Fid.ranges` is an array of
 range boundaries. These two objects are used in deconvolution to integrate the
-data by fitting Lorentzian/Gaussian peakshapes to the spectra.
+data by fitting Lorentzian/Gaussian peak shapes to the spectra.
 :attr:`~nmrpy.data_objects.Fid.peaks` may be specified programatically, or
 picked using the interactive GUI widget: ::
 
@@ -138,6 +143,12 @@ with a right-click specifies a range to fit independently with a grey
 rectangle:
 
 .. image:: images/quickstart_9.png
+
+Inadvertent wrongly selected peaks can be deleted with Ctrl+left-click; wrongly 
+selected ranges can be deleted with Ctrl+right-click. Once you are done 
+selecting peaks and ranges, these need to be assigned to the 
+:class:`~nmrpy.data_objects.FidArray`; this is achieved with a 
+Ctrl+Alt+right-click.
 
 Ranges divide the data into smaller portions, which significantly speeds up the
 process of fitting of peakshapes to the data. Range-specification also prevents
@@ -155,7 +166,12 @@ now been assigned to each :class:`~nmrpy.data_objects.Fid` in the array: ::
     [[ 5.92  3.24]
      [ 1.19 -0.01]]
 
+Peak-picking trace selector
+---------------------------
 
+Sometimes trace selection is necessary.
+     
+     
 .. _quickstart_deconvolution:
 
 Deconvolution
