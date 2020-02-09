@@ -2,73 +2,72 @@
 Installation
 ############
 
-The following are some guidelines for installing NMRPy on a *nix* system, and
+The following are some general guidelines for installing NMRPy, and
 are by no means the only way to install a Python package. First be sure to have
-Python 3 and *pip* installed.
-[Pip](https://en.wikipedia.org/wiki/Pip_(package_manager)) is a useful Python
-package management system. Note: NMRPy will not work using Python 2. On an
-Ubuntu-like system these can be installed with the following terminal commands: ::
+Python 3 and ``pip`` installed.
+`Pip <https://en.wikipedia.org/wiki/Pip_(package_manager)>`_ is a useful Python
+package management system.
 
-    $ sudo apt-get install python3
-    $ sudo apt-get install python-pip
+**Note:** NMRPy will not work using Python 2. 
 
-Note: the following instructions may require Python C-extensions: ::
+On Debian and Ubuntu-like systems these can be installed with the following 
+terminal commands: ::
 
-    $ sudo apt-get install build-essential python3-dev
+    $ sudo apt install python3
+    $ sudo apt install python-pip
 
-...and some other dependencies: ::
+On Windows, the CPython download from https://www.python.org/ comes 
+pre-installed with pip.
 
-    $ sudo apt-get install git libpng12-dev zlib1g-dev libfreetype6-dev tk-dev
-
+The `Anaconda Distribution <https://www.anaconda.com/distribution/>`_, which is 
+available for Windows, MacOS and Linux, comes pre-installed with ``pip`` as 
+well as most of the other dependencies required for NMRPy.
+    
 Virtual environments
 ====================
 
 Virtual environments are a great way to keep package dependencies separate from
 your system files. There are several options for setting up your working
-environment. We will use *virtualenvwrapper*.
-
-You can install virtualenvwrapper
-(http://virtualenvwrapper.readthedocs.org/en/latest/), which will take care of
+environment. We will use `virtualenvwrapper 
+<https://virtualenvwrapper.readthedocs.io/en/latest/index.html>`_, which works 
+out of the box on Linux and MacOS. On Windows, virtualenvwrapper can be used 
+under an `MSYS <http://www.mingw.org/wiki/MSYS>`_ environment in a native 
+Windows Python installation. Alternatively, you can use `virtualenvwrapper-win 
+<https://pypi.org/project/virtualenvwrapper-win/>`_. This will take care of
 managing your virtual environments by maintaining a separate Python
-`site-directory` for you.
+*site-directory* for you.
 
-Install virtualenvwrapper using *apt*: ::
+Install virtualenvwrapper using ``pip``. On Linux and MacOS: ::
 
     $ sudo pip install virtualenv
     $ sudo pip install virtualenvwrapper
 
-Add the following to the *.bashrc* file in your home directory (after the part
-where PATH is exported!)::
+On Windows in a Python command prompt: ::
 
-    export WORKON_HOME="$HOME"/.virtualenvs
-    source /usr/local/bin/virtualenvwrapper.sh
-
-Then reload your *.bashrc* settings in the current terminal session: ::
-
-    $ source .bashrc
+    pip install virtualenv
+    pip install virtualenvwrapper-win
     
 Make a new virtual environment for working with NMRPy (e.g. nmr), and specify
-that it use Python 3 (we used Python 3.5): ::
+that it use Python 3 (we used Python 3.7): ::
 
-    $ mkvirtualenv -p python3.5 nmr
+    $ mkvirtualenv -p python3.7 nmr
 
 The new virtual environment will be activated automatically, and this will be
-indicated in the shell prompt. Eg: ::
+indicated in the shell prompt. E.g.: ::
 
-    (nmr) user@computer: 
+    (nmr) $
 
 If you are not yet familiar with virtual environments we recommend you survey
 the basic commands (https://virtualenvwrapper.readthedocs.io/en/latest/) before
 continuing.
 
-Pip
-===
+Pip install
+===========
 
-The NMRPy code and its dependencies can be installed directly from Github
-(https://github.com/jeicher/nmrpy) into a virtual environment (if you are
-currently using one) using pip. ::
+The NMRPy code and its dependencies can be installed directly from PyPI 
+into a virtual environment (if you are currently using one) using ``pip``. ::
 
-    $ pip install git+https://github.com/jeicher/nmrpy.git
+    $ pip install nmrpy
 
 Working with NMRPy
 ==================
@@ -77,10 +76,10 @@ Though the majority of NMRPy functionality can be used purely in a scripting
 context and executed by the Python interpreter, it will often need to be used
 interactively. We suggest two ways to do this:
 
-Ipython
+IPython
 -------
 
-Ipython is an interactive Python shell with some useful functionalities like
+IPython is an interactive Python shell with some useful functionalities like
 tab-completion. This has been installed by default with NMRPy and can be
 launched from the command line with: ::
 
@@ -90,11 +89,8 @@ The Jupyter Notebook
 --------------------
 
 For those who prefer a "notebook"-like experience, the Jupyter Notebook may be
-more appropriate. It can be installed as follows: ::
-
-    $ pip install jupyter
-
-And launched with: ::
+more appropriate. It has also been installed by default with NMRPy and 
+can be launched with: ::
 
     $ jupyter-notebook
 
