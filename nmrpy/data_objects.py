@@ -1628,12 +1628,9 @@ Ctrl+Alt+Right - assign
         objects owned by this :class:`~nmrpy.data_objects.FidArray`. See
         :meth:`~nmrpy.data_objects.Fid.peakpicker`.
 
-        :keyword fid_number: list or number, index of :class:`~nmrpy.data_objects.Fid` to use
-        for peak-picking. If None, data array is plotted.
+        :keyword fid_number: list or number, index of :class:`~nmrpy.data_objects.Fid` to use for peak-picking. If None, data array is plotted.
 
-        :keyword assign_only_to_index: if True, assigns selections only to
-        :class:`~nmrpy.data_objects.Fid` objects indexed by fid_number, if False,
-        assigns to all
+        :keyword assign_only_to_index: if True, assigns selections only to :class:`~nmrpy.data_objects.Fid` objects indexed by fid_number, if False, assigns to all
 
         :keyword voff: vertical offset for spectra
         """
