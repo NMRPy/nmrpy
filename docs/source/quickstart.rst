@@ -36,8 +36,8 @@ The simplest way to instantiate an :class:`~nmrpy.data_objects.FidArray` is by
 using the :meth:`~nmrpy.data_objects.FidArray.from_path` method, and specifying
 the path of the *.fid* directory: ::
 
-    import nmrpy
-    fid_array = nmrpy.data_objects.FidArray.from_path(fid_path='./tests/test_data/test1.fid')
+    >>> import nmrpy
+    >>> fid_array = nmrpy.data_objects.FidArray.from_path(fid_path='./tests/test_data/test1.fid')
 
 You will notice that the ``fid_array`` object is instantiated and now owns
 several attributes, most of which are of the form ``fidXX`` where *XX* is
@@ -55,24 +55,24 @@ To quickly visualise the imported data, we can use the plotting functions owned
 by each :class:`~nmrpy.data_objects.Fid` instance. This will not display the
 imaginary portion of the data: ::
 
-    fid_array.fid00.plot_ppm()
+    >>> fid_array.fid00.plot_ppm()
 
-.. image:: images/quickstart_1.png
+.. image:: _static/quickstart_1.png
 
 We now perform apodisation of the FIDs using the default value of 5 Hz, and 
 visualise the result: ::
 
-    fid_array.emhz_fids()
-    fid_array.fid00.plot_ppm()
+    >>> fid_array.emhz_fids()
+    >>> fid_array.fid00.plot_ppm()
 
-.. image:: images/quickstart_2.png
+.. image:: _static/quickstart_2.png
 
 Finally, we Fourier-transform the data into the frequency domain: ::
 
-    fid_array.ft_fids()
-    fid_array.fid00.plot_ppm()
+    >>> fid_array.ft_fids()
+    >>> fid_array.fid00.plot_ppm()
 
-.. image:: images/quickstart_3.png
+.. image:: _static/quickstart_3.png
 
 
 .. _quickstart_phasecorrection:
@@ -85,40 +85,40 @@ phase-correction. NMRPy provides a number of GUI widgets for manual processing
 of data. In this case we will use the :meth:`~nmrpy.data_objects.Fid.phaser`
 method on ``fid00``: ::
 
-    fid_array.fid00.phaser()
+    >>> fid_array.fid00.phaser()
 
-.. image:: images/quickstart_4.png
+.. image:: _static/quickstart_4.png
 
 Dragging with the left mouse button and right mouse button will apply zero- and
 first-order phase-correction, respectively.
 
-.. image:: images/quickstart_5.png
+.. image:: _static/quickstart_5.png
 
 Alternatively, automatic phase-correction can be applied at either the
 :class:`~nmrpy.data_objects.FidArray` or :class:`~nmrpy.data_objects.Fid`
 level. We will apply it to the whole array: ::
 
-    fid_array.phase_correct_fids()
+    >>> fid_array.phase_correct_fids()
 
 And plot an array of the phase-corrected data: ::
 
-    fid_array.plot_array()
+    >>> fid_array.plot_array()
 
-.. image:: images/quickstart_6.png
+.. image:: _static/quickstart_6.png
 
 Zooming in on the relevant peaks, changing the view perspective, and filling 
 the spectra produces a more interesting plot: ::
 
-    fid_array.plot_array(upper_ppm=7, lower_ppm=-1, filled=True, azim=-76, elev=23)
+    >>> fid_array.plot_array(upper_ppm=7, lower_ppm=-1, filled=True, azim=-76, elev=23)
 
-.. image:: images/quickstart_7.png
+.. image:: _static/quickstart_7.png
 
 At this stage it is useful to discard the imaginary component of our data, and
 possibly normalise the data (by the maximum data value amongst the
 :class:`~nmrpy.data_objects.Fid` objects): ::
 
-    fid_array.real_fids()
-    fid_array.norm_fids()
+    >>> fid_array.real_fids()
+    >>> fid_array.norm_fids()
 
 .. _quickstart_peakpicking:
 
@@ -134,15 +134,19 @@ data by fitting Lorentzian/Gaussian peak shapes to the spectra.
 :attr:`~nmrpy.data_objects.Fid.peaks` may be specified programatically, or
 picked using the interactive GUI widget: ::
 
-    fid_array.peakpicker(fid_number=10)
+    >>> fid_array.peakpicker(fid_number=10)
 
-.. image:: images/quickstart_8.png
+.. image:: _static/quickstart_8.png
+   :width: 75%
+   :align: center
 
 Left-clicking specifies a peak selection with a vertical red line. Dragging
 with a right-click specifies a range to fit independently with a grey
 rectangle:
 
-.. image:: images/quickstart_9.png
+.. image:: _static/quickstart_9.png
+   :width: 75%
+   :align: center
 
 Inadvertent wrongly selected peaks can be deleted with Ctrl+left-click; wrongly 
 selected ranges can be deleted with Ctrl+right-click. Once you are done 
@@ -160,16 +164,64 @@ Having used the :meth:`~nmrpy.data_objects.FidArray.peakpicker`
 :class:`~nmrpy.data_objects.Fid` instance), the peak and range selections have
 now been assigned to each :class:`~nmrpy.data_objects.Fid` in the array: ::
 
-    print(fid_array.fid00.peaks)
+    >>> print(fid_array.fid00.peaks)
     [ 4.73  4.63  4.15  0.55]
-    print(fid_array.fid00.ranges)
+    >>> print(fid_array.fid00.ranges)
     [[ 5.92  3.24]
      [ 1.19 -0.01]]
 
 Peak-picking trace selector
 ---------------------------
 
-Sometimes trace selection is necessary.
+Sometimes peaks are subject to drift so that the chemical shift changes over 
+time; this can happen, e.g., when the pH of the reaction mixture changes as the 
+reaction proceeds. NMRPy offers a convenient trace selector, with which the 
+drift of the peaks can be traced over time and the chemical shift selected 
+accordingly as appropriate for the particular :class:`~nmrpy.data_objects.Fid`. 
+::
+    
+    >>> fid_array.peakpicker_traces(voff=0.08)
+
+.. image:: _static/quickstart_9a.png
+   :width: 75%
+   :align: center
+
+As for the :meth:`~nmrpy.data_objects.FidArray.peakpicker`, ranges are selected 
+by dragging the right mouse button and can be deleted with Ctrl+right-click. A 
+peak trace is initiated by left-clicking below the peak underneath the first 
+Fid in the series. This selects a point and anchors the trace line, which is 
+displayed in red as the mouse is moved. The trace will attempt to follow 
+the highest peak. Further trace points can be added by repeated left-clicking, 
+thus tracing the peak through the individual Fids in the series. It is not 
+necessary to add an anchor point for every Fid, only when the trace needs to 
+change direction. Once the trace has traversed all the Fids, select a final 
+trace point (left-click) and then finalize the trace with a right-click. The trace will 
+change colour from red to blue to indicate that it has been finalized.
+
+Additional peaks can then be selected by initiating a new trace. Wrongly 
+selected traces can be deleted by Ctrl+left-click at the bottom of the trace 
+that should be removed. Note that the interactive buttons on the matplotlib 
+toolbar for the figure can be used to zoom and pan into a region of interest of 
+the spectra.
+
+.. image:: _static/quickstart_9b.png
+   :width: 75%
+   :align: center
+
+As previously, peaks and ranges need to be assigned to the 
+:class:`~nmrpy.data_objects.FidArray` with Ctrl+Alt+right-click. As can be seen 
+below, the individual peaks have different chemical shifts for the different 
+Fids, although the drift in these spectra is not significant so that 
+:meth:`~nmrpy.data_objects.FidArray.peakpicker_traces` need not have been used 
+and :meth:`~nmrpy.data_objects.FidArray.peakpicker` would have been sufficient. 
+This is merely for illustrative purposes.
+::
+    >>> print(p.fid00.peaks)
+    [4.73311164 4.65010807 0.55783899 4.15787759]
+    >>> print(p.fid10.peaks)
+    [4.71187817 4.6404565  0.5713512  4.16366854]
+    >>> print(p.fid20.peaks)
+    [4.73311164 4.63466555 0.57907246 4.16366854]
      
      
 .. _quickstart_deconvolution:
@@ -188,22 +240,22 @@ multiprocessed method (*mp=True*), which will fit pure Lorentzian lineshapes
 
 We shall fit the whole array at once: ::
 
-    fid_array.deconv_fids()
+    >>> fid_array.deconv_fids()
 
 And visualise the deconvoluted spectra: ::
 
-    fid_array.fid10.plot_deconv()
+    >>> fid_array.fid10.plot_deconv()
 
-.. image:: images/quickstart_10.png
+.. image:: _static/quickstart_10.png
 
 Zooming-in to a set of peaks makes clear the fitting result: ::
 
-    fid_array.fid10.plot_deconv(upper_ppm=5.5, lower_ppm=3.5)
-    fid_array.fid10.plot_deconv(upper_ppm=0.9, lower_ppm=0.2)
+    >>> fid_array.fid10.plot_deconv(upper_ppm=5.5, lower_ppm=3.5)
+    >>> fid_array.fid10.plot_deconv(upper_ppm=0.9, lower_ppm=0.2)
 
-.. figure:: images/quickstart_11.png
+.. figure:: _static/quickstart_11.png
 
-.. figure:: images/quickstart_12.png
+.. figure:: _static/quickstart_12.png
 
     Black: original data; blue: individual peak shapes (and peak numbers
     above); red: summed peak shapes; green: residual (original data - summed
@@ -216,9 +268,9 @@ We can view the deconvolution result for the whole array using
 :meth:`~nmrpy.data_objects.FidArray.plot_deconv_array`. Fitted peaks appear in
 red: ::
 
-    fid_array.plot_deconv_array(upper_ppm=6, lower_ppm=3)
+    >>> fid_array.plot_deconv_array(upper_ppm=6, lower_ppm=3)
 
-.. figure:: images/quickstart_14.png
+.. figure:: _static/quickstart_14.png
 
 
 Peak integrals of the array are stored in
@@ -228,7 +280,7 @@ individual :class:`~nmrpy.data_objects.Fid` as
 
 We could easily plot the species integrals using the following code: ::
 
-   import pylab
+    from matplotlib import pyplot as plt
 
     integrals = fid_array.deconvoluted_integrals.transpose()
     
@@ -236,7 +288,7 @@ We could easily plot the species integrals using the following code: ::
     f6p = integrals[2]
     tep = integrals[3]
 
-    #scale species by internal standard tep
+    #scale species by internal standard tep (5 mM)
     g6p = 5.0*g6p/tep.mean()
     f6p = 5.0*f6p/tep.mean()
     tep = 5.0*tep/tep.mean()
@@ -245,7 +297,7 @@ We could easily plot the species integrals using the following code: ::
                'f6p': f6p,
                'tep': tep}
     
-    fig = pylab.figure()
+    fig = plt.figure()
     ax = fig.add_subplot(111)
     for k, v in species.items():
         ax.plot(fid_array.t, v, label=k)
@@ -254,10 +306,10 @@ We could easily plot the species integrals using the following code: ::
     ax.set_ylabel('mM')
     ax.legend(loc=0, frameon=False)
 
-    pylab.show()
+    plt.show()
 
    
-.. figure:: images/quickstart_13.png
+.. figure:: _static/quickstart_13.png
 
 
 .. _quickstart_exporting:
@@ -268,11 +320,11 @@ Exporting/Importing
 The current state of any :class:`~nmrpy.data_objects.FidArray` object can be
 saved to file using the :meth:`~nmrpy.data_objects.FidArray.save_to_file` method: ::
 
-    fid_array.save_to_file(filename='fidarray.nmrpy')
+    >>> fid_array.save_to_file(filename='fidarray.nmrpy')
 
 And reloaded using :meth:`~nmrpy.data_objects.FidArray.from_path`: ::
 
-    fid_array = nmrpy.data_objects.FidArray.from_path(fid_path='fidarray.nmrpy')
+    >>> fid_array = nmrpy.data_objects.FidArray.from_path(fid_path='fidarray.nmrpy')
 
 
 .. _quickstart_script:

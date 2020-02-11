@@ -1,7 +1,7 @@
 The full script for the quickstart tutorial: ::
 
     import nmrpy
-    import pylab
+    from matplotlib import pyplot as plt
 
     fid_array = nmrpy.data_objects.FidArray.from_path(fid_path='./tests/test_data/test1.fid')
     fid_array.emhz_fids()
@@ -43,14 +43,14 @@ The full script for the quickstart tutorial: ::
                'f6p': f6p,
                'tep': tep}
     
-    fig = pylab.figure()
+    fig = plt.figure()
     ax = fig.add_subplot(111)
     for k, v in species.items():
         ax.plot(fid_array.t, v, label=k)
     ax.set_xlabel('min')
     ax.set_ylabel('mM')
     ax.legend(loc=0, frameon=False)
-    pylab.show()
+    plt.show()
     
     #fid_array.save_to_file(filename='fidarray.nmrpy')
     #fid_array = nmrpy.data_objects.FidArray.from_path(fid_path='fidarray.nmrpy')
