@@ -10,3 +10,4 @@ quicktest.py
 .idea
 /dist
 nmrpy.egg-info
+build_html
