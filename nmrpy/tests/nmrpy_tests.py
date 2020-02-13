@@ -1,16 +1,10 @@
 import unittest
 from nmrpy.data_objects import *
+from nmrpy import __version__
 import numpy
+import os
 
-"""
-
-The test data used in this module consists of:
-
-    nmrpy/tests/test_data/bruker1 -- A Bruker spectrum of 2,3-diphospho-D-glyceric acid pentasodium salt from the Madison Metabolomics Consortium Database (expnmr_00002, http://mmcd.nmrfam.wisc.edu/rawnmr/expnmr_00001_1.tar)
-    nmrpy/tests/test_data/test1.fid -- A Varian/Agilent array of the phosphoglucose-isomerase reaction
-    nmrpy/tests/test_data/test2.fid -- A single Varian/Agilent spectrum of 3-phosphoglyceric acid, orthophosphate, and triethylphosphate
-
-"""
+testpath = os.path.dirname(__file__)
 
 class TestBaseInitialisation(unittest.TestCase):
 
@@ -91,7 +85,7 @@ class TestFidInitialisation(unittest.TestCase):
             fid.peaks = [[1,2], [3,4]]
     
     def test_fid_ranges_setter(self):
-        path = './nmrpy/tests/test_data/test2.fid'
+        path = os.path.join(testpath, 'test_data', 'test2.fid')
         fid_array = FidArray.from_path(fid_path=path)
         fid = fid_array.get_fids()[0]
         fid.peaks = [ 4.71,  4.64,  4.17,  0.57]
@@ -328,7 +322,7 @@ class TestFidArrayInitialisation(unittest.TestCase):
             self.assertIsInstance(fid, Fid)
 
     def test_from_path_single(self):
-        path = './nmrpy/tests/test_data/test2.fid'
+        path = os.path.join(testpath, 'test_data', 'test2.fid')
         fid_array = FidArray.from_path(fid_path=path)
         self.assertIsInstance(fid_array._procpar, dict)
         self.assertIsInstance(fid_array._params, dict)
@@ -339,51 +333,51 @@ class TestFidArrayInitialisation(unittest.TestCase):
             fid._params = 'not a dictionary'
  
     def test_from_path_array(self):
-        path = './nmrpy/tests/test_data/test1.fid'
+        path = os.path.join(testpath, 'test_data', 'test1.fid')
         fid_array = FidArray.from_path(fid_path=path)
         self.assertIsInstance(fid_array._procpar, dict)
         self.assertIsInstance(fid_array._params, dict)
-        path = './nmrpy/tests/test_data/bruker1'
+        path = os.path.join(testpath, 'test_data', 'bruker1')
         fid_array = FidArray.from_path(fid_path=path)
         self.assertIsInstance(fid_array._procpar, dict)
         self.assertIsInstance(fid_array._params, dict)
 
     def test_from_path_array_varian(self):
-        path = './nmrpy/tests/test_data/test1.fid'
+        path = os.path.join(testpath, 'test_data', 'test1.fid')
         fid_array = FidArray.from_path(fid_path=path, file_format='varian')
         self.assertIsInstance(fid_array._procpar, dict)
         self.assertIsInstance(fid_array._params, dict)
 
     def test_from_path_array_bruker(self):
-        path = './nmrpy/tests/test_data/bruker1'
+        path = os.path.join(testpath, 'test_data', 'bruker1')
         fid_array = FidArray.from_path(fid_path=path, file_format='bruker')
         self.assertIsInstance(fid_array._procpar, dict)
         self.assertIsInstance(fid_array._params, dict)
 
     def test_failed_from_path_array_varian(self):
-        path = './nmrpy/tests/test_data/bruker1'
+        path = os.path.join(testpath, 'test_data', 'bruker1')
         with self.assertRaises(AttributeError):
             fid_array = FidArray.from_path(fid_path=path, file_format='varian')
-        path = './nmrpy/tests/test_data/non_existent'
+        path = os.path.join(testpath, 'test_data', 'non_existent')
         with self.assertRaises(FileNotFoundError):
             fid_array = FidArray.from_path(fid_path=path, file_format='varian')
 
     def test_failed_from_path_array_bruker(self):
-        path = './nmrpy/tests/test_data/test1.fid'
+        path = os.path.join(testpath, 'test_data', 'test1.fid')
         with self.assertRaises(AttributeError):
             fid_array = FidArray.from_path(fid_path=path, file_format='bruker')
-        path = './nmrpy/tests/test_data/non_existent'
+        path = os.path.join(testpath, 'test_data', 'non_existent')
         with self.assertRaises(FileNotFoundError):
             fid_array = FidArray.from_path(fid_path=path, file_format='bruker')
 
     def test_array_procpar(self):
-        path = './nmrpy/tests/test_data/test2.fid'
+        path = os.path.join(testpath, 'test_data', 'test2.fid')
         fid_array = FidArray.from_path(path)
         self.assertIsInstance(fid_array._procpar, dict)
         self.assertIsInstance(fid_array._params, dict)
 
     def test_data_property(self):
-        path = './nmrpy/tests/test_data/test1.fid'
+        path = os.path.join(testpath, 'test_data', 'test1.fid')
         fid_array = FidArray.from_path(path)
         self.assertIsInstance(fid_array.data, numpy.ndarray)
 
@@ -440,9 +434,9 @@ class TestFidArrayInitialisation(unittest.TestCase):
 class TestFidUtils(unittest.TestCase):
 
     def setUp(self):
-        path_varian = './nmrpy/tests/test_data/test1.fid'
+        path_varian = os.path.join(testpath, 'test_data', 'test1.fid')
         self.fid_array_varian = FidArray.from_path(fid_path=path_varian, file_format='varian')
-        path_bruker = './nmrpy/tests/test_data/bruker1'
+        path_bruker = os.path.join(testpath, 'test_data', 'bruker1')
         self.fid_array_bruker = FidArray.from_path(fid_path=path_bruker, file_format='bruker')
         peaks = [ 4.71,  4.64,  4.17,  0.57]
         ranges = [[ 5.29,  3.67], [1.05,  0.27]]
@@ -454,12 +448,14 @@ class TestFidUtils(unittest.TestCase):
             fid.ranges = ranges
     
     def test_ps(self):
+        print('test_ps')
         fid = self.fid_array_varian.get_fids()[0]
         fid.ps(p0=20, p1=20)
         fid = self.fid_array_bruker.get_fids()[0]
         fid.ps(p0=20, p1=20)
 
     def test_ps_failed(self):
+        print('test_ps_failed')
         for fid in [self.fid_array_varian.get_fids()[0], self.fid_array_bruker.get_fids()[0]]:
             with self.assertRaises(TypeError):
                 fid.ps(p0='string', p1=20)
@@ -469,6 +465,7 @@ class TestFidUtils(unittest.TestCase):
                 fid.ps(p0=34.0, p1=4j)
 
     def test_conv_to_ppm_index(self):
+        print('test_conv_to_ppm_index')
         fid = Fid()
         fid.data = numpy.arange(100)
         index = 50
@@ -485,6 +482,7 @@ class TestFidUtils(unittest.TestCase):
         self.assertTrue(all(isinstance(i, numpy.int64) for i in new_index))
         
     def test_ft(self):
+        print('test_ft')
         fid = self.fid_array_varian.get_fids()[0]
         data = numpy.array(numpy.fft.fft(fid.data), dtype=fid.data.dtype)
         s = data.shape[-1]
@@ -502,11 +500,13 @@ class TestFidUtils(unittest.TestCase):
         self.assertIsInstance(fid.data, numpy.ndarray)
  
     def test_failed__ft(self):
+        print('test_failed__ft')
         fid = self.fid_array_varian.get_fids()[0]
         with self.assertRaises(ValueError):
             Fid._ft([fid.data])
 
     def test_phase_correct(self):
+        print('test_phase_correct')
         fid = self.fid_array_varian.get_fids()[0]
         fid.ft()
         fid.phase_correct()
@@ -516,20 +516,26 @@ class TestFidUtils(unittest.TestCase):
         fid.phase_correct()
         
     def test_peakpick(self):
+        print('test_peakpick')
         fid = self.fid_array_varian.get_fids()[0]
         fid.ft()
         fid.phase_correct()
         fid.peakpick()
 
     def test_f_fitp(self):
+        print('test_f_fitp')
         fid = self.fid_array_varian.get_fids()[0]
         fid.ft() 
-        fid.phase_correct() 
-        Fid._f_fitp(fid.data, fid.peaks, frac_gauss=0.5)
-        fid.data = list(fid.data)
-        Fid._f_fitp(fid.data, fid.peaks, frac_gauss=0.5)
+        fid.phase_correct()
+        for j in zip(fid._grouped_index_peaklist, fid._index_ranges):
+            d_slice = fid.data[j[1][0]:j[1][1]]
+            p_slice = j[0]-j[1][0]
+            Fid._f_fitp(d_slice, p_slice, frac_gauss=0.5)
+            d_slice = list(d_slice)
+            Fid._f_fitp(d_slice, p_slice, frac_gauss=0.5)
 
     def test_f_fitp_failed(self):
+        print('test_f_fitp_failed')
         fid = self.fid_array_varian.get_fids()[0]
         fid.ft() 
         fid.phase_correct() 
@@ -542,6 +548,7 @@ class TestFidUtils(unittest.TestCase):
             Fid._f_fitp(fid.data, [2*len(fid.data)], frac_gauss=0.5)
 
     def test__deconv_datum(self):
+        print('test__deconv_datum')
         fid = self.fid_array_varian.get_fids()[0]
         fid.ft() 
         fid.phase_correct() 
@@ -552,6 +559,7 @@ class TestFidUtils(unittest.TestCase):
         Fid._deconv_datum(list_parameters)
 
     def test_deconv(self):
+        print('test_deconv')
         fid = self.fid_array_varian.get_fids()[0]
         fid.ft() 
         fid.phase_correct() 
@@ -561,9 +569,9 @@ class TestFidUtils(unittest.TestCase):
 class TestFidArrayUtils(unittest.TestCase):
 
     def setUp(self):
-        path_varian = './nmrpy/tests/test_data/test1.fid'
+        path_varian = os.path.join(testpath, 'test_data', 'test1.fid')
         self.fid_array_varian = FidArray.from_path(fid_path=path_varian, file_format='varian')
-        path_bruker = './nmrpy/tests/test_data/bruker1'
+        path_bruker = os.path.join(testpath, 'test_data', 'bruker1')
         self.fid_array_bruker = FidArray.from_path(fid_path=path_bruker, file_format='bruker')
         peaks = [ 4.71,  4.64,  4.17,  0.57]
         ranges = [[ 5.29,  3.67], [1.05,  0.27]]
@@ -623,12 +631,12 @@ class TestFidArrayUtils(unittest.TestCase):
 class TestPlottingUtils(unittest.TestCase):
 
     def setUp(self):
-        path_varian = './nmrpy/tests/test_data/test1.fid'
+        path_varian = os.path.join(testpath, 'test_data', 'test1.fid')
         self.fid_array_varian_raw = FidArray.from_path(fid_path=path_varian, file_format='varian')
-        self.fid_array_varian = FidArray.from_path(fid_path='./tests/test_data/test1.nmrpy')
+        self.fid_array_varian = FidArray.from_path(fid_path=os.path.join(testpath, 'test_data', 'test1.nmrpy'))
 
 
-        path_bruker = './nmrpy/tests/test_data/bruker1'
+        path_bruker = os.path.join(testpath, 'test_data', 'bruker1')
 
         self.fid_varian = self.fid_array_varian.get_fids()[0]
         self.fid_varian_raw = self.fid_array_varian_raw.get_fids()[0]
@@ -668,10 +676,11 @@ class TestPlottingUtils(unittest.TestCase):
         
     def test_baseliner(self):
         self.fid_varian.baseliner()
-        if self.fid_varian._bl_ppm is None:
+        if not hasattr(self.fid_varian, '_bl_ppm') or self.fid_varian._bl_ppm is None:
             ppm = self.fid_varian._ppm
             narr = numpy.linspace(ppm[0], ppm[-2], 5)
             self.fid_varian._bl_ppm = narr
+        self.fid_varian.real()
         self.fid_varian.baseline_correct()
         self.fid_array_varian.baseliner_fids()
         
@@ -680,6 +689,50 @@ class TestPlottingUtils(unittest.TestCase):
 
     def test_select_integral_traces(self):
         self.fid_array_varian.select_integral_traces()
+
+class NMRPyTest:
+    def __init__(self, tests='all'):
+        """
+        Run unit tests.
+        
+        :keyword tests: Specify tests to run (default 'all'). Running only a subset
+                        of tests can be selected using the following arguments:
+                        
+        'fidinit'       - Fid initialisation tests
+        'fidarrayinit'  - FidArray initialisation tests
+        'fidutils'      - Fid utilities tests
+        'fidarrayutils' - FidArray utilities tests
+        'plotutils'     - plotting utilities tests
+        """
+        runner = unittest.TextTestRunner()
+        baseinit_test = unittest.makeSuite(TestBaseInitialisation)
+        fidinit_test = unittest.makeSuite(TestFidInitialisation)
+        fidarrayinit_test = unittest.makeSuite(TestFidArrayInitialisation)
+        fidutils_test = unittest.makeSuite(TestFidUtils)
+        fidarrayutils_test = unittest.makeSuite(TestFidArrayUtils)
+        plotutils_test = unittest.makeSuite(TestPlottingUtils)
+        
+        suite = baseinit_test
+        if tests == 'all':
+            suite.addTests(fidinit_test)
+            suite.addTests(fidarrayinit_test)
+            suite.addTests(fidutils_test)
+            suite.addTests(fidarrayutils_test)
+            suite.addTests(plotutils_test)
+        elif tests == 'fidinit':
+            suite.addTests(fidinit_test)
+        elif tests == 'fidarrayinit':
+            suite.addTests(fidarrayinit_test)
+        elif tests == 'fidutils':
+            suite.addTests(fidutils_test)
+        elif tests == 'fidarrayutils':
+            suite.addTests(fidarrayutils_test)
+        elif tests == 'plotutils':
+            suite.addTests(plotutils_test)
+        else:
+            raise ValueError('Please select a valid set of tests to run.')
+        
+        runner.run(suite)
 
 if __name__ == '__main__':
     unittest.main()
