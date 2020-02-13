@@ -69,6 +69,30 @@ into a virtual environment (if you are currently using one) using ``pip``. ::
 
     $ pip install nmrpy
 
+Testing the installation
+========================
+
+Various tests are provided to test aspects of the NMRPy functionality within 
+the ``unittest`` framework. The tests should be run from a terminal and can be 
+invoked with ``nmrpy.test()`` after importing the *nmrpy* module.
+
+Only a specific subset of tests can be run by providing an additional argument: 
+::
+
+    nmrpy.test(tests='all')
+    
+    :keyword tests: Specify tests to run (default 'all'). Running only a subset
+                    of tests can be selected using the following arguments:
+    'fidinit'       - Fid initialisation tests
+    'fidarrayinit'  - FidArray initialisation tests
+    'fidutils'      - Fid utilities tests
+    'fidarrayutils' - FidArray utilities tests
+    'plotutils'     - plotting utilities tests
+
+When testing the plotting utilities, a number of ``matplotlib`` plots will 
+appear. This tests that the peak and range selection widgets are working 
+properly; the plot windows can be safely closed.
+    
 Working with NMRPy
 ==================
 

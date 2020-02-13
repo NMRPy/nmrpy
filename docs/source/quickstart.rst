@@ -216,6 +216,7 @@ Fids, although the drift in these spectra is not significant so that
 and :meth:`~nmrpy.data_objects.FidArray.peakpicker` would have been sufficient. 
 This is merely for illustrative purposes.
 ::
+
     >>> print(p.fid00.peaks)
     [4.73311164 4.65010807 0.55783899 4.15787759]
     >>> print(p.fid10.peaks)
