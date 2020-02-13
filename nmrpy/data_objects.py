@@ -68,7 +68,7 @@ class Base():
 
     @classmethod
     def _is_iter_of_iters(cls, i):
-        if i == []:
+        if type(i) == list and len(i) == 0:
             return False
         elif cls._is_iter(i) and all(cls._is_iter(j) for j in i):
             return True
@@ -76,7 +76,7 @@ class Base():
 
     @classmethod
     def _is_flat_iter(cls, i):
-        if i == []:
+        if type(i) == list and len(i) == 0:
             return True
         elif cls._is_iter(i) and not any(cls._is_iter(j) for j in i):
             return True
@@ -167,9 +167,10 @@ class Base():
         sw_hz = procpar['SW_h']
         sw = procpar['SW']
         # lefthand offset of the processed data in ppm
-        for i in open(filepath+'/pdata/1/procs').readlines():
-            if 'OFFSET' in i:
-                sw_left = float(i.split(' ')[1])
+        with open(filepath+'/pdata/1/procs') as f:
+            for i in f.readlines():
+                if 'OFFSET' in i:
+                    sw_left = float(i.split(' ')[1])
         at = procpar['TD']/(2*sw_hz)
         rt = at+d1
         acqtime = (nt*rt)/60.  # convert to mins.
@@ -643,8 +644,8 @@ class Fid(Base):
             raise AttributeError('No points selected for baseline correction. Run fid.baseliner()')
         if not len(self.data):
             raise AttributeError('data does not exist.')
-        if self.data.dtype not in self._complex_dtypes:
-            raise TypeError('data must be not be complex.')
+        if self.data.dtype in self._complex_dtypes:
+            raise TypeError('data must not be complex.')
         if not Fid._is_flat_iter(self.data):
             raise AttributeError('data must be 1 dimensional.')
         
@@ -1020,7 +1021,8 @@ Ctrl+Alt+Right - assign
     def _deconv_datum(cls, list_parameters):
         if len(list_parameters) != 5:
             raise ValueError('list_parameters must consist of five objects.')
-        if list_parameters[1] == [] or list_parameters[2] == []:
+        if (type(list_parameters[1]) == list and len(list_parameters[1]) == 0) or \
+           (type(list_parameters[2]) == list and len(list_parameters[2]) == 0):
             return []
 
         datum, peaks, ranges, frac_gauss, method = list_parameters
