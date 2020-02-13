@@ -394,7 +394,7 @@ class Plot():
 
     @classmethod
     def _is_iter_of_iters(cls, i):
-        if i == []:
+        if type(i) == list and len(i) == 0:
             return False
         elif cls._is_iter(i) and all(cls._is_iter(j) for j in i):
             return True
@@ -402,7 +402,7 @@ class Plot():
 
     @classmethod
     def _is_flat_iter(cls, i):
-        if i == []:
+        if type(i) == list and len(i) == 0:
             return True
         elif cls._is_iter(i) and not any(cls._is_iter(j) for j in i):
             return True
