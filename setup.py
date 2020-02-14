@@ -44,7 +44,7 @@ NMRPy features a set of easy-to-use tools for:
 NMRPy is developed by Johann Eicher and Johann Rohwer from the Laboratory for
 Molecular Systems Biology, Dept. of Biochemistry, Stellenbosch University, 
 South Africa.
-"""
+""",
     'author': 'Johann Eicher <johanneicher@gmail.com>, Johann Rohwer <j.m.rohwer@gmail.com>',
     'author_email': 'johanneicher@gmail.com, j.m.rohwer@gmail.com',
     'maintainer': 'Johann Rohwer',

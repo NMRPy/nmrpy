@@ -448,14 +448,12 @@ class TestFidUtils(unittest.TestCase):
             fid.ranges = ranges
     
     def test_ps(self):
-        print('test_ps')
         fid = self.fid_array_varian.get_fids()[0]
         fid.ps(p0=20, p1=20)
         fid = self.fid_array_bruker.get_fids()[0]
         fid.ps(p0=20, p1=20)
 
     def test_ps_failed(self):
-        print('test_ps_failed')
         for fid in [self.fid_array_varian.get_fids()[0], self.fid_array_bruker.get_fids()[0]]:
             with self.assertRaises(TypeError):
                 fid.ps(p0='string', p1=20)
@@ -465,7 +463,6 @@ class TestFidUtils(unittest.TestCase):
                 fid.ps(p0=34.0, p1=4j)
 
     def test_conv_to_ppm_index(self):
-        print('test_conv_to_ppm_index')
         fid = Fid()
         fid.data = numpy.arange(100)
         index = 50
@@ -482,7 +479,6 @@ class TestFidUtils(unittest.TestCase):
         self.assertTrue(all(isinstance(i, numpy.int64) for i in new_index))
         
     def test_ft(self):
-        print('test_ft')
         fid = self.fid_array_varian.get_fids()[0]
         data = numpy.array(numpy.fft.fft(fid.data), dtype=fid.data.dtype)
         s = data.shape[-1]
@@ -500,13 +496,11 @@ class TestFidUtils(unittest.TestCase):
         self.assertIsInstance(fid.data, numpy.ndarray)
  
     def test_failed__ft(self):
-        print('test_failed__ft')
         fid = self.fid_array_varian.get_fids()[0]
         with self.assertRaises(ValueError):
             Fid._ft([fid.data])
 
     def test_phase_correct(self):
-        print('test_phase_correct')
         fid = self.fid_array_varian.get_fids()[0]
         fid.ft()
         fid.phase_correct()
@@ -516,14 +510,12 @@ class TestFidUtils(unittest.TestCase):
         fid.phase_correct()
         
     def test_peakpick(self):
-        print('test_peakpick')
         fid = self.fid_array_varian.get_fids()[0]
         fid.ft()
         fid.phase_correct()
         fid.peakpick()
 
     def test_f_fitp(self):
-        print('test_f_fitp')
         fid = self.fid_array_varian.get_fids()[0]
         fid.ft() 
         fid.phase_correct()
@@ -535,7 +527,6 @@ class TestFidUtils(unittest.TestCase):
             Fid._f_fitp(d_slice, p_slice, frac_gauss=0.5)
 
     def test_f_fitp_failed(self):
-        print('test_f_fitp_failed')
         fid = self.fid_array_varian.get_fids()[0]
         fid.ft() 
         fid.phase_correct() 
@@ -548,7 +539,6 @@ class TestFidUtils(unittest.TestCase):
             Fid._f_fitp(fid.data, [2*len(fid.data)], frac_gauss=0.5)
 
     def test__deconv_datum(self):
-        print('test__deconv_datum')
         fid = self.fid_array_varian.get_fids()[0]
         fid.ft() 
         fid.phase_correct() 
@@ -559,7 +549,6 @@ class TestFidUtils(unittest.TestCase):
         Fid._deconv_datum(list_parameters)
 
     def test_deconv(self):
-        print('test_deconv')
         fid = self.fid_array_varian.get_fids()[0]
         fid.ft() 
         fid.phase_correct() 
