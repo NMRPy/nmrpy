@@ -11,3 +11,5 @@ quicktest.py
 /dist
 nmrpy.egg-info
 build_html
+/nmrpy/docs
+
