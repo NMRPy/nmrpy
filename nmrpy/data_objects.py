@@ -16,7 +16,7 @@ class Base():
                     numpy.dtype('clongdouble'),
                     ]
 
-    _file_formats = ['varian', 'bruker', None]
+    _file_formats = ['varian', 'bruker', 'jcampdx', None]
 
     def __init__(self, *args, **kwargs):
         self.id = kwargs.get('id', None)
@@ -56,7 +56,7 @@ class Base():
         if file_format in self._file_formats:
             self.__file_format = file_format
         else:
-            raise AttributeError('_file_format must be "varian", "bruker", or None.')
+            raise AttributeError('_file_format must be "varian", "bruker", "jcampdx" or None.')
 
     @classmethod
     def _is_iter(cls, i):
@@ -113,6 +113,8 @@ class Base():
             return self._extract_procpar_bruker(procpar, self.fid_path)
         elif self._file_format == 'varian':
             return self._extract_procpar_varian(procpar)
+        elif self._file_format == 'jcampdx':
+            return self._extract_procpar_jcampdx(procpar)
         #else:
         #    raise AttributeError('Could not parse procpar.') 
 
@@ -185,6 +187,19 @@ class Base():
             sw=sw,
             sw_hz=sw_hz)
         return params
+
+    def _extract_procpar_jcampdx(self, procpar):
+        sw_hz = float(procpar['.SPECTRALWIDTH'][0])
+        reffrq = float(procpar[".OBSERVEFREQUENCY"][0])
+        sw = sw_hz
+        sw_left = 24.99963562676695
+        params = dict(
+            sw_left=sw_left,
+            sw=sw,
+            sw_hz=sw_hz,
+            reffrq=reffrq)
+        return params
+
 
 class Fid(Base):
     '''
@@ -424,7 +439,40 @@ class Fid(Base):
         """
         new_instance = cls()
         new_instance.data = data
-        return new_instance  
+        return new_instance
+
+    @classmethod
+    def from_path(cls, fid_path='.', file_format=None):
+        """
+        Instantiate a new :class:`~nmrpy.data_objects.FidArray` object from a .fid directory.
+
+        :keyword fid_path: filepath to .fid directory
+
+        :keyword file_format: 'varian' or 'bruker', usually unnecessary
+
+        """
+        if file_format is None:
+            try:
+                with open(fid_path, 'rb') as f:
+                    return pickle.load(f)
+            except:
+                print('Not NMRPy data file.')
+                raise ValueError('Please specify file format')
+        elif file_format == 'jcampdx':
+            importer = JcampdxImporter(fid_path=fid_path)
+            importer.import_fid()
+        elif file_format == 'nmrpy':
+            with open(fid_path, 'rb') as f:
+                return pickle.load(f)
+
+        if cls._is_iter(importer.data):
+            fid = cls.from_data(importer.data)
+            fid._file_format = importer._file_format
+            fid.fid_path = fid_path
+            fid._procpar = importer._procpar
+            return fid
+        else:
+            raise IOError('Data could not be imported.')
 
     def zf(self):
         """
@@ -1909,6 +1957,22 @@ class BrukerImporter(Importer):
             print('fid_path does not specify a valid .fid directory.')
         except OSError:
             print('fid_path does not specify a valid .fid directory.')
+
+
+class JcampdxImporter(Importer):
+
+    def import_fid(self):
+        try:
+            procpar, raw_data = nmrglue.jcampdx.read(self.fid_path)
+            jcamp_data = numpy.array([numpy.complex128(real + imag * 1j) for real, imag in zip(*raw_data)])
+            self.data = jcamp_data
+            self._procpar = procpar
+            self._file_format = 'jcampdx'
+        except FileNotFoundError:
+            print('fid_path does not specify a valid .fid directory.')
+        except OSError:
+            print('fid_path does not specify a valid .fid directory.')
+
 
 if __name__ == '__main__':
     pass
