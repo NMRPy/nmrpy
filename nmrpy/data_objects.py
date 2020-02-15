@@ -135,11 +135,9 @@ class Base():
         nt = numpy.array(
             [procpar['procpar']['nt']['values']], dtype=float)
         acqtime = (nt*rt).cumsum()/60.  # convert to mins.
-        sw = round(
-            float(procpar['procpar']['sw']['values'][0]) /
-            float(procpar['procpar']['sfrq']['values'][0]), 2)
         sw_hz = float(procpar['procpar']['sw']['values'][0])
-        sw_left = (0.5+1e6*(sfrq-reffrq)/sw_hz)*sw_hz/sfrq
+        sw = round(sw_hz / sfrq, 2)
+        sw_left = (0.5 + 1e6 * (sfrq - reffrq) / sw_hz) * sw_hz / sfrq
         params = dict(
             at=at,
             d1=d1,
@@ -1891,15 +1889,8 @@ class Importer(Base):
 
     @data.setter
     def data(self, data):
-        if data is None:
+        if data is None or data.dtype in self._complex_dtypes:
             self.__data = data
-        elif data.dtype in self._complex_dtypes:
-            if Importer._is_iter_of_iters(data):
-                self.__data = data
-            elif Importer._is_iter(data):
-                self.__data = numpy.array([data])
-            else:
-                raise TypeError('data must be iterable.')
         else:
             raise TypeError('data must be complex.')
 
