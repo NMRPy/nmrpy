@@ -1,3 +1,5 @@
+.. _quickstart:
+
 ###################
 Quickstart Tutorial
 ###################
@@ -21,6 +23,12 @@ The dataset consists of a time array of spectra of the phosphoglucose isomerase
 reaction:
 
     *fructose-6-phosphate -> glucose-6-phosphate*
+    
+An example Jupyter notebook is provided in the ``docs`` subdirectory of
+the nmrpy install directory, which mirrors this Quickstart Tutorial. ::
+
+    nmrpy/docs/quickstart_tutorial.ipynb
+
 
 .. _quickstart_importing:
 

@@ -20,7 +20,7 @@ On Windows, the CPython download from https://www.python.org/ comes
 pre-installed with pip.
 
 The `Anaconda Distribution <https://www.anaconda.com/distribution/>`_, which is 
-available for Windows, MacOS and Linux, comes pre-installed with ``pip`` as 
+available for Windows, macOS and Linux, comes pre-installed with ``pip`` as 
 well as most of the other dependencies required for NMRPy.
     
 Virtual environments
@@ -109,7 +109,7 @@ launched from the command line with: ::
 
     $ ipython
 
-The Jupyter Notebook
+Jupyter Notebook
 --------------------
 
 For those who prefer a "notebook"-like experience, the Jupyter Notebook may be
@@ -118,3 +118,20 @@ can be launched with: ::
 
     $ jupyter-notebook
 
+If you will be using the peak-picking and range-selection widgets from within 
+the Jupyter Notebook, this requires the 
+`jupyter-matplotlib <https://github.com/matplotlib/jupyter-matplotlib>`_
+extension (*ipympl*). This is installed automatically but the extension needs to 
+be activated at the beginning of every notebook thus: ::
+
+    In [1]:   %matplotlib ipympl
+    
+Documentation
+=============
+
+Online documentation is available at https://nmrpy.readthedocs.io. The 
+documentation is also distributed in PDF format in the ``docs`` subfolder
+of the ``nmrpy`` folder in site-packages where the package is installed.
+
+The ``docs`` folder also contains an example Jupyter notebook 
+(``quickstart_tutorial.ipynb``) that mirrors the :ref:`quickstart`.
