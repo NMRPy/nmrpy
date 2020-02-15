@@ -626,7 +626,7 @@ class Fid(Base):
             raise TypeError('data must be complex.')
         if not Fid._is_flat_iter(self.data):
             raise AttributeError('data must be 1 dimensional.')
-        self._phaser_widget = Phaser(self)
+        _phaser_widget = Phaser(self)
 
     def baseline_correct(self, deg=2):
         """
