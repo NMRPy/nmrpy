@@ -531,7 +531,7 @@ class Fid(Base):
         if Fid._is_valid_dataset(data) and file_format in Fid._file_formats:
             data = numpy.array(numpy.fft.fft(data), dtype=data.dtype)
             s = len(data)
-            if file_format == 'varian' or file_format == None:
+            if file_format == 'varian' or 'jcampdx' or file_format is None:
                     ft_data = numpy.append(data[int(s / 2.0):], data[: int(s / 2.0)])
             if file_format == 'bruker':
                     ft_data = numpy.append(data[int(s / 2.0):: -1], data[s: int(s / 2.0): -1])
