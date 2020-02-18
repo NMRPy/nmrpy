@@ -139,8 +139,8 @@ pick some peaks. The :attr:`~nmrpy.data_objects.Fid.peaks` attribute of a
 of peak positions, and :attr:`~nmrpy.data_objects.Fid.ranges` is an array of
 range boundaries. These two objects are used in deconvolution to integrate the
 data by fitting Lorentzian/Gaussian peak shapes to the spectra.
-:attr:`~nmrpy.data_objects.Fid.peaks` may be specified programatically, or
-picked using the interactive GUI widget: ::
+:attr:`~nmrpy.data_objects.Fid.peaks` and :attr:`~nmrpy.data_objects.Fid.ranges`
+may be specified programatically, or picked using the interactive GUI widget: ::
 
     >>> fid_array.peakpicker(fid_number=10)
 
@@ -264,11 +264,14 @@ Zooming-in to a set of peaks makes clear the fitting result: ::
 
 .. figure:: _static/quickstart_11.png
 
-.. figure:: _static/quickstart_12.png
+.. figure:: _static/quickstart_12.png 
 
-    Black: original data; blue: individual peak shapes (and peak numbers
-    above); red: summed peak shapes; green: residual (original data - summed
-    peakshapes) 
+    The lines are colour-coded according to:
+
+    * *Blue*:  individual peak shapes (and peak numbers above); 
+    * *Black*: original data; 
+    * *Red*:   summed peak shapes; 
+    * *Green*: residual (original data - summed peakshapes).
 
 In this case, peaks 0 and 1 belong to glucose-6-phosphate, peak 2 belongs to
 fructose-6-phosphate, and peak 3 belongs to triethyl-phosphate. 
@@ -282,10 +285,10 @@ red: ::
 .. figure:: _static/quickstart_14.png
 
 
-Peak integrals of the array are stored in
-:attr:`nmrpy.data_objects.FidArray.deconvoluted_integrals`, or in each
+Peak integrals of the entire :class:`~nmrpy.data_objects.FidArray` are stored in
+:attr:`~nmrpy.data_objects.FidArray.deconvoluted_integrals`, or in each
 individual :class:`~nmrpy.data_objects.Fid` as
-:attr:`nmrpy.data_objects.Fid.deconvoluted_integrals`.
+:attr:`~nmrpy.data_objects.Fid.deconvoluted_integrals`.
 
 We could easily plot the species integrals using the following code: ::
 
@@ -323,8 +326,8 @@ We could easily plot the species integrals using the following code: ::
 
 .. _quickstart_exporting:
 
-Exporting/Importing
-===================
+Saving / Loading
+================
 
 The current state of any :class:`~nmrpy.data_objects.FidArray` object can be
 saved to file using the :meth:`~nmrpy.data_objects.FidArray.save_to_file` method: ::
