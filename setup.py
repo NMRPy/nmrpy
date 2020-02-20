@@ -25,7 +25,7 @@ os.chdir('../..')
 mydata_nmrpy_test = [i+'/*' for i in data_dirs]
 
 # data files for base package (documentation PDF)
-mydata_nmrpy = ['docs/NMRPy.pdf']
+mydata_nmrpy = ['docs/*']
 
 config = {
     'description': 'A suite of tools for processing and analysing NMR spectra in Python.',
