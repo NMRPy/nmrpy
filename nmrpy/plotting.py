@@ -51,12 +51,15 @@ class Plot():
         else:
             raise TypeError('fig must be of type matplotlib.figure.Figure.')
 
-    def _plot_ppm(self, data, params, 
+    def _plot_ppm(self, fid,
             upper_ppm=None, 
             lower_ppm=None, 
             color='k', 
             lw=1,
             filename=None):
+        data = fid.data
+        params = fid._params
+        ft=fid._flags['ft']
         if not Plot._is_flat_iter(data): 
             raise AttributeError('data must be flat iterable.')
         if upper_ppm is not None and lower_ppm is not None:
@@ -77,11 +80,19 @@ class Plot():
 
         self.fig = plt.figure(figsize=[9,5])
         ax = self.fig.add_subplot(111)
-        ax.plot(ppm, data, color=color, lw=lw)
-        ax.invert_xaxis()
-        ax.set_xlim([upper_ppm, lower_ppm])
-        ax.grid()
-        ax.set_xlabel('PPM (%.2f MHz)'%(params['reffrq']))
+        if ft:
+            ax.plot(ppm, data, color=color, lw=lw)
+            ax.invert_xaxis()
+            ax.set_xlim([upper_ppm, lower_ppm])
+            ax.grid()
+            ax.set_xlabel('PPM (%.2f MHz)'%(params['reffrq']))
+        elif not ft:
+            at = params['at']*1000 # ms
+            t = numpy.linspace(0, at, len(data))
+            ax.plot(t, data, color=color, lw=lw)
+            ax.set_xlim([0, at])
+            ax.grid()
+            ax.set_xlabel('Time (ms)')
         #self.fig.show()
         if filename is not None:
             self.fig.savefig(filename, format='pdf')
@@ -131,9 +142,10 @@ class Plot():
             lw=1):
 
         #validation takes place in self._deconv_generator
-        ppm, data, peakshapes, summed_peaks, residual, upper_ppm, lower_ppm = self._deconv_generator(fid,
-                                                                                upper_ppm=upper_ppm,
-                                                                                lower_ppm=lower_ppm)
+        ppm, data, peakshapes, summed_peaks, residual, upper_ppm, \
+            lower_ppm = self._deconv_generator(fid, 
+                                               upper_ppm=upper_ppm, 
+                                               lower_ppm=lower_ppm)
 
         self.fig = plt.figure(figsize=[9,5])
         ax = self.fig.add_subplot(111)

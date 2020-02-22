@@ -1102,7 +1102,7 @@ Ctrl+Alt+Right - assign
         :keyword colour: colour of the plot
         """
         plt = Plot()
-        plt._plot_ppm(self.data, self._params, **kwargs)
+        plt._plot_ppm(self, **kwargs)
         setattr(self, plt.id, plt)
         pyplot.show()
 
