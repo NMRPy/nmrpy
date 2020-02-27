@@ -629,6 +629,22 @@ class Fid(Base):
         global _phaser_widget
         _phaser_widget = Phaser(self)
 
+    def calibrate(self):
+        """
+        Instantiate a GUI widget to select a peak and calibrate spectrum. 
+        Left-clicking selects a peak. The user is then prompted to enter 
+        the PPM value of that peak for calibration.
+        """
+        plot_label = \
+'''
+Left - select peak
+'''
+        plot_title = "Calibration {}".format(self.id)
+        _calibrate_widget = Calibrator(self,
+                            title=plot_title,
+                            label=plot_label,
+                            )
+
     def baseline_correct(self, deg=2):
         """
 

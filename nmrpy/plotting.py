@@ -16,6 +16,10 @@ from matplotlib.transforms import blended_transform_factory
 from matplotlib.widgets import Cursor
 from matplotlib.backend_bases import NavigationToolbar2, Event
 
+from ipywidgets import FloatText
+from IPython.display import display
+import asyncio
+
 original_home = NavigationToolbar2.home
 original_zoom = NavigationToolbar2.zoom
 
@@ -435,7 +439,7 @@ class Phaser:
         self.ax.plot(self.fid.data, color='k', linewidth=1.0)
         self.ax.hlines(0, 0, len(self.fid.data)-1)
         self.ax.set_xlim([0, len(self.fid.data)])
-        xtcks = numpy.linspace(0,1,10)*len(self.fid.data)
+        xtcks = numpy.linspace(0,1,11)*len(self.fid.data)
         xtcks[-1] = xtcks[-1]-1
         self.ax.set_xticks(xtcks)
         self.ax.set_xlabel('PPM (%.2f MHz)'%(self.fid._params['reffrq']))
@@ -931,6 +935,43 @@ class SpanSelectorMixin(BaseSelectorMixin):
             self.ssm.rect.set_width(maxv-minv)
             self.ax.draw_artist(self.ssm.rect)
 
+class PeakSelectorMixin(BaseSelectorMixin):
+
+    def __init__(self):
+        super().__init__()
+        class Psm:
+            pass
+        self.psm = Psm()
+        self.psm.btn_add = 1
+        self.psm.peak = None
+        self.psm.newx = None
+                
+    def makeline(self, x):
+        return self.ax.plot(
+            [x, x], 
+            self.ylims,
+            color='#CC0000', 
+            lw=1,
+            )[0]
+
+    def press(self, event):
+        super().press(event)
+        x = numpy.round(event.xdata, 2)
+        # left
+        if event.button == self.psm.btn_add and (x >= self.xlims[1]) and (x <= self.xlims[0]):
+            self.psm.peak = x
+            self.makeline(x)
+            self.process()
+
+    def release(self, event):
+        super().release(event)
+
+    def onmove(self, event):
+        super().onmove(event)
+        
+    def process(self):
+        pass
+    
 class AssignMixin(BaseSelectorMixin):
 
     def __init__(self):
@@ -1018,18 +1059,25 @@ class DataSelector():
         NavigationToolbar2.home = dataselector_home
         NavigationToolbar2.zoom = dataselector_zoom
 
-        self.canvas.mpl_connect('motion_notify_event', self.onmove)
-        self.canvas.mpl_connect('button_press_event', self.press)
-        self.canvas.mpl_connect('button_release_event', self.release)
-        self.canvas.mpl_connect('home_event', self.on_home) 
-        self.canvas.mpl_connect('zoom_event', self.on_zoom) 
-        self.canvas.mpl_connect('draw_event', self.on_draw) 
+        self.cidmotion = self.canvas.mpl_connect('motion_notify_event', self.onmove)
+        self.cidpress = self.canvas.mpl_connect('button_press_event', self.press)
+        self.cidrelease = self.canvas.mpl_connect('button_release_event', self.release)
+        self.cidhome = self.canvas.mpl_connect('home_event', self.on_home) 
+        self.cidzoom = self.canvas.mpl_connect('zoom_event', self.on_zoom) 
+        self.ciddraw = self.canvas.mpl_connect('draw_event', self.on_draw) 
         #cursor = Cursor(self.ax, useblit=True, color='k', linewidth=0.5)
         #cursor.horizOn = False
         self.canvas.draw()
         #self.redraw()
         plt.show()
 
+    def disconnect(self):
+        self.canvas.mpl_disconnect(self.cidmotion)
+        self.canvas.mpl_disconnect(self.cidpress)
+        self.canvas.mpl_disconnect(self.cidrelease)
+        self.canvas.mpl_disconnect(self.cidhome)
+        self.canvas.mpl_disconnect(self.cidzoom)
+        self.canvas.mpl_disconnect(self.ciddraw)
 
     def _make_basic_fig(self, *args, **kwargs):
         self.fig = plt.figure(figsize=[9, 6])
@@ -1155,6 +1203,9 @@ class PeakTraceDataSelector(DataSelector, PolySelectorMixin, SpanSelectorMixin, 
 class LineSpanDataSelector(DataSelector, LineSelectorMixin, SpanSelectorMixin, AssignMixin):
     pass
 
+class PeakDataSelector(DataSelector, PeakSelectorMixin):
+    pass
+        
 class SpanDataSelector(DataSelector, SpanSelectorMixin, AssignMixin):
     pass
 
@@ -1325,6 +1376,58 @@ class DataPeakSelector:
         else:
             self.fid.peaks = None
             self.fid.ranges = None
+
+class Calibrator:
+    """
+    Interactive data-selection widget for calibrating PPM of a spectrum.
+    """
+    def __init__(self, fid,
+            lw=1,
+            label=None,
+            title=None,
+            ):
+        self.fid = fid
+        if fid.data is [] or fid.data is None:
+            raise ValueError('data must exist.')
+        if not fid._flags['ft']:
+            raise ValueError('Only Fourier-transformed data can be calibrated.')
+
+        data = fid.data
+        params = fid._params
+        sw_left = params['sw_left']
+        self.sw_left = sw_left
+        sw = params['sw']
+        ppm = numpy.linspace(sw_left-sw, sw_left, len(data))[::-1]
+
+        self.peak_selector = PeakDataSelector(
+                data,
+                params,
+                title=title, 
+                label=label)
+        self.peak_selector.process = self.process
+        
+        self.textinput = FloatText(value=0.0, description='New PPM:',
+            disabled=False, continuous_update=False)
+        
+    def wait_for_change(self, widget, value):
+        future = asyncio.Future()
+        def getvalue(change):
+            # make the new value available
+            future.set_result(change.new)
+            widget.unobserve(getvalue, value)
+        widget.observe(getvalue, value)
+        return future
+        
+    def process(self):
+        peak = self.peak_selector.psm.peak
+        print('current peak ppm:    {}'.format(peak))
+        display(self.textinput)
+        async def f():
+            newx = await self.wait_for_change(self.textinput, 'value')
+            offset = newx - peak
+            self.fid._params['sw_left'] = self.sw_left + offset
+            print('calibration done.')
+        asyncio.ensure_future(f())
 
 class DataPeakRangeSelector:
     """Interactive data-selection widget with lines and ranges. Lines and spans are saved as self.peaks, self.ranges."""
