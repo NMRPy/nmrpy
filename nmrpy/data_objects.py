@@ -1641,17 +1641,18 @@ Ctrl+Alt+Right - assign
                   voff=0.02):
         """
         Instantiate a GUI widget to select a peak and calibrate 
-        spectrua in a `~nmrpy.data_objects.FidArray`. 
+        spectra in a `~nmrpy.data_objects.FidArray`. 
         Left-clicking selects a peak. The user is then prompted to enter 
         the PPM value of that peak for calibration; this will be applied
         to all :class:`~nmrpy.data_objects.Fid`
         objects owned by this :class:`~nmrpy.data_objects.FidArray`. See
         also :meth:`~nmrpy.data_objects.Fid.calibrate`.
         
-        :keyword fid_number: list or number, index of :class:`~nmrpy.data_objects.Fid` to use for calibration. 
+        :keyword fid_number: list or number, index of
+        :class:`~nmrpy.data_objects.Fid` to use for calibration. 
         If None, the whole data array is plotted.
 
-        :keyword assign_only_to_index: if True, assigns calibration only 
+        :keyword assign_only_to_index: if True, assigns calibration only
         to :class:`~nmrpy.data_objects.Fid` objects indexed by fid_number;
         if False, assigns to all.
 
@@ -1678,9 +1679,13 @@ Left - select peak
         objects owned by this :class:`~nmrpy.data_objects.FidArray`. See
         :meth:`~nmrpy.data_objects.Fid.peakpicker`.
 
-        :keyword fid_number: list or number, index of :class:`~nmrpy.data_objects.Fid` to use for peak-picking. If None, data array is plotted.
+        :keyword fid_number: list or number, index of
+        :class:`~nmrpy.data_objects.Fid` to use for peak-picking. 
+        If None, data array is plotted.
 
-        :keyword assign_only_to_index: if True, assigns selections only to :class:`~nmrpy.data_objects.Fid` objects indexed by fid_number, if False, assigns to all
+        :keyword assign_only_to_index: if True, assigns selections only
+        to :class:`~nmrpy.data_objects.Fid` objects indexed by fid_number,
+        if False, assigns to all
 
         :keyword voff: vertical offset for spectra
         """
