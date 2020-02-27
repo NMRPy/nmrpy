@@ -1637,6 +1637,37 @@ Ctrl+Alt+Right - assign
         setattr(self, plt.id, plt)
         
 
+    def calibrate(self, fid_number=None, assign_only_to_index=False,
+                  voff=0.02):
+        """
+        Instantiate a GUI widget to select a peak and calibrate 
+        spectrua in a `~nmrpy.data_objects.FidArray`. 
+        Left-clicking selects a peak. The user is then prompted to enter 
+        the PPM value of that peak for calibration; this will be applied
+        to all :class:`~nmrpy.data_objects.Fid`
+        objects owned by this :class:`~nmrpy.data_objects.FidArray`. See
+        also :meth:`~nmrpy.data_objects.Fid.calibrate`.
+        
+        :keyword fid_number: list or number, index of :class:`~nmrpy.data_objects.Fid` to use for calibration. 
+        If None, the whole data array is plotted.
+
+        :keyword assign_only_to_index: if True, assigns calibration only 
+        to :class:`~nmrpy.data_objects.Fid` objects indexed by fid_number;
+        if False, assigns to all.
+
+        :keyword voff: vertical offset for spectra
+        """
+        plot_label = \
+'''
+Left - select peak
+'''
+        _calibrate_widget = RangeCalibrator(self,
+                            y_indices=fid_number,
+                            aoti=assign_only_to_index,
+                            voff=voff, 
+                            label=plot_label,
+                            )
+
     def peakpicker(self, fid_number=None, assign_only_to_index=True, voff=0.02):
         """
 

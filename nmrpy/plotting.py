@@ -1377,58 +1377,6 @@ class DataPeakSelector:
             self.fid.peaks = None
             self.fid.ranges = None
 
-class Calibrator:
-    """
-    Interactive data-selection widget for calibrating PPM of a spectrum.
-    """
-    def __init__(self, fid,
-            lw=1,
-            label=None,
-            title=None,
-            ):
-        self.fid = fid
-        if fid.data is [] or fid.data is None:
-            raise ValueError('data must exist.')
-        if not fid._flags['ft']:
-            raise ValueError('Only Fourier-transformed data can be calibrated.')
-
-        data = fid.data
-        params = fid._params
-        sw_left = params['sw_left']
-        self.sw_left = sw_left
-        sw = params['sw']
-        ppm = numpy.linspace(sw_left-sw, sw_left, len(data))[::-1]
-
-        self.peak_selector = PeakDataSelector(
-                data,
-                params,
-                title=title, 
-                label=label)
-        self.peak_selector.process = self.process
-        
-        self.textinput = FloatText(value=0.0, description='New PPM:',
-            disabled=False, continuous_update=False)
-        
-    def wait_for_change(self, widget, value):
-        future = asyncio.Future()
-        def getvalue(change):
-            # make the new value available
-            future.set_result(change.new)
-            widget.unobserve(getvalue, value)
-        widget.observe(getvalue, value)
-        return future
-        
-    def process(self):
-        peak = self.peak_selector.psm.peak
-        print('current peak ppm:    {}'.format(peak))
-        display(self.textinput)
-        async def f():
-            newx = await self.wait_for_change(self.textinput, 'value')
-            offset = newx - peak
-            self.fid._params['sw_left'] = self.sw_left + offset
-            print('calibration done.')
-        asyncio.ensure_future(f())
-
 class DataPeakRangeSelector:
     """Interactive data-selection widget with lines and ranges. Lines and spans are saved as self.peaks, self.ranges."""
     def __init__(self, fid_array,
@@ -1494,6 +1442,133 @@ class DataPeakRangeSelector:
                 fid.peaks = peaks
                 fid.ranges = ranges
   
+class Calibrator:
+    """
+    Interactive data-selection widget for calibrating PPM of a spectrum.
+    """
+    def __init__(self, fid,
+            lw=1,
+            label=None,
+            title=None,
+            ):
+        self.fid = fid
+        if fid.data is [] or fid.data is None:
+            raise ValueError('data must exist.')
+        if not fid._flags['ft']:
+            raise ValueError('Only Fourier-transformed data can be calibrated.')
+
+        data = fid.data
+        params = fid._params
+        sw_left = params['sw_left']
+        self.sw_left = sw_left
+        sw = params['sw']
+        ppm = numpy.linspace(sw_left-sw, sw_left, len(data))[::-1]
+
+        self.peak_selector = PeakDataSelector(
+                data,
+                params,
+                title=title, 
+                label=label)
+        self.peak_selector.process = self.process
+        
+        self.textinput = FloatText(value=0.0, description='New PPM:',
+            disabled=False, continuous_update=False)
+        
+    def _wait_for_change(self, widget, value):
+        future = asyncio.Future()
+        def getvalue(change):
+            # make the new value available
+            future.set_result(change.new)
+            widget.unobserve(getvalue, value)
+        widget.observe(getvalue, value)
+        return future
+        
+    def process(self):
+        peak = self.peak_selector.psm.peak
+        print('current peak ppm:    {}'.format(peak))
+        display(self.textinput)
+        async def f():
+            newx = await self._wait_for_change(self.textinput, 'value')
+            offset = newx - peak
+            self.fid._params['sw_left'] = self.sw_left + offset
+            print('calibration done.')
+        asyncio.ensure_future(f())
+
+class RangeCalibrator:
+    """
+    Interactive data-selection widget for calibrating PPM of an
+    array of spectra.
+    """
+    def __init__(self, fid_array,
+            y_indices=None,
+            aoti=True,
+            voff=1e-3,
+            lw=1,
+            label=None,
+            ):
+        self.fid_array = fid_array
+        self.fids = fid_array.get_fids()
+        self.assign_only_to_index = aoti
+        self.fid_number = y_indices
+        if self.fid_number is not None:
+            if not nmrpy.data_objects.Fid._is_iter(self.fid_number):
+                self.fid_number = [self.fid_number]
+        else:
+            self.fid_number = range(len(self.fids))
+        if fid_array.data is [] or fid_array.data is None:
+            raise ValueError('data must exist.')
+        if any (not fid._flags['ft'] for fid in self.fids):
+            raise ValueError('Only Fourier-transformed data can be calibrated.')
+        data = fid_array.data
+        if y_indices is not None:
+            data = fid_array.data[numpy.array(self.fid_number)]
+        params = fid_array._params
+        sw_left = params['sw_left']
+        self.sw_left = sw_left
+        sw = params['sw']
+        ppm = numpy.linspace(sw_left-sw, sw_left, data.shape[1])[::-1]
+
+        self.peak_selector = PeakDataSelector(
+                data,
+                params,
+                title='FidArray calibration',
+                voff = voff,
+                label=label)
+        self.peak_selector.process = self.process
+        
+        self.textinput = FloatText(value=0.0, description='New PPM:',
+            disabled=False, continuous_update=False)
+        
+    def _wait_for_change(self, widget, value):
+        future = asyncio.Future()
+        def getvalue(change):
+            # make the new value available
+            future.set_result(change.new)
+            widget.unobserve(getvalue, value)
+        widget.observe(getvalue, value)
+        return future
+        
+    def process(self):
+        peak = self.peak_selector.psm.peak
+        print('current peak ppm:    {}'.format(peak))
+        display(self.textinput)
+        async def f():
+            newx = await self._wait_for_change(self.textinput, 'value')
+            offset = newx - peak
+            self._applycalibration(offset)
+            print('calibration done.')
+        asyncio.ensure_future(f())
+
+    def _applycalibration(self, offset):
+        self.fid_array._params['sw_left'] = self.sw_left + offset
+        
+        if self.assign_only_to_index:
+            for fid in [self.fids[i] for i in self.fid_number]:
+                fid._params['sw_left'] = self.sw_left + offset
+        else:       
+            for fid in self.fids:
+                fid._params['sw_left'] = self.sw_left + offset
+
 class FidArrayRangeSelector:
     """Interactive data-selection widget with ranges. Spans are saved as self.ranges."""
     def __init__(self, 
