@@ -1915,11 +1915,11 @@ class Importer(Base):
         """
         try:
             print('Attempting Bruker')
-            procpar, data = nmrglue.bruker.read(self.fid_path)
-            self.data = data
-            self._procpar = procpar['acqus']
-            self._file_format = 'bruker'
-            self.data = nmrglue.bruker.remove_digital_filter(procpar, self.data)
+            brukerimporter = BrukerImporter(fid_path=self.fid_path)
+            brukerimporter.import_fid()
+            self.data = brukerimporter.data
+            self._procpar = brukerimporter._procpar
+            self._file_format = brukerimporter._file_format
             return
         except (FileNotFoundError, OSError):
             print('fid_path does not specify a valid .fid directory.')
@@ -1928,10 +1928,11 @@ class Importer(Base):
             print('probably not Bruker data')
         try: 
             print('Attempting Varian')
-            procpar, data = nmrglue.varian.read(self.fid_path)
-            self._procpar = procpar
-            self.data = data 
-            self._file_format = 'varian'
+            varianimporter = VarianImporter(fid_path=self.fid_path)
+            varianimporter.import_fid()
+            self._procpar = varianimporter._procpar
+            self.data = varianimporter.data 
+            self._file_format = varianimporter._file_format
             return
         except TypeError:
             print('probably not Varian data')
