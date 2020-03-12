@@ -434,6 +434,7 @@ class Phaser:
         self.fid = fid
         self.fig = plt.figure(figsize=[9, 6])
         self.phases = numpy.array([0.0, 0.0])
+        self.cum_phases = numpy.array([0.0, 0.0])
         self.y = 0.0
         self.ax = self.fig.add_subplot(111)
         self.ax.plot(self.fid.data, color='k', linewidth=1.0)
@@ -470,22 +471,25 @@ class Phaser:
                 self.y = y
 
     def release(self, event):
+        print('cumulative p0: {} p1: {}'.format(*self.cum_phases))
         self.buttonDown = False
-        print('p0: {} p1: {}'.format(*self.phases))
         return False
 
     def onmove(self, event):
         if self.buttonDown is False or event.inaxes is None:
-                return
+            return
         x = event.xdata
         y = event.ydata
         dy = y-self.y
         self.y = y
         if self.button == 1:
-                self.phases[0] = 100*dy/self.ax.get_ylim()[1]
+            self.phases[0] = 100*dy/self.ax.get_ylim()[1]
+            self.phases[1] = 0.0
         if self.button == 3:
-                self.phases[1] = 100*dy/self.ax.get_ylim()[1]
+            self.phases[1] = 100*dy/self.ax.get_ylim()[1]
+            self.phases[0] = 0.0
         self.fid.ps(p0=self.phases[0], p1=self.phases[1])
+        self.cum_phases += self.phases
         self.ax.lines[0].set_data(numpy.array([numpy.arange(len(self.fid.data)), self.fid.data]))
         self.canvas.draw()  # _idle()
         return False
