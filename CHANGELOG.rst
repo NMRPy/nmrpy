@@ -6,10 +6,29 @@ Changelog
 
 New
 ~~~
+- New Bruker importer that can deal with arrays of experiments, also
+  with different nuclei interleaved. [JM Rohwer]
+- Add .calibrate() method to FidArray for offset calibration. [JM
+  Rohwer]
+- Add .calibrate() method to Fid for spectrum offset calibration. [JM
+  Rohwer]
+- Add CHANGELOG.rst (generated with gitchangelog) [JM Rohwer]
 - Add .gitchangelog.rc. [JM Rohwer]
+
+Changes
+~~~~~~~
+- Clean up BrukerImporter and VarianImporter to remove code duplication.
+  [JM Rohwer]
+- Simplify instantiation of FidArray by calling nmrpy.from_path()
+  directly. [JM Rohwer]
 
 Fix
 ~~~
+- Make phaser widget display cumulative phase correction so that it can
+  be applied in scripts. [JM Rohwer]
+- Fix linebreaks in docstrings. [JM Rohwer]
+- Fix Fid.plot_ppm() to display Time on x-axis if data have not been
+  Fourier-transformed. [JM Rohwer]
 - Fix grepping of version tags in .gitchangelog.rc. [JM Rohwer]
 - Fix version number for docs, fix Phaser widget, fix data files in
   setup.py. [JM Rohwer]
