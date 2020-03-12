@@ -15,3 +15,6 @@ it does not interfere with other installed packages and modules.
 
 `pip install nmrpy`
 
+## Changelog
+
+Read the changelog [here](CHANGELOG.rst)
