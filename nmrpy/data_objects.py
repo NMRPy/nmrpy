@@ -7,6 +7,7 @@ import numbers
 from scipy.optimize import leastsq
 from multiprocessing import Pool, cpu_count
 from nmrpy.plotting import *
+import os
 import pickle
 
 class Base():
@@ -110,7 +111,7 @@ class Base():
     #processing
     def _extract_procpar(self, procpar):
         if self._file_format == 'bruker':
-            return self._extract_procpar_bruker(procpar, self.fid_path)
+            return self._extract_procpar_bruker(procpar)
         elif self._file_format == 'varian':
             return self._extract_procpar_varian(procpar)
         #else:
@@ -131,7 +132,7 @@ class Base():
         tof = float(procpar['procpar']['tof']['values'][0])
         rt = at+d1
         nt = numpy.array(
-            [procpar['procpar']['nt']['values']], dtype=float)
+            [procpar['procpar']['nt']['values']], dtype=int)
         acqtime = (nt*rt).cumsum()/60.  # convert to mins.
         sw = round(
             float(procpar['procpar']['sw']['values'][0]) /
@@ -156,34 +157,45 @@ class Base():
         return params
 
     @staticmethod
-    def _extract_procpar_bruker(procpar, filepath): #finish this
+    def _extract_procpar_bruker(procpar): 
         """
         Extract some commonly-used NMR parameters (using Bruker denotations)
         and return a parameter dictionary 'params'.
         """
-        d1 = procpar['RD']
-        reffrq = procpar['SFO1']
-        nt = procpar['NS']
-        sw_hz = procpar['SW_h']
-        sw = procpar['SW']
+        d1 = procpar['acqus']['RD']
+        reffrq = procpar['acqus']['SFO1']
+        nt = procpar['acqus']['NS']
+        sw_hz = procpar['acqus']['SW_h']
+        sw = procpar['acqus']['SW']
         # lefthand offset of the processed data in ppm
-        with open(filepath+'/pdata/1/procs') as f:
-            for i in f.readlines():
-                if 'OFFSET' in i:
-                    sw_left = float(i.split(' ')[1])
-        at = procpar['TD']/(2*sw_hz)
+        if 'procs' in procpar:
+            sfrq = procpar['procs']['SF']
+            sw_left = procpar['procs']['OFFSET']
+        else:
+            sfrq = procpar['acqus']['BF1']
+            sw_left = (0.5+1e6*(sfrq-reffrq)/sw_hz)*sw_hz/sfrq
+        at = procpar['acqus']['TD']/(2*sw_hz)
         rt = at+d1
-        acqtime = (nt*rt)/60.  # convert to mins.
+        td = procpar['tdelta']
+        ts = procpar['tstart']
+        al = procpar['arraylength']
+        a = procpar['arrayset']
+        acqtime = numpy.zeros((al))
+        acqtime[0] = ts[a-1]
+        for i in range(1, al):
+            acqtime[i] = acqtime[i-1] + td
         params = dict(
             at=at,
             d1=d1,
-            reffrq=reffrq,
             rt=rt,
             nt=nt,
             acqtime=acqtime,
-            sw_left=sw_left,
             sw=sw,
-            sw_hz=sw_hz)
+            sw_hz=sw_hz,
+            sfrq=sfrq,
+            reffrq=reffrq,
+            sw_left=sw_left,
+            )
         return params
 
 class Fid(Base):
@@ -1924,7 +1936,7 @@ class Importer(Base):
         except (FileNotFoundError, OSError):
             print('fid_path does not specify a valid .fid directory.')
             return 
-        except TypeError:
+        except (TypeError, IndexError):
             print('probably not Bruker data')
         try: 
             print('Attempting Varian')
@@ -1954,15 +1966,57 @@ class BrukerImporter(Importer):
 
     def import_fid(self):
         try:
-            procpar, data = nmrglue.bruker.read(self.fid_path)
+            dirs = [int(i) for i in os.listdir(self.fid_path) if \
+                    os.path.isdir(self.fid_path+os.path.sep+i)]
+            dirs.sort()
+            dirs = [str(i) for i in dirs]
+            alldata = []
+            for d in dirs:
+                procpar, data = nmrglue.bruker.read(self.fid_path+os.path.sep+d)
+                alldata.append((procpar, data))
+            self.alldata = alldata
+            incr = 1
+            while True:
+                if len(alldata) == 1:
+                    break
+                if alldata[incr][1].shape == alldata[0][1].shape:
+                    break
+                incr +=1
+            if incr > 1:
+                print('Total of '+str(incr)+' alternating FidArrays found.')
+                arrayset = input('Which one to import? ')
+                arrayset = int(arrayset)
+                if arrayset < 1 or arrayset > incr:
+                    raise ValueError('Select a value between 1 and '+str(incr)+'.')
+            else:
+                arrayset = 1
+            self.incr = incr
+            procpar = alldata[arrayset-1][0]
+            data = numpy.vstack([d[1] for d in alldata[(arrayset-1)::incr]])
             self.data = data
-            self._procpar = procpar['acqus']
+            self._procpar = procpar
             self._file_format = 'bruker'
             self.data = nmrglue.bruker.remove_digital_filter(procpar, self.data)
+            self._procpar['tdelta'], self._procpar['tstart'] = self._get_time_delta()
+            self._procpar['arraylength'] = self.data.shape[0]
+            self._procpar['arrayset'] = arrayset
         except FileNotFoundError:
             print('fid_path does not specify a valid .fid directory.')
         except OSError:
             print('fid_path does not specify a valid .fid directory.')
+            
+    def _get_time_delta(self):
+        td = 0.0
+        start = []
+        for i in range(self.incr):
+            pp = self.alldata[i][0]['acqus']
+            sw_hz = pp['SW_h']
+            at = pp['TD']/(2*sw_hz)
+            d1 = pp['RD']
+            nt = pp['NS']
+            td += (at+d1)*nt/60. # convert to mins
+            start.append(td)
+        return (td, start)
 
 if __name__ == '__main__':
     pass
