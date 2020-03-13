@@ -134,10 +134,8 @@ class Base():
         nt = numpy.array(
             [procpar['procpar']['nt']['values']], dtype=int)
         acqtime = (nt*rt).cumsum()/60.  # convert to mins.
-        sw = round(
-            float(procpar['procpar']['sw']['values'][0]) /
-            float(procpar['procpar']['sfrq']['values'][0]), 2)
         sw_hz = float(procpar['procpar']['sw']['values'][0])
+        sw = round(sw_hz/reffrq, 2)
         sw_left = (0.5+1e6*(sfrq-reffrq)/sw_hz)*sw_hz/sfrq
         params = dict(
             at=at,
