@@ -459,6 +459,8 @@ class Phaser:
         self.ax.text(0.05 *self.ax.get_xlim()[1],0.7 *self.ax.get_ylim()[1],'phasing\nleft - zero-order\nright - first order')
         cursor = Cursor(self.ax, useblit=True, color='k', linewidth=0.5)
         cursor.horizOn = False
+        self.fig.subplots_adjust(bottom=0.13)
+        self.text1 = self.fig.text(0.12, 0.02, ' ', fontsize='large')
         plt.show()
 
     def press(self, event):
@@ -471,7 +473,7 @@ class Phaser:
                 self.y = y
 
     def release(self, event):
-        print('cumulative p0: {} p1: {}'.format(*self.cum_phases))
+        self.text1.set_text('cumulative    p0: {0:.1f}    p1: {1:.1f}'.format(*self.cum_phases))
         self.buttonDown = False
         return False
 
@@ -483,10 +485,10 @@ class Phaser:
         dy = y-self.y
         self.y = y
         if self.button == 1:
-            self.phases[0] = 100*dy/self.ax.get_ylim()[1]
+            self.phases[0] = 50*dy/self.ax.get_ylim()[1]
             self.phases[1] = 0.0
         if self.button == 3:
-            self.phases[1] = 100*dy/self.ax.get_ylim()[1]
+            self.phases[1] = 50*dy/self.ax.get_ylim()[1]
             self.phases[0] = 0.0
         self.fid.ps(p0=self.phases[0], p1=self.phases[1])
         self.cum_phases += self.phases
