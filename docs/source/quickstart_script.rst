@@ -1,9 +1,11 @@
-The full script for the quickstart tutorial: ::
+The full script for the quickstart tutorial:
+
+.. code:: python
 
     import nmrpy
     from matplotlib import pyplot as plt
 
-    fid_array = nmrpy.data_objects.FidArray.from_path(fid_path='./tests/test_data/test1.fid')
+    fid_array = nmrpy.from_path(fid_path='./tests/test_data/test1.fid')
     fid_array.emhz_fids()
     #fid_array.fid00.plot_ppm()
     fid_array.ft_fids()
@@ -15,6 +17,7 @@ The full script for the quickstart tutorial: ::
     fid_array.norm_fids()
     #fid_array.plot_array()
     #fid_array.plot_array(upper_ppm=7, lower_ppm=-1, filled=True, azim=-76, elev=23)
+    #fid_array.calibrate()
     
     peaks = [ 4.73,  4.63,  4.15,  0.55]
     ranges = [[ 5.92,  3.24], [ 1.19, -0.01]]

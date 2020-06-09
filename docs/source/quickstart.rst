@@ -10,6 +10,7 @@ dataset will be processed. The following topics are explored:
     * :ref:`quickstart_importing`
     * :ref:`quickstart_apodisation`
     * :ref:`quickstart_phasecorrection`
+    * :ref:`quickstart_calibration`
     * :ref:`quickstart_peakpicking`
     * :ref:`quickstart_deconvolution`
     * :ref:`quickstart_exporting`
@@ -45,7 +46,7 @@ using the :meth:`~nmrpy.data_objects.FidArray.from_path` method, and specifying
 the path of the *.fid* directory: ::
 
     >>> import nmrpy
-    >>> fid_array = nmrpy.data_objects.FidArray.from_path(fid_path='./tests/test_data/test1.fid')
+    >>> fid_array = nmrpy.from_path(fid_path='./tests/test_data/test1.fid')
 
 You will notice that the ``fid_array`` object is instantiated and now owns
 several attributes, most of which are of the form ``fidXX`` where *XX* is
@@ -82,7 +83,6 @@ Finally, we Fourier-transform the data into the frequency domain: ::
 
 .. image:: _static/quickstart_3.png
 
-
 .. _quickstart_phasecorrection:
 
 Phase-correction
@@ -98,7 +98,12 @@ method on ``fid00``: ::
 .. image:: _static/quickstart_4.png
 
 Dragging with the left mouse button and right mouse button will apply zero- and
-first-order phase-correction, respectively.
+first-order phase-correction, respectively. The cumulative phase correction for 
+the zero-order (``p0``) and first-order (``p1``) phase angles is displayed at 
+the bottom of the plot so that these can be applied programatically to all 
+:class:`~nmrpy.data_objects.Fid` objects in the 
+:class:`~nmrpy.data_objects.FidArray` using the 
+:meth:`~nmrpy.data_objects.FidArray.ps_fids` method.
 
 .. image:: _static/quickstart_5.png
 
@@ -128,6 +133,33 @@ possibly normalise the data (by the maximum data value amongst the
     >>> fid_array.real_fids()
     >>> fid_array.norm_fids()
 
+.. _quickstart_calibration:
+
+Calibration
+===========
+
+The spectra may need calibration by assigning a chemical shift to a 
+reference peak of a known standard and adjusting the spectral offset 
+accordingly. To this end, a 
+:meth:`~nmrpy.data_objects.FidArray.calibrate` convenience method exists that 
+allows the user to easily select a peak and specify the PPM. This method can be 
+applied at either the :class:`~nmrpy.data_objects.FidArray` or 
+:class:`~nmrpy.data_objects.Fid` level. We will apply it to the whole array: ::
+
+    >>> fid_array.calibrate()
+
+.. image:: _static/quickstart_7b.png
+.. image:: _static/quickstart_7c.png
+   :width: 80%
+   :align: center
+
+Left-clicking selects a peak and its current ppm value is displayed below 
+the spectrum. The new ppm value can be entered in a text box, and hitting 
+``Enter`` completes the calibration process. Here we have chosen triethyl 
+phosphate (TEP) as reference peak and assigned its chemical shift value of 0.44 
+ppm (the original value was 0.57 ppm, and the offset of all the spectra in the 
+array has been adjusted by 0.13 ppm after the calibration).
+    
 .. _quickstart_peakpicking:
 
 Peak-picking
@@ -290,7 +322,9 @@ Peak integrals of the entire :class:`~nmrpy.data_objects.FidArray` are stored in
 individual :class:`~nmrpy.data_objects.Fid` as
 :attr:`~nmrpy.data_objects.Fid.deconvoluted_integrals`.
 
-We could easily plot the species integrals using the following code: ::
+We could easily plot the species integrals using the following code:
+
+.. code:: python
 
     from matplotlib import pyplot as plt
 

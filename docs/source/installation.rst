@@ -8,7 +8,9 @@ Python 3 and ``pip`` installed.
 `Pip <https://en.wikipedia.org/wiki/Pip_(package_manager)>`_ is a useful Python
 package management system.
 
-**Note:** NMRPy will not work using Python 2. 
+.. note::
+
+    NMRPy will not work using Python 2. 
 
 On Debian and Ubuntu-like systems these can be installed with the following 
 terminal commands: ::
