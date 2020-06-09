@@ -1,0 +1,15 @@
+##TITLE= Parameter file, XWIN-NMR		Version 2.6
+##JCAMPDX= 5.0
+##DATATYPE= Parameter Values
+##ORIGIN= UXNMR, Bruker Analytische Messtechnik GmbH
+##OWNER= root
+$$ Fri Apr  7 10:05:57 2000 EST (UT+11h)  kuchel@bio600
+$$ /v/data/kuchel/nmr/rmcsetest/1/pdata/1/outd
+##$CURPLOT= <hpdj500>
+##$CURPRIN= <$laserjet>
+##$DFORMAT= <normdp>
+##$LAYOUT= <>
+##$LFORMAT= <normlp>
+##$PFORMAT= <normpl>
+##$SURQMSG= 1
+##END=

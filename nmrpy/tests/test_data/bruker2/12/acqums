@@ -1,0 +1,11 @@
+##TITLE= Parameter file,  UXNMR		Version 940510.B.6
+##JCAMPDX= 5.0
+##DATATYPE= UXNMR Parameter Values
+##ORIGIN= UXNMR, Bruker Analytische Messtechnik GmbH
+##OWNER= moj
+$$ Wed Nov  2 06:19:44 1994
+$$ File: /z/data/moj/nmr/gradshimdata/1/acqum
+##$NPROJEC= 32 
+##$NSLICES= 32 
+##END=  
+  

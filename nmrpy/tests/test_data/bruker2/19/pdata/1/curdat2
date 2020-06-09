@@ -1,0 +1,19 @@
+##TITLE= Parameter file, XWIN-NMR		Version 2.6
+##JCAMPDX= 5.0
+##DATATYPE= Parameter Values
+##ORIGIN= Bruker Analytik GmbH
+##OWNER= kuchel
+$$ Fri Nov  2 08:23:06 2001 EST (UT+10h)  kuchel@bio600
+$$ /v/data/kuchel/nmr/jr011101b/19/pdata/1/curdat2
+##$DU2= </v>
+##$DU3= </v>
+##$EXPNO2= 58
+##$EXPNO3= 19
+##$NAME2= <jr011101b>
+##$NAME3= <jr011101b>
+##$PROCNO2= 1
+##$PROCNO3= 2
+##$TYPE= <nmr>
+##$USER2= <kuchel>
+##$USER3= <kuchel>
+##END=
