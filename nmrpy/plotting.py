@@ -445,7 +445,7 @@ class Phaser:
         self.ax.set_xticks(xtcks)
         self.ax.set_xlabel('PPM (%.2f MHz)'%(self.fid._params['reffrq']))
         self.ax.set_xticklabels([numpy.round(self.fid._ppm[int(i)], 1) for i in xtcks])
-        ylims = numpy.array([-6, 6])*numpy.array([max(self.ax.get_ylim())]*2)
+        ylims = numpy.array([-1.6, 1.6])*max(abs(numpy.array(self.ax.get_ylim())))
         self.ax.set_ylim(ylims)
         self.ax.grid()
         self.visible = True

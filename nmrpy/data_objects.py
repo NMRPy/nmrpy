@@ -1650,7 +1650,7 @@ Ctrl+Alt+Right - assign
                   voff=0.02):
         """
         Instantiate a GUI widget to select a peak and calibrate 
-        spectra in a `~nmrpy.data_objects.FidArray`. 
+        spectra in a :class:`~nmrpy.data_objects.FidArray`. 
         Left-clicking selects a peak. The user is then prompted to enter 
         the PPM value of that peak for calibration; this will be applied
         to all :class:`~nmrpy.data_objects.Fid`
