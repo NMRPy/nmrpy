@@ -187,7 +187,7 @@ class Plot():
         if lower_index is None:
             lower_index = 0
         if upper_index is None:
-            upper_index = len(fids)-1
+            upper_index = len(fids)
         if lower_index >= upper_index:
             raise ValueError('upper_index must exceed lower_index')
         fids = fids[lower_index: upper_index]
@@ -222,8 +222,8 @@ class Plot():
 
         xlabel = 'PPM (%.2f MHz)'%(params['reffrq'])
         ylabel = 'min.'
-        acqtime = fids[0]._params['acqtime'][0]
-        minutes = numpy.arange(len(data))*acqtime
+        acqtime = fids[0]._params['acqtime']
+        minutes = acqtime[lower_index:upper_index]
         self.fig = self._generic_array_plot(ppm, minutes, plot_data, 
                                             colours_list=colours_list,
                                             filled_list=filled_list,
@@ -279,21 +279,21 @@ class Plot():
         if lower_ppm is None:
             lower_ppm = sw_left-sw
 
+        acqtime = params['acqtime']
         ppm = numpy.linspace(sw_left-sw, sw_left, data.shape[1])[::-1]
         ppm_bool_index = (ppm < upper_ppm) * (ppm > lower_ppm)
         ppm = ppm[ppm_bool_index]
         if len(data) > 1:
             data = data[lower_index:upper_index, ppm_bool_index]
+            minutes = acqtime[lower_index:upper_index]
         else:
             data = data[:, ppm_bool_index]
+            minutes = acqtime[0]
 
         if colour:
             colours_list = [plt.cm.viridis(numpy.linspace(0, 1, len(data)))]
         else:
             colours_list = None
-
-        acqtime = params['acqtime'][0]
-        minutes = numpy.arange(len(data))*acqtime
 
         xlabel = 'PPM (%.2f MHz)'%(params['reffrq'])
         ylabel = 'min.'

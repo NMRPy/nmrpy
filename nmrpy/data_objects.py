@@ -1225,8 +1225,7 @@ class FidArray(Base):
         t = None
         if nfids > 0:
             try:
-                acqtime = self._params['acqtime'][0]
-                t = (1+numpy.arange(len(self.get_fids())))*acqtime
+                t = self._params['acqtime']
             except:
                 t = numpy.arange(len(self.get_fids()))
         return t
