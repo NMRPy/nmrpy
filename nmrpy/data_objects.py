@@ -1315,14 +1315,16 @@ class FidArray(Base):
         return fid_array
 
     @classmethod
-    def from_path(cls, fid_path='.', file_format=None):
+    def from_path(cls, fid_path='.', file_format=None, arrayset=None):
         """
         Instantiate a new :class:`~nmrpy.data_objects.FidArray` object from a .fid directory.
 
         :keyword fid_path: filepath to .fid directory
 
         :keyword file_format: 'varian' or 'bruker', usually unnecessary
-
+        
+        :keyword arrayset: (int) array set for interleaved spectra, 
+                                 user is prompted if not specified 
         """
         if not file_format:
             try:
@@ -1331,13 +1333,13 @@ class FidArray(Base):
             except:
                 print('Not NMRPy data file.')
                 importer = Importer(fid_path=fid_path)
-                importer.import_fid()
+                importer.import_fid(arrayset=arrayset)
         elif file_format == 'varian':
             importer = VarianImporter(fid_path=fid_path)
             importer.import_fid()
         elif file_format == 'bruker':
             importer = BrukerImporter(fid_path=fid_path)
-            importer.import_fid()
+            importer.import_fid(arrayset=arrayset)
         elif file_format == 'nmrpy':
             with open(fid_path, 'rb') as f:
                 return pickle.load(f)
@@ -1918,14 +1920,14 @@ class Importer(Base):
             raise TypeError('data must be complex.')
 
 
-    def import_fid(self):
+    def import_fid(self, arrayset=None):
         """
         This will first attempt to import Bruker data. Failing that, Varian.
         """
         try:
             print('Attempting Bruker')
             brukerimporter = BrukerImporter(fid_path=self.fid_path)
-            brukerimporter.import_fid()
+            brukerimporter.import_fid(arrayset=arrayset)
             self.data = brukerimporter.data
             self._procpar = brukerimporter._procpar
             self._file_format = brukerimporter._file_format
@@ -1961,7 +1963,7 @@ class VarianImporter(Importer):
         
 class BrukerImporter(Importer):
 
-    def import_fid(self):
+    def import_fid(self, arrayset=None):
         try:
             dirs = [int(i) for i in os.listdir(self.fid_path) if \
                     os.path.isdir(self.fid_path+os.path.sep+i)]
@@ -1980,11 +1982,15 @@ class BrukerImporter(Importer):
                     break
                 incr +=1
             if incr > 1:
-                print('Total of '+str(incr)+' alternating FidArrays found.')
-                arrayset = input('Which one to import? ')
-                arrayset = int(arrayset)
+                if arrayset == None:
+                    print('Total of '+str(incr)+' alternating FidArrays found.')
+                    arrayset = input('Which one to import? ')
+                    arrayset = int(arrayset)
+                else:
+                    arrayset = arrayset
                 if arrayset < 1 or arrayset > incr:
-                    raise ValueError('Select a value between 1 and '+str(incr)+'.')
+                    raise ValueError('Select a value between 1 and '
+                                      + str(incr) + '.')
             else:
                 arrayset = 1
             self.incr = incr

@@ -353,6 +353,11 @@ class TestFidArrayInitialisation(unittest.TestCase):
         fid_array = FidArray.from_path(fid_path=path, file_format='bruker')
         self.assertIsInstance(fid_array._procpar, dict)
         self.assertIsInstance(fid_array._params, dict)
+        path = os.path.join(testpath, 'test_data', 'bruker2')
+        fid_array = FidArray.from_path(fid_path=path, file_format='bruker',
+                                       arrayset=2)
+        self.assertIsInstance(fid_array._procpar, dict)
+        self.assertIsInstance(fid_array._params, dict)
 
     def test_failed_from_path_array_varian(self):
         path = os.path.join(testpath, 'test_data', 'bruker1')
