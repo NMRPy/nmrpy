@@ -337,7 +337,7 @@ class TestFidArrayInitialisation(unittest.TestCase):
         fid_array = FidArray.from_path(fid_path=path)
         self.assertIsInstance(fid_array._procpar, dict)
         self.assertIsInstance(fid_array._params, dict)
-        path = os.path.join(testpath, 'test_data', 'bruker1')
+        path = os.path.join(testpath, 'test_data', 'bruker2')
         fid_array = FidArray.from_path(fid_path=path)
         self.assertIsInstance(fid_array._procpar, dict)
         self.assertIsInstance(fid_array._params, dict)
@@ -664,6 +664,10 @@ class TestPlottingUtils(unittest.TestCase):
         self.fid_varian_raw.ft()
         self.fid_varian_raw.phaser()
 
+    def test_calibrate(self):
+        self.fid_varian.calibrate()
+        self.fid_array_varian.calibrate()
+        
     def test_peakpicker(self):
         self.fid_varian.peakpicker()
         self.fid_array_varian.peakpicker()
