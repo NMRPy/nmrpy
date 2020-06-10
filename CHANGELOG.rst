@@ -1,11 +1,15 @@
 Changelog
 =========
 
-(unreleased)
-------------
+v0.2.2 (2020-06-10)
+-------------------
 
 New
 ~~~
+- Add test for calibrate() [JM Rohwer]
+- Add tests for new Bruker array set import functionality. [JM Rohwer]
+- Update documentation for phaser() and calibrate() methods. [JM Rohwer]
+- Add Bruker test data for interleaved array experiment. [JM Rohwer]
 - New Bruker importer that can deal with arrays of experiments, also
   with different nuclei interleaved. [JM Rohwer]
 - Add .calibrate() method to FidArray for offset calibration. [JM
@@ -17,6 +21,11 @@ New
 
 Changes
 ~~~~~~~
+- Update quickstart_tutorial.ipynb with modified phaser() and new
+  calibrate() methods. [JM Rohwer]
+- Update Phaser() to display cumulative phase angles at bottom of plot
+  and update live. [JM Rohwer]
+- Add link to CHANGELOG on README.md. [Johann Rohwer]
 - Clean up BrukerImporter and VarianImporter to remove code duplication.
   [JM Rohwer]
 - Simplify instantiation of FidArray by calling nmrpy.from_path()
@@ -24,6 +33,9 @@ Changes
 
 Fix
 ~~~
+- Fix calculation of time in plot_array() and plot_deconv_array() [JM
+  Rohwer]
+- Fix calculation of 'sw' in _extract_procpar_varian() [JM Rohwer]
 - Make phaser widget display cumulative phase correction so that it can
   be applied in scripts. [JM Rohwer]
 - Fix linebreaks in docstrings. [JM Rohwer]
