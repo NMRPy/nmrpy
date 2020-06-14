@@ -1861,9 +1861,10 @@ Ctrl+Alt+Right - assign
         :class:`~nmrpy.data_objects.Fid` objects calculated from trace dictionary
         :attr:`~nmrpy.data_objects.FidArray.integral_traces`.
         """
-        if self.deconvoluted_integrals is None:
+        if self.deconvoluted_integrals is None or \
+                                None in self.deconvoluted_integrals:
             raise AttributeError('No integrals.')
-        if self.integral_traces is None:
+        if not hasattr(self, '_integral_traces'):
             raise AttributeError('No integral traces. First run select_integral_traces().')
         integrals_set = {}
         decon_set = self.deconvoluted_integrals 
