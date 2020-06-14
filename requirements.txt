@@ -1,7 +1,7 @@
 numpy
 scipy
 matplotlib>=3.0.0
-ipympl>=0.4.0,<0.5
+ipympl>=0.4.0
 notebook>=6.0.0
 ipython>=7.0.0
 lmfit>=0.9.10
