@@ -16,7 +16,7 @@ from matplotlib.transforms import blended_transform_factory
 from matplotlib.widgets import Cursor
 from matplotlib.backend_bases import NavigationToolbar2, Event
 
-from ipywidgets import FloatText
+from ipywidgets import FloatText, Output
 from IPython.display import display
 import asyncio
 
@@ -793,8 +793,11 @@ class LineSelectorMixin(BaseSelectorMixin):
         super().press(event)
         x = numpy.round(event.xdata, 2)
         # left
-        if event.button == self.lsm.btn_add and event.key != self.lsm.key_mod  and (x >= self.xlims[1]) and (x <= self.xlims[0]):
-            print('peak {}'.format(x))
+        if event.button == self.lsm.btn_add and \
+                event.key != self.lsm.key_mod and \
+                (x >= self.xlims[1]) and (x <= self.xlims[0]):
+            with self.out:
+                print('peak {}'.format(x))
             if x not in self.lsm.peaks:
                 self.lsm.peaks.append(x)
                 self.lsm.peaklines[x] = self.makeline(x)
@@ -810,7 +813,8 @@ class LineSelectorMixin(BaseSelectorMixin):
                     peakline = self.lsm.peaklines.pop(old_peak)
                     peakline.remove()
                 except:
-                    print('Could not remove peakline')
+                    with self.out:
+                        print('Could not remove peakline')
             self.canvas.draw()
         #self.redraw()
 
@@ -918,7 +922,8 @@ class SpanSelectorMixin(BaseSelectorMixin):
         if span > self.ssm.minspan and spantest is False:
             self.ssm.ranges.append([numpy.round(vmin, 2), numpy.round(vmax, 2)])
             self.ssm.rangespans.append(self.makespan(vmin, span))
-            print('range {} -> {}'.format(vmax, vmin))
+            with self.out:
+                print('range {} -> {}'.format(vmax, vmin))
         self.ssm.ranges = [numpy.sort(i)[::-1] for i in self.ssm.ranges]
 
 
@@ -993,7 +998,8 @@ class AssignMixin(BaseSelectorMixin):
         super().press(event)
         if event.button == self.am.btn_assign and (event.key == self.am.key_mod1 \
                                         or event.key == self.am.key_mod2):
-            print('assigned peaks and ranges')
+            with self.out:
+                print('assigned peaks and ranges')
             self.assign() 
 
     def assign(self):
@@ -1051,6 +1057,8 @@ class DataSelector():
         self.label = label
 
         self._make_basic_fig()
+        self.out = Output()
+        display(self.out)
 
         self.visible = True
 
@@ -1491,13 +1499,16 @@ class Calibrator:
         
     def process(self):
         peak = self.peak_selector.psm.peak
-        print('current peak ppm:    {}'.format(peak))
-        display(self.textinput)
+        self.peak_selector.out.clear_output()
+        with self.peak_selector.out:
+            print('current peak ppm:    {}'.format(peak))
+            display(self.textinput)
         async def f():
             newx = await self._wait_for_change(self.textinput, 'value')
             offset = newx - peak
             self.fid._params['sw_left'] = self.sw_left + offset
-            print('calibration done.')
+            with self.peak_selector.out:
+                print('calibration done.')
         asyncio.ensure_future(f())
 
 class RangeCalibrator:
@@ -1556,13 +1567,16 @@ class RangeCalibrator:
         
     def process(self):
         peak = self.peak_selector.psm.peak
-        print('current peak ppm:    {}'.format(peak))
-        display(self.textinput)
+        self.peak_selector.out.clear_output()
+        with self.peak_selector.out:
+            print('current peak ppm:    {}'.format(peak))
+            display(self.textinput)
         async def f():
             newx = await self._wait_for_change(self.textinput, 'value')
             offset = newx - peak
             self._applycalibration(offset)
-            print('calibration done.')
+            with self.peak_selector.out:
+                print('calibration done.')
         asyncio.ensure_future(f())
 
     def _applycalibration(self, offset):
