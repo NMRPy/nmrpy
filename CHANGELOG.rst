@@ -1,6 +1,19 @@
 Changelog
 =========
 
+v0.2.3 (2020-06-14)
+-------------------
+
+New
+~~~
+- Use ipywidgets.Output() in selection widgets for compatibility with
+  ipympl 0.5.0+ [JM Rohwer]
+
+Fix
+~~~
+- Fix integral trace selection exceptions. [JM Rohwer]
+
+
 v0.2.2 (2020-06-10)
 -------------------
 
