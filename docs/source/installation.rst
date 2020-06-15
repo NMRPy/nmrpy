@@ -122,11 +122,11 @@ can be launched with: ::
 
 If you will be using the peak-picking and range-selection widgets from within 
 the Jupyter Notebook, this requires the 
-`jupyter-matplotlib <https://github.com/matplotlib/jupyter-matplotlib>`_
+`Matplotlib Jupyter Integration <https://github.com/matplotlib/ipympl>`_
 extension (*ipympl*). This is installed automatically but the extension needs to 
 be activated at the beginning of every notebook thus: ::
 
-    In [1]:   %matplotlib ipympl
+    In [1]:   %matplotlib widget
     
 Documentation
 =============

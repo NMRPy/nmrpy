@@ -12,4 +12,4 @@ quicktest.py
 nmrpy.egg-info
 build_html
 /nmrpy/docs/NMRPy.pdf
-
+.ipynb_checkpoints
