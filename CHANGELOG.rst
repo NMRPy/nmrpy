@@ -1,13 +1,18 @@
 Changelog
 =========
 
-v0.2.3 (2020-06-14)
+v0.2.3 (2020-06-15)
 -------------------
 
 New
 ~~~
 - Use ipywidgets.Output() in selection widgets for compatibility with
   ipympl 0.5.0+ [JM Rohwer]
+
+Changes
+~~~~~~~
+- Update references to '%matplotlib widget' in docs and tutorial
+  notebook. [JM Rohwer]
 
 Fix
 ~~~
