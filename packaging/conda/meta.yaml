@@ -1,0 +1,57 @@
+{% set version = "0.2.3" %}
+
+package:
+  name: nmrpy
+  version: {{ version }}
+
+source:
+  url: https://pypi.io/packages/source/n/nmrpy/nmrpy-{{ version }}.tar.gz
+  sha256: 1f5a0030e1ec7399e4c6cc38cb64c23a89c631c43009485a3b36bd89caf247db
+  #git_url: https://github.com/NMRPy/nmrpy.git
+  # git_rev: 0.2.3
+
+build:
+  noarch: python
+  number: 0
+  script: python -m pip install --no-deps --ignore-installed .
+  # include_recipe: True
+
+requirements:
+  host:
+    - ipympl >=0.4.0
+    - lmfit >=0.9.10
+    - matplotlib >=3.0.0
+    - nmrglue >=0.6
+    - notebook >=6.0.0
+    - numpy >=1.15
+    - python >=3.5
+    - scipy
+    - pip
+  run:
+    - ipympl >=0.4.0
+    - lmfit >=0.9.10
+    - matplotlib >=3.0.0
+    - nmrglue >=0.6
+    - notebook >=6.0.0
+    - numpy >=1.15
+    - python >=3.5
+    - scipy
+
+test:
+  imports:
+    - nmrpy
+    - nmrpy.tests
+
+about:
+  home: "https://github.com/NMRPy/nmrpy"
+  license: New BSD
+  license_family: BSD
+  license_file: LICENSE.txt 
+  summary: "A suite of tools for processing and analysing NMR spectra in Python."
+  doc_url: https://nmrpy.readthedocs.io/en/latest/
+
+extra:
+  recipe-maintainers:
+    - jmrohwer
+  maintainers:
+    - Johann M. Rohwer
