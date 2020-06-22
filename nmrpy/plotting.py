@@ -172,7 +172,6 @@ class Plot():
             upper_ppm=None, 
             lower_ppm=None, 
             data_colour='k', 
-            #peak_colour='b', 
             summed_peak_colour='r', 
             residual_colour='g', 
             data_filled=False,

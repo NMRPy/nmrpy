@@ -1643,7 +1643,6 @@ Ctrl+Alt+Right - assign
         """
         plt = Plot()
         plt._plot_deconv_array(self.get_fids(), 
-            summed_peak_filled=True,
             **kwargs)
         setattr(self, plt.id, plt)
         
