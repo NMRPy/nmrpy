@@ -1,19 +1,20 @@
-{% set version = "0.2.3" %}
+{% set version = "0.2.4" %}
 
 package:
   name: nmrpy
   version: {{ version }}
 
 source:
-  url: https://pypi.io/packages/source/n/nmrpy/nmrpy-{{ version }}.tar.gz
-  sha256: 1f5a0030e1ec7399e4c6cc38cb64c23a89c631c43009485a3b36bd89caf247db
+  path: ../..
+  #url: https://pypi.io/packages/source/n/nmrpy/nmrpy-{{ version }}.tar.gz
+  #sha256: 1f5a0030e1ec7399e4c6cc38cb64c23a89c631c43009485a3b36bd89caf247db
   #git_url: https://github.com/NMRPy/nmrpy.git
-  # git_rev: 0.2.3
+  #git_rev: 0.2.3
 
 build:
   noarch: python
   number: 0
-  script: python -m pip install --no-deps --ignore-installed .
+  script: python -m pip install --no-deps --ignore-installed . -vv
   # include_recipe: True
 
 requirements:
