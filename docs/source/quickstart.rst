@@ -18,7 +18,7 @@ dataset will be processed. The following topics are explored:
 
 This tutorial will use the test data in the nmrpy install directory: ::
     
-    nmrpy/tests/test_data/test1.fid
+    site-packages/nmrpy/tests/test_data/test1.fid
 
 The dataset consists of a time array of spectra of the phosphoglucose isomerase 
 reaction:
@@ -28,7 +28,7 @@ reaction:
 An example Jupyter notebook is provided in the ``docs`` subdirectory of
 the nmrpy install directory, which mirrors this Quickstart Tutorial. ::
 
-    nmrpy/docs/quickstart_tutorial.ipynb
+    site-packages/nmrpy/docs/quickstart_tutorial.ipynb
 
 
 .. _quickstart_importing:
@@ -43,10 +43,15 @@ an array of spectra.
 
 The simplest way to instantiate an :class:`~nmrpy.data_objects.FidArray` is by
 using the :meth:`~nmrpy.data_objects.FidArray.from_path` method, and specifying
-the path of the *.fid* directory: ::
+the path of the *.fid* directory:
+
+.. code:: python
 
     >>> import nmrpy
-    >>> fid_array = nmrpy.from_path(fid_path='./tests/test_data/test1.fid')
+    >>> import os, sysconfig
+    >>> fname = os.path.join(sysconfig.get_paths()['purelib'], 'nmrpy', 
+                             'tests', 'test_data', 'test1.fid')
+    >>> fid_array = nmrpy.from_path(fname)
 
 You will notice that the ``fid_array`` object is instantiated and now owns
 several attributes, most of which are of the form ``fidXX`` where *XX* is
@@ -370,7 +375,7 @@ saved to file using the :meth:`~nmrpy.data_objects.FidArray.save_to_file` method
 
 And reloaded using :meth:`~nmrpy.data_objects.FidArray.from_path`: ::
 
-    >>> fid_array = nmrpy.data_objects.FidArray.from_path(fid_path='fidarray.nmrpy')
+    >>> fid_array = nmrpy.from_path(fid_path='fidarray.nmrpy')
 
 
 .. _quickstart_script:
