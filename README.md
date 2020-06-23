@@ -1,3 +1,5 @@
+[![Documentation Status](https://readthedocs.org/projects/nmrpy/badge/?version=latest)](https://nmrpy.readthedocs.io/en/latest/?badge=latest)
+
 # NMRPy
 
 NMRPy is a Python 3 module for the processing and analysis of NMR spectra. The
