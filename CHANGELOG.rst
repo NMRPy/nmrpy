@@ -1,6 +1,19 @@
 Changelog
 =========
 
+v0.2.4 (2020-06-22)
+-------------------
+
+New
+~~~
+- Update documentation for conda install. [JM Rohwer]
+- Add conda recipe for packaging. [JM Rohwer]
+
+Fix
+~~~
+- Fix plot_deconv_array() arguments. [JM Rohwer]
+
+
 v0.2.3 (2020-06-15)
 -------------------
 
