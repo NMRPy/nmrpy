@@ -637,7 +637,7 @@ class Fid(Base):
         if not Fid._is_flat_iter(self.data):
             raise AttributeError('data must be 1 dimensional.')
         global _phaser_widget
-        _phaser_widget = Phaser(self)
+        self._phaser_widget = Phaser(self)
 
     def calibrate(self):
         """
@@ -650,7 +650,7 @@ class Fid(Base):
 Left - select peak
 '''
         plot_title = "Calibration {}".format(self.id)
-        _calibrate_widget = Calibrator(self,
+        self._calibrate_widget = Calibrator(self,
                             title=plot_title,
                             label=plot_label,
                             )
@@ -722,10 +722,22 @@ Ctrl+Right - delete range
 Ctrl+Alt+Right - assign
 '''
         plot_title = "Peak-picking {}".format(self.id)
-        _peakpicker_widget = DataPeakSelector(self,
+        self._peakpicker_widget = DataPeakSelector(self,
                             title=plot_title,
                             label=plot_label,
                             )
+
+    def clear_peaks(self):
+        """
+        Clear peaks stored in :attr:`~nmrpy.data_objects.Fid.peaks`.
+        """
+        self.peaks = None
+
+    def clear_ranges(self):
+        """
+        Clear ranges stored in :attr:`~nmrpy.data_objects.Fid.ranges`.
+        """
+        self.ranges = None
 
     def baseliner(self):
         """
@@ -743,7 +755,7 @@ Ctrl+Right - delete range
 Ctrl+Alt+Right - assign
 '''
         plot_title = "Baseline correction {}".format(self.id)
-        _baseliner_widget = FidRangeSelector(self,
+        self._baseliner_widget = FidRangeSelector(self,
                                 title=plot_title,
                                 label=plot_label,
                                 )
@@ -1452,7 +1464,7 @@ Ctrl+Right - delete range
 Ctrl+Alt+Right - assign
 '''
         plot_title = 'Select data for baseline-correction'
-        _baseliner_widget = FidArrayRangeSelector(self, title=plot_title, label=plot_label, voff=0.01)
+        self._baseliner_widget = FidArrayRangeSelector(self, title=plot_title, label=plot_label, voff=0.01)
   
     def baseline_correct_fids(self, deg=2):
         """ 
@@ -1672,7 +1684,7 @@ Ctrl+Alt+Right - assign
 '''
 Left - select peak
 '''
-        _calibrate_widget = RangeCalibrator(self,
+        self._calibrate_widget = RangeCalibrator(self,
                             y_indices=fid_number,
                             aoti=assign_only_to_index,
                             voff=voff, 
@@ -1708,7 +1720,7 @@ Drag Right - select range
 Ctrl+Right - delete range
 Ctrl+Alt+Right - assign
 '''
-        _peakpicker_widget = DataPeakRangeSelector(self, 
+        self._peakpicker_widget = DataPeakRangeSelector(self,
                 y_indices=fid_number,
                 aoti=assign_only_to_index,
                 voff=voff, 
@@ -1738,14 +1750,30 @@ Drag Right - select range
 Ctrl+Right - delete range
 Ctrl+Alt+Right - assign
 '''
-        _peakpicker_widget = DataTraceRangeSelector(
+        self._peakpicker_widget = DataTraceRangeSelector(
             self,
             voff=voff,
             lw=lw,
             label=plot_label,
             )
 
-    def _generate_trace_mask(self, traces): 
+    def clear_peaks(self):
+        """
+        Calls :meth:`~nmrpy.data_objects.Fid.clear_peaks` on every :class:`~nmrpy.data_objects.Fid`
+        object in this :class:`~nmrpy.data_objects.FidArray`.
+        """
+        for fid in self.get_fids():
+            fid.peaks = None
+
+    def clear_ranges(self):
+        """
+        Calls :meth:`~nmrpy.data_objects.Fid.clear_ranges` on every :class:`~nmrpy.data_objects.Fid`
+        object in this :class:`~nmrpy.data_objects.FidArray`.
+        """
+        for fid in self.get_fids():
+            fid.ranges = None
+
+    def _generate_trace_mask(self, traces):
         ppm = [numpy.round(numpy.mean(i[0]), 2) for i in traces]
         self._trace_mean_ppm = ppm
         tt = [i[1] for i in traces]
@@ -1847,7 +1875,7 @@ Right - finalize trace
 Ctrl+Left - delete nearest trace
 Ctrl+Alt+Right - assign
 '''
-        _select_trace_widget = DataTraceSelector(self, 
+        self._select_trace_widget = DataTraceSelector(self,
             extra_data=peakshapes, 
             extra_data_colour='b', 
             voff=voff, 
