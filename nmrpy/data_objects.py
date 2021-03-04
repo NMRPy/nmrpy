@@ -1905,17 +1905,25 @@ Ctrl+Alt+Right - assign
             integrals_set[i] = integrals    
         return integrals_set
 
-    def save_to_file(self, filename=None):
+    def save_to_file(self, filename=None, overwrite=False):
         """
         Save :class:`~nmrpy.data_objects.FidArray` object to file, including all objects owned.
 
         :keyword filename: filename to save :class:`~nmrpy.data_objects.FidArray` to
 
+        :keyword overwrite: if True, overwrite existing file
+
         """
         if filename is None:
-            filename = 'data.nmrpy'
+            basename = os.path.split(os.path.splitext(self.fid_path)[0])[-1]
+            filename = basename+'.nmrpy'
         if not isinstance(filename, str):
             raise TypeError('filename must be a string.')
+        if filename[-6:] != '.nmrpy':
+            filename += '.nmrpy'
+        if os.path.isfile(filename) and not overwrite:
+            print('File '+filename+' exists, set overwrite=True to force.')
+            return 1
         #delete all matplotlib plots to reduce file size
         self._del_plots()
         for fid in self.get_fids():
