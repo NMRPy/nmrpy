@@ -1,6 +1,20 @@
 Changelog
 =========
 
+v0.2.5 (2021-03-05)
+-------------------
+
+New
+~~~
+- FidArray.save_to_file() can automatically generate filename from
+  fid_path. [JM Rohwer]
+
+Fix
+~~~
+- Fix GUI peak and range selection widgets, prevent from freezing. [JM
+  Rohwer]
+
+
 v0.2.4 (2020-06-22)
 -------------------
 
