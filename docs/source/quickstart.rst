@@ -372,8 +372,16 @@ The current state of any :class:`~nmrpy.data_objects.FidArray` object can be
 saved to file using the :meth:`~nmrpy.data_objects.FidArray.save_to_file` method: ::
 
     >>> fid_array.save_to_file(filename='fidarray.nmrpy')
+    
+The filename need not be specified, if not given the name is taken from
+:attr:`~nmrpy.data_objects.FidArray.fid_path` and the `.nmrpy` extension is
+appended. If the file exists, it is not overwritten; a forced overwrite can
+be specified with: ::
 
-And reloaded using :meth:`~nmrpy.data_objects.FidArray.from_path`: ::
+    >>> fid_array.save_to_file(filename='fidarray.nmrpy', overwrite=True)
+
+The :class:`~nmrpy.data_objects.FidArray` can be reloaded using 
+:meth:`~nmrpy.data_objects.FidArray.from_path`: ::
 
     >>> fid_array = nmrpy.from_path(fid_path='fidarray.nmrpy')
 
