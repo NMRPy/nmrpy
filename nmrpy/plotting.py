@@ -243,8 +243,8 @@ class Plot():
                 upper_index=None, 
                 lower_index=None, 
                 upper_ppm=None, 
-                lower_ppm=None, 
-                figsize=[9, 6],
+                lower_ppm=None,
+                figsize=(9, 6),
                 lw=0.3, 
                 azim=-90, 
                 elev=20, 
@@ -255,7 +255,7 @@ class Plot():
                 filename=None,
                 ):
 
-        if not Plot._is_iter_of_iters(data): 
+        if not Plot._is_iter_of_iters(data):
             raise AttributeError('data must be 2D.')
         if upper_ppm is not None and lower_ppm is not None:
             if upper_ppm == lower_ppm or upper_ppm < lower_ppm:
@@ -1293,7 +1293,8 @@ class DataTraceSelector:
                 for j in range(tmax, last_fid+1):
                     trace_dict[i][j] = tmaxval
         self.fid_array.integral_traces = trace_dict
-  
+        plt.close(self.integral_selector.fig)
+
 class DataTraceRangeSelector:
     """
     Interactive data-selection widget with traces and ranges. Traces are saved
@@ -1339,7 +1340,8 @@ class DataTraceRangeSelector:
 
         self.fid_array._set_all_peaks_ranges_from_traces_and_spans(
                 traces, spans)
-  
+        plt.close(self.peak_selector.fig)
+
 class DataPeakSelector:
     """
     Interactive data-selection widget with lines and ranges for a single Fid.
@@ -1389,6 +1391,7 @@ class DataPeakSelector:
         else:
             self.fid.peaks = None
             self.fid.ranges = None
+        plt.close(self.peak_selector.fig)
 
 class DataPeakRangeSelector:
     """Interactive data-selection widget with lines and ranges. Lines and spans are saved as self.peaks, self.ranges."""
@@ -1454,6 +1457,7 @@ class DataPeakRangeSelector:
             for fid in self.fids:
                 fid.peaks = peaks
                 fid.ranges = ranges
+        plt.close(self.peak_selector.fig)
   
 class Calibrator:
     """
@@ -1508,6 +1512,7 @@ class Calibrator:
             self.fid._params['sw_left'] = self.sw_left + offset
             with self.peak_selector.out:
                 print('calibration done.')
+            plt.close(self.peak_selector.fig)
         asyncio.ensure_future(f())
 
 class RangeCalibrator:
@@ -1576,6 +1581,7 @@ class RangeCalibrator:
             self._applycalibration(offset)
             with self.peak_selector.out:
                 print('calibration done.')
+            plt.close(self.peak_selector.fig)
         asyncio.ensure_future(f())
 
     def _applycalibration(self, offset):
@@ -1631,7 +1637,7 @@ class FidArrayRangeSelector:
                 bl_ppm.append(cur_peaks)
             bl_ppm = numpy.array([j for i in bl_ppm for j in i])
             fid._bl_ppm = bl_ppm
-
+        plt.close(self.span_selector.fig)
 
 class FidRangeSelector:
     """Interactive data-selection widget with ranges. Spans are saved as self.ranges."""
@@ -1674,6 +1680,7 @@ class FidRangeSelector:
             bl_ppm.append(cur_peaks)
         bl_ppm = numpy.array([j for i in bl_ppm for j in i])
         self.fid._bl_ppm = bl_ppm
-        
+        plt.close(self.span_selector.fig)
+
 if __name__ == '__main__':
     pass
