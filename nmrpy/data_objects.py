@@ -132,8 +132,12 @@ class Base():
         tof = float(procpar['procpar']['tof']['values'][0])
         rt = at+d1
         nt = numpy.array(
-            [procpar['procpar']['nt']['values']], dtype=int)
-        acqtime = (nt*rt).cumsum()/60.  # convert to mins.
+            [procpar['procpar']['nt']['values']], dtype=int).flatten()
+        acqtime = numpy.zeros(nt.shape)
+        acqtime[0] = (rt * nt[0] / 2)
+        for i in range(1, len(nt)):
+            acqtime[i] = acqtime[i - 1] + (nt[i - 1] + nt[i]) / 2 * rt
+        acqtime /= 60.   # convert to min
         sw_hz = float(procpar['procpar']['sw']['values'][0])
         sw = round(sw_hz/reffrq, 2)
         sw_left = (0.5+1e6*(sfrq-reffrq)/sw_hz)*sw_hz/sfrq
@@ -175,11 +179,13 @@ class Base():
         at = procpar['acqus']['TD']/(2*sw_hz)
         rt = at+d1
         td = procpar['tdelta']
-        ts = procpar['tstart']
+        cumulative = procpar['tcum']
+        single = procpar['tsingle']
+        tstart = cumulative - 0.5*single    # tstart for acquisition
         al = procpar['arraylength']
         a = procpar['arrayset']
         acqtime = numpy.zeros((al))
-        acqtime[0] = ts[a-1]
+        acqtime[0] = tstart[a-1]
         for i in range(1, al):
             acqtime[i] = acqtime[i-1] + td
         params = dict(
@@ -2021,7 +2027,7 @@ class BrukerImporter(Importer):
                     break
                 if alldata[incr][1].shape == alldata[0][1].shape:
                     break
-                incr +=1
+                incr += 1
             if incr > 1:
                 if arrayset == None:
                     print('Total of '+str(incr)+' alternating FidArrays found.')
@@ -2041,7 +2047,8 @@ class BrukerImporter(Importer):
             self._procpar = procpar
             self._file_format = 'bruker'
             self.data = nmrglue.bruker.remove_digital_filter(procpar, self.data)
-            self._procpar['tdelta'], self._procpar['tstart'] = self._get_time_delta()
+            self._procpar['tdelta'], self._procpar['tcum'],\
+                    self._procpar['tsingle'] = self._get_time_delta()
             self._procpar['arraylength'] = self.data.shape[0]
             self._procpar['arrayset'] = arrayset
         except FileNotFoundError:
@@ -2051,16 +2058,19 @@ class BrukerImporter(Importer):
             
     def _get_time_delta(self):
         td = 0.0
-        start = []
+        tcum = []
+        tsingle = []
         for i in range(self.incr):
             pp = self.alldata[i][0]['acqus']
             sw_hz = pp['SW_h']
             at = pp['TD']/(2*sw_hz)
             d1 = pp['RD']
             nt = pp['NS']
-            td += (at+d1)*nt/60. # convert to mins
-            start.append(td)
-        return (td, start)
+            tot = (at+d1)*nt/60.   # convert to mins
+            td += tot
+            tcum.append(td)
+            tsingle.append(tot)
+        return (td, numpy.array(tcum), numpy.array(tsingle))
 
 if __name__ == '__main__':
     pass
