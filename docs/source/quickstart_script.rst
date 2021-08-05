@@ -3,11 +3,11 @@ The full script for the quickstart tutorial:
 .. code:: python
 
     import nmrpy
-    import os, sysconfig
+    import os
     from matplotlib import pyplot as plt
 
-    fname = os.path.join(sysconfig.get_paths()['purelib'], 'nmrpy', 
-                         'tests', 'test_data', 'test1.fid')
+    fname = os.path.join(os.path.dirname(nmrpy.__file__), 'tests',
+                         'test_data', 'test1.fid')
     fid_array = nmrpy.from_path(fid_path=fname)
     fid_array.emhz_fids()
     #fid_array.fid00.plot_ppm()
@@ -57,6 +57,15 @@ The full script for the quickstart tutorial:
     ax.set_ylabel('mM')
     ax.legend(loc=0, frameon=False)
     plt.show()
+    
+    print([f.id for f in fid_array.get_fids()])
+
+    #delete selected Fids from array
+    for fid_id in [f.id for f in fid_array.get_fids()][::4]:
+        fid_array.del_fid(fid_id)
+    print([f.id for f in fid_array.get_fids()])
+    print(['{:.2f}'.format(i) for i in fid_array.t])
+    #fid_array.plot_array(upper_ppm=7, lower_ppm=-1, filled=True, azim=-68, elev=25)
     
     #fid_array.save_to_file(filename='fidarray.nmrpy')
     #fid_array = nmrpy.from_path(fid_path='fidarray.nmrpy')

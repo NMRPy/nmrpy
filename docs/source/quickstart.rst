@@ -48,11 +48,12 @@ the path of the *.fid* directory:
 .. code:: python
 
     >>> import nmrpy
-    >>> import os, sysconfig
-    >>> fname = os.path.join(sysconfig.get_paths()['purelib'], 'nmrpy', 
+    >>> import os
+    >>> fname = os.path.join(os.path.dirname(nmrpy.__file__),
                              'tests', 'test_data', 'test1.fid')
     >>> fid_array = nmrpy.from_path(fname)
-
+    
+    
 You will notice that the ``fid_array`` object is instantiated and now owns
 several attributes, most of which are of the form ``fidXX`` where *XX* is
 a number starting at 00. These are the individual arrayed
@@ -81,8 +82,9 @@ visualise the result: ::
 
 .. image:: _static/quickstart_2.png
 
-Finally, we Fourier-transform the data into the frequency domain: ::
+Finally, we zero-fill and Fourier-transform the data into the frequency domain: ::
 
+    >>> fid_array.zf_fids()
     >>> fid_array.ft_fids()
     >>> fid_array.fid00.plot_ppm()
 
@@ -327,7 +329,18 @@ Peak integrals of the entire :class:`~nmrpy.data_objects.FidArray` are stored in
 individual :class:`~nmrpy.data_objects.Fid` as
 :attr:`~nmrpy.data_objects.Fid.deconvoluted_integrals`.
 
-We could easily plot the species integrals using the following code:
+Plotting the time-course
+========================
+
+The acquisition times for the individual :class:`~nmrpy.data_objects.Fid` 
+objects in the :class:`~nmrpy.data_objects.FidArray` are stored in an array 
+:attr:`~nmrpy.data_objects.FidArray.t` for easy access. Note that when each 
+:class:`~nmrpy.data_objects.Fid` is collected with multiple transients/scans on 
+the spectrometer, the acquisition time is calculated as the *middle* of its 
+overall acquisition period.
+
+We could thus easily plot the time-course of the species integrals using the 
+following code:
 
 .. code:: python
 
@@ -364,6 +377,52 @@ We could easily plot the species integrals using the following code:
 
 
 .. _quickstart_exporting:
+
+
+Deleting individual `Fid` objects from a `FidArray`
+===================================================
+
+Sometimes it may be desirable to remove one or more 
+:class:`~nmrpy.data_objects.Fid` objects from a 
+:class:`~nmrpy.data_objects.FidArray`, e.g. to remove outliers from the 
+time-course of concentrations. This can be conveniently achieved with the 
+:meth:`~nmrpy.data_objects.FidArray.del_fid()` method, which takes as argument 
+the :attr:`~nmrpy.data_objects.Fid.id` of the :class:`~nmrpy.data_objects.Fid` 
+to be removed. The acquisition time array 
+:attr:`~nmrpy.data_objects.FidArray.t` is updated accordingly by removing the 
+corresponding time-point. After this, 
+:meth:`~nmrpy.data_objects.FidArray.deconv_fids` has to be run again to update 
+the array of peak integrals.
+
+A list of all the :class:`~nmrpy.data_objects.Fid` objects in a 
+:class:`~nmrpy.data_objects.FidArray` is returned by the 
+:meth:`~nmrpy.data_objects.FidArray.get_fids` method. ::
+
+    >>> print([f.id for f in fid_array.get_fids()])
+        ['fid00', 'fid01', 'fid02', 'fid03', 'fid04', 'fid05', 'fid06', 'fid07', 
+         'fid08', 'fid09', 'fid10', 'fid11', 'fid12', 'fid13', 'fid14', 'fid15', 
+         'fid16', 'fid17', 'fid18', 'fid19', 'fid20', 'fid21', 'fid22', 'fid23']
+         
+    >>> for fid_id in [f.id for f in fid_array.get_fids()][::4]:
+            fid_array.del_fid(fid_id)
+            
+    >>> print([f.id for f in fid_array.get_fids()])
+        ['fid01', 'fid02', 'fid03', 'fid05', 'fid06', 'fid07', 'fid09', 'fid10', 
+         'fid11', 'fid13', 'fid14', 'fid15', 'fid17', 'fid18', 'fid19', 'fid21', 
+         'fid22', 'fid23']
+         
+    >>> print(['{:.2f}'.format(i) for i in fid_array.t])
+        ['3.48', '5.80', '8.12', '12.76', '15.08', '17.40', '22.04', '24.36', '26.68',
+         '31.32', '33.64', '35.96', '40.60', '42.92', '45.24', '49.88', '52.20', '54.52']
+         
+The gaps left by the deleted :class:`~nmrpy.data_objects.Fid` objects are clearly visible in the plotted 
+:class:`~nmrpy.data_objects.FidArray`: ::
+
+    >>> fid_array.plot_array(upper_ppm=7, lower_ppm=-1, filled=True, azim=-68, elev=25)
+
+.. image:: _static/quickstart_15.png
+   :width: 75%
+   :align: center
 
 Saving / Loading
 ================
