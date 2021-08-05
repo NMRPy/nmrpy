@@ -415,6 +415,26 @@ class Fid(Base):
         for plot in plots:
             delattr(self, plot.id)
 
+    def _get_widgets(self):
+        """
+        Return a list of all widget objects (peak selection, etc.) owned by this :class:`~nmrpy.data_objects.Fid`.
+        """
+        widgets = [
+            id for id in sorted(self.__dict__)
+            if isinstance(self.__dict__[id], Phaser)
+            or isinstance(self.__dict__[id], Calibrator)
+            or isinstance(self.__dict__[id], DataPeakSelector)
+            or isinstance(self.__dict__[id], FidRangeSelector)
+        ]
+        return widgets
+
+    def _del_widgets(self):
+        """
+        Deletes all widget objects (peak selection, etc.) owned by this :class:`~nmrpy.data_objects.Fid`.
+        """
+        widgets = self._get_widgets()
+        for w in widgets:
+            delattr(self, w)
 
     @classmethod
     def _is_valid_dataset(cls, data):
@@ -1226,6 +1246,29 @@ class FidArray(Base):
         for plot in plots:
             delattr(self, plot.id)
 
+    def _get_widgets(self):
+        """
+        Return a list of all widget objects (peak selection, etc.) owned by this :class:`~nmrpy.data_objects.FidArray`.
+        """
+        widgets = [
+            id for id in sorted(self.__dict__)
+            if isinstance(self.__dict__[id], Phaser)
+            or isinstance(self.__dict__[id], RangeCalibrator)
+            or isinstance(self.__dict__[id], DataPeakRangeSelector)
+            or isinstance(self.__dict__[id], FidArrayRangeSelector)
+            or isinstance(self.__dict__[id], DataTraceRangeSelector)
+            or isinstance(self.__dict__[id], DataTraceSelector)
+        ]
+        return widgets
+
+    def _del_widgets(self):
+        """
+        Deletes all widget objects (peak selection, etc.) owned by this :class:`~nmrpy.data_objects.Fid`.
+        """
+        widgets = self._get_widgets()
+        for w in widgets:
+            delattr(self, w)
+
     @property
     def data(self):
         """
@@ -1935,10 +1978,14 @@ Ctrl+Alt+Right - assign
         if os.path.isfile(filename) and not overwrite:
             print('File '+filename+' exists, set overwrite=True to force.')
             return 1
-        #delete all matplotlib plots to reduce file size
+        # delete all matplotlib plots to reduce file size
         self._del_plots()
         for fid in self.get_fids():
             fid._del_plots()
+        # delete all widgets (can't be pickled)
+        self._del_widgets()
+        for fid in self.get_fids():
+            fid._del_widgets()
         with open(filename, 'wb') as f:
             pickle.dump(self, f)
   
