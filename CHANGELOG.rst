@@ -1,6 +1,27 @@
 Changelog
 =========
 
+v0.2.6 (2021-08-05)
+-------------------
+
+New
+~~~
+- Update acqtime array when deleting Fid with FidArray.del_fid() [JM
+  Rohwer]
+
+Changes
+~~~~~~~
+- Update documentation with new functionality. [JM Rohwer]
+- Update processing so that FidArray.t and FidArray._params['acqtime']
+  refer to t in the middle of the acquisition, not at the end (for
+  easier time course analysis) [JM Rohwer]
+
+Fix
+~~~
+- Fix FidArray.save_to_file() to delete all selection widgets, these
+  can't be pickled. [JM Rohwer]
+
+
 v0.2.5 (2021-03-05)
 -------------------
 
