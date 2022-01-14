@@ -61,7 +61,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = 'NMRPy'
-copyright = '2016-2021, Johann Eicher & Johann Rohwer'
+copyright = '2016-2022, Johann Eicher & Johann Rohwer'
 author = 'Johann Eicher, Johann Rohwer'
 
 # The version info for the project you're documenting, acts as replacement for
