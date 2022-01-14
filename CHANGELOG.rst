@@ -1,6 +1,25 @@
 Changelog
 =========
 
+v0.2.7 (2022-01-14)
+-------------------
+
+New
+~~~
+- Continuous integration: add Anaconda build script via github actions.
+  [JM Rohwer]
+- Update unit tests with a suite of all tests except plotting. [JM
+  Rohwer]
+- Continuous integration: add cibuildwheel script via github actions.
+  [JM Rohwer]
+
+Fix
+~~~
+- Fix FidArray.del_fid() [JM Rohwer]
+- Clean up plotting code, fix widgets for matplotlib 3.5 and ipympl 0.8.
+  [JM Rohwer]
+
+
 v0.2.6 (2021-08-05)
 -------------------
 
