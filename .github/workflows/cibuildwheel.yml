@@ -2,9 +2,9 @@ name: CI build wheels
 
 on:
   workflow_dispatch:
-#  release:
-#    types:
-#      - released
+  release:
+    types:
+      - released
 
 jobs:
   build_wheel_and_sdist:
@@ -34,19 +34,19 @@ jobs:
           name: wheel_and_tarball
           path: dist/*
 
-#  upload_pypi:
-#    needs: [build_wheels, build_sdist]
-#    runs-on: ubuntu-latest
-#    # to publish when a GitHub Release is created:
-#    if: github.event_name == 'release' && github.event.action == 'released'
-#    steps:
-#      - uses: actions/download-artifact@v2
-#        with:
-#          name: wheels_and_tarball
-#          path: dist
-#
-#      - uses: pypa/gh-action-pypi-publish@v1.4.2
-#        with:
-#          user: __token__
-#          password: ${{ secrets.PYPI_TOKEN }}
-##          repository_url: https://test.pypi.org/legacy/
+  upload_pypi:
+    needs: build_wheel_and_sdist
+    runs-on: ubuntu-latest
+    # to publish when a GitHub Release is created:
+    if: github.event_name == 'release' && github.event.action == 'released'
+    steps:
+      - uses: actions/download-artifact@v2
+        with:
+          name: wheel_and_tarball
+          path: dist
+
+      - uses: pypa/gh-action-pypi-publish@v1.4.2
+        with:
+          user: __token__
+          password: ${{ secrets.PYPI_TOKEN }}
+#          repository_url: https://test.pypi.org/legacy/
