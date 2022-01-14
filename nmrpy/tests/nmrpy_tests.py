@@ -1,6 +1,5 @@
 import unittest
 from nmrpy.data_objects import *
-from nmrpy import __version__
 import numpy
 import os
 
@@ -245,7 +244,7 @@ class TestFidArrayInitialisation(unittest.TestCase):
         fid_array = FidArray()
         self.assertTrue(fid_array.id is None)
         fid_array = FidArray(id='string')
-        self.assertTrue(fid_array.id is 'string')
+        self.assertTrue(fid_array.id == 'string')
         print(fid_array)
 
     def test_failed_fid_array_assignment(self):
@@ -701,6 +700,7 @@ class NMRPyTest:
         'fidutils'      - Fid utilities tests
         'fidarrayutils' - FidArray utilities tests
         'plotutils'     - plotting utilities tests
+        'noplot'        - all tests except plotting utilities (scripted usage)
         """
         runner = unittest.TextTestRunner()
         baseinit_test = unittest.makeSuite(TestBaseInitialisation)
@@ -717,6 +717,11 @@ class NMRPyTest:
             suite.addTests(fidutils_test)
             suite.addTests(fidarrayutils_test)
             suite.addTests(plotutils_test)
+        elif tests == 'noplot':
+            suite.addTests(fidinit_test)
+            suite.addTests(fidarrayinit_test)
+            suite.addTests(fidutils_test)
+            suite.addTests(fidarrayutils_test)
         elif tests == 'fidinit':
             suite.addTests(fidinit_test)
         elif tests == 'fidarrayinit':
