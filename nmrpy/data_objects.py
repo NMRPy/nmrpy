@@ -353,7 +353,7 @@ class Fid(Base):
         """
         if self.ranges is not None:
             return numpy.array([[peak for peak in self.peaks if peak > min(peak_range) and peak < max(peak_range)]
-                    for peak_range in self.ranges])
+                    for peak_range in self.ranges], dtype=object)
         else:
             return []
     @property
@@ -363,7 +363,7 @@ class Fid(Base):
         """
         if self._index_ranges is not None:
             return numpy.array([[peak for peak in self._index_peaks if peak > min(peak_range) and peak < max(peak_range)]
-                    for peak_range in self._index_ranges])
+                    for peak_range in self._index_ranges], dtype=object)
         else:
             return []
 

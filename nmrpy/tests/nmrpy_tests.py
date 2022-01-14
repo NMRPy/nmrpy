@@ -89,8 +89,18 @@ class TestFidInitialisation(unittest.TestCase):
         fid = fid_array.get_fids()[0]
         fid.peaks = [ 4.71,  4.64,  4.17,  0.57]
         fid.ranges = [[ 5.29,  3.67], [1.05,  0.27]]
-        self.assertTrue(numpy.allclose(fid._grouped_peaklist.shape, numpy.array([[ 4.71,  4.64,  4.17], [ 0.57]]).shape))
-        self.assertTrue(numpy.allclose(fid._grouped_index_peaklist.shape, numpy.array([[6551, 6569, 6691], [7624]]).shape))
+        self.assertTrue(
+            numpy.allclose(
+                fid._grouped_peaklist.shape,
+                numpy.array([[4.71, 4.64, 4.17], [0.57]], dtype=object).shape,
+            )
+        )
+        self.assertTrue(
+            numpy.allclose(
+                fid._grouped_index_peaklist.shape,
+                numpy.array([[6551, 6569, 6691], [7624]], dtype=object).shape,
+            )
+        )
 
 
     def test_failed_fid_ranges_setter(self):
