@@ -1,22 +1,17 @@
 import nmrpy.data_objects
 import logging, traceback
 import numpy
-import scipy
 from matplotlib import pyplot as plt
-import numbers
 from datetime import datetime
 from matplotlib.figure import Figure
-from mpl_toolkits.mplot3d import Axes3D
 from matplotlib.collections import PolyCollection
-import copy
 
-from matplotlib.patches import Circle, Rectangle
-from matplotlib.lines import Line2D
+from matplotlib.patches import Rectangle
 from matplotlib.transforms import blended_transform_factory
 from matplotlib.widgets import Cursor
 from matplotlib.backend_bases import NavigationToolbar2, Event
 
-from ipywidgets import FloatText, Output
+from ipywidgets import FloatText, Output, VBox
 from IPython.display import display
 import asyncio
 
@@ -1055,9 +1050,8 @@ class DataSelector():
         self.title = title
         self.label = label
 
-        self._make_basic_fig()
         self.out = Output()
-        display(self.out)
+        self._make_basic_fig()
 
         self.visible = True
 
@@ -1080,9 +1074,9 @@ class DataSelector():
         self.ciddraw = self.canvas.mpl_connect('draw_event', self.on_draw) 
         #cursor = Cursor(self.ax, useblit=True, color='k', linewidth=0.5)
         #cursor.horizOn = False
-        self.canvas.draw()
+        # self.canvas.draw()
         #self.redraw()
-        plt.show()
+        # plt.show()
 
     def disconnect(self):
         self.canvas.mpl_disconnect(self.cidmotion)
@@ -1092,44 +1086,77 @@ class DataSelector():
         self.canvas.mpl_disconnect(self.cidzoom)
         self.canvas.mpl_disconnect(self.ciddraw)
 
+    def _isnotebook(self):
+        try:
+            shell = get_ipython().__class__.__name__
+            if shell == 'ZMQInteractiveShell':
+                return True  # Jupyter notebook or qtconsole
+            elif shell == 'TerminalInteractiveShell':
+                return False  # Terminal running IPython
+            else:
+                return False  # Other type (?)
+        except NameError:
+            return False  # Probably standard Python interpreter
+
     def _make_basic_fig(self, *args, **kwargs):
+        plt.ioff()
         self.fig = plt.figure(figsize=[9, 6])
         self.ax = self.fig.add_subplot(111)
-        if len(self.data.shape)==1:
-            self.ppm = numpy.mgrid[self.params['sw_left']-self.params['sw']:self.params['sw_left']:complex(self.data.shape[0])]
-            #extra_data
+        if len(self.data.shape) == 1:
+            self.ppm = numpy.mgrid[
+                self.params['sw_left']
+                - self.params['sw'] : self.params['sw_left'] : complex(self.data.shape[0])
+            ]
+            # extra_data
             if self.extra_data is not None:
-                self.ax.plot(self.ppm[::-1], self.extra_data, color=self.extra_data_colour, lw=1)
-            #data
+                self.ax.plot(
+                    self.ppm[::-1], self.extra_data, color=self.extra_data_colour, lw=1
+                )
+            # data
             self.ax.plot(self.ppm[::-1], self.data, color='k', lw=1)
-        elif len(self.data.shape)==2:
-            cl = dict(zip(range(len(self.data)), plt.cm.viridis(numpy.linspace(0,1,len(self.data)))))
-            self.ppm = numpy.mgrid[self.params['sw_left']-self.params['sw']:self.params['sw_left']:complex(self.data.shape[1])]
-            self.y_indices = numpy.arange(len(self.data))*self.voff*self.data.max()
-            #this is reversed for zorder
-            #extra_data
+        elif len(self.data.shape) == 2:
+            cl = dict(
+                zip(
+                    range(len(self.data)),
+                    plt.cm.viridis(numpy.linspace(0, 1, len(self.data))),
+                )
+            )
+            self.ppm = numpy.mgrid[
+                self.params['sw_left']
+                - self.params['sw'] : self.params['sw_left'] : complex(self.data.shape[1])
+            ]
+            self.y_indices = numpy.arange(len(self.data)) * self.voff * self.data.max()
+            # this is reversed for zorder
+            # extra_data
             if self.extra_data is not None:
-                for i,j in zip(range(len(self.extra_data))[::-1], self.extra_data[::-1]):
-                    self.ax.plot(self.ppm[::-1], j+self.y_indices[i], color=self.extra_data_colour, lw=1)
-            #data
-            for i,j in zip(range(len(self.data))[::-1], self.data[::-1]):
-                self.ax.plot(self.ppm[::-1], j+self.y_indices[i], color=cl[i], lw=1)
+                for i, j in zip(range(len(self.extra_data))[::-1], self.extra_data[::-1]):
+                    self.ax.plot(
+                        self.ppm[::-1],
+                        j + self.y_indices[i],
+                        color=self.extra_data_colour,
+                        lw=1,
+                    )
+            # data
+            for i, j in zip(range(len(self.data))[::-1], self.data[::-1]):
+                self.ax.plot(self.ppm[::-1], j + self.y_indices[i], color=cl[i], lw=1)
         self.ax.set_xlabel('ppm')
-        self.ylims = numpy.array(self.ax.get_ylim())#numpy.array([self.ax.get_ylim()[0], self.data.max() + abs(self.ax.get_ylim()[0])])
-        #self.ax.set_ylim(self.ylims)#self.ax.get_ylim()[0], self.data.max()*1.1])
+        self.ylims = numpy.array(self.ax.get_ylim())
+        # numpy.array([self.ax.get_ylim()[0], self.data.max() + abs(self.ax.get_ylim()[0])])
+        # self.ax.set_ylim(self.ylims)#self.ax.get_ylim()[0], self.data.max()*1.1])
         self.ax_lims = self.ax.get_ylim()
         self.xlims = [self.ppm[-1], self.ppm[0]]
         self.ax.set_xlim(self.xlims)
         self.fig.suptitle(self.title, size=20)
-        self.ax.text(
-            0.95 *
-            self.ax.get_xlim()[0],
-            0.7 *
-            self.ax.get_ylim()[1],
-            self.label),
+        self.ax.text(0.95 * self.ax.get_xlim()[0], 0.7 * self.ax.get_ylim()[1], self.label)
         self.ax.set_ylim(self.ylims)
         self.canvas = self.ax.figure.canvas
-        self.canvas.draw()
+        # self.canvas.draw()
+        plt.ion()
+        if self._isnotebook():
+            display(VBox([self.canvas, self.out]))
+        else:
+            plt.show()
+            display(self.out)
         self.background = self.canvas.copy_from_bbox(self.ax.bbox)
 
     def check_mode(self):
@@ -1172,7 +1199,7 @@ class DataSelector():
 
     def onmove(self, event):
         if event.inaxes is None:
-                return
+            return
         x, y = event.xdata, event.ydata
         self.prev = x, y
         self.canvas.restore_region(self.background)
