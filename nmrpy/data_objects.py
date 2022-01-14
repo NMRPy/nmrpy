@@ -1335,10 +1335,11 @@ class FidArray(Base):
             if isinstance(getattr(self, fid_id), Fid):
                 fids = [f.id for f in self.get_fids()]
                 idx = fids.index(fid_id)
-                at = list(self._params['acqtime'])
-                at.pop(idx)
-                self._params['acqtime'] = at
                 delattr(self, fid_id)
+                if hasattr(self, '_params') and self._params is not None:
+                    at = list(self._params['acqtime'])
+                    at.pop(idx)
+                    self._params['acqtime'] = at
             else:
                 raise AttributeError('{} is not an FID object.'.format(fid_id))
         else:
