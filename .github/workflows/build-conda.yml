@@ -18,7 +18,7 @@ jobs:
         with:
           update-conda: false
           python-version: 3.9
-          conda-channels: [conda-forge, jmrohwer]
+          conda-channels: jmrohwer, conda-forge
       
       - name: Prepare conda environment
         run: |
