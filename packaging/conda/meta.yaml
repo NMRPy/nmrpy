@@ -14,8 +14,8 @@ source:
 build:
   noarch: python
   number: 0
+  include_recipe: True
   script: python -m pip install --no-deps --ignore-installed . -vv
-  # include_recipe: True
 
 requirements:
   host:
@@ -42,6 +42,8 @@ test:
   imports:
     - nmrpy
     - nmrpy.tests
+  commands:
+    - python -s -c "import nmrpy; nmrpy.test('noplot')"
 
 about:
   home: "https://github.com/NMRPy/nmrpy"

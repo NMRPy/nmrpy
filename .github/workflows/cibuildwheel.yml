@@ -26,7 +26,7 @@ jobs:
       - name: Test
         run: |
           pip install dist/nmrpy*.whl
-          python -c "import nmrpy; nmrpy.test('noplot')"
+          python -s -c "import nmrpy; nmrpy.test('noplot')"
 
       - uses: actions/upload-artifact@v2
         name: Upload build artifacts
