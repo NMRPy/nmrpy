@@ -164,7 +164,7 @@ class Base():
         Extract some commonly-used NMR parameters (using Bruker denotations)
         and return a parameter dictionary 'params'.
         """
-        d1 = procpar['acqus']['RD']
+        d1 = procpar['acqus']['D'][1]
         reffrq = procpar['acqus']['SFO1']
         nt = procpar['acqus']['NS']
         sw_hz = procpar['acqus']['SW_h']
@@ -2104,7 +2104,7 @@ class BrukerImporter(Importer):
             pp = self.alldata[i][0]['acqus']
             sw_hz = pp['SW_h']
             at = pp['TD']/(2*sw_hz)
-            d1 = pp['RD']
+            d1 = pp['D'][1]
             nt = pp['NS']
             tot = (at+d1)*nt/60.   # convert to mins
             td += tot
