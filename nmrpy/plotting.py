@@ -15,9 +15,6 @@ from ipywidgets import FloatText, Output, VBox
 from IPython.display import display
 import asyncio
 
-original_home = NavigationToolbar2.home
-original_zoom = NavigationToolbar2.zoom
-
 class Plot():
     """
     Basic 'plot' class containing functions for various types of plots.
@@ -999,20 +996,6 @@ class AssignMixin(BaseSelectorMixin):
     def assign(self):
         pass
         
-#this is to catch 'home' events in the dataselector 
-def dataselector_home(self, *args, **kwargs):
-    s = 'home_event'
-    event = Event(s, self)
-    original_home(self, *args, **kwargs)
-    self.canvas.callbacks.process(s, event)
-
-#this is to catch 'zoom' events in the dataselector 
-def dataselector_zoom(self, *args, **kwargs):
-    s = 'zoom_event'
-    event = Event(s, self)
-    original_zoom(self, *args, **kwargs)
-    self.canvas.callbacks.process(s, event)
-
 class DataSelector():
     """
     Interactive selector widget. can inherit from various mixins for functionality:
@@ -1063,15 +1046,10 @@ class DataSelector():
         super().__init__() #calling parent init
         #self.canvas.blit(self.ax.bbox) 
 
-        NavigationToolbar2.home = dataselector_home
-        NavigationToolbar2.zoom = dataselector_zoom
-
         self.cidmotion = self.canvas.mpl_connect('motion_notify_event', self.onmove)
         self.cidpress = self.canvas.mpl_connect('button_press_event', self.press)
         self.cidrelease = self.canvas.mpl_connect('button_release_event', self.release)
-        self.cidhome = self.canvas.mpl_connect('home_event', self.on_home) 
-        self.cidzoom = self.canvas.mpl_connect('zoom_event', self.on_zoom) 
-        self.ciddraw = self.canvas.mpl_connect('draw_event', self.on_draw) 
+        self.ciddraw = self.canvas.mpl_connect('draw_event', self.on_draw)
         #cursor = Cursor(self.ax, useblit=True, color='k', linewidth=0.5)
         #cursor.horizOn = False
         # self.canvas.draw()
@@ -1082,8 +1060,6 @@ class DataSelector():
         self.canvas.mpl_disconnect(self.cidmotion)
         self.canvas.mpl_disconnect(self.cidpress)
         self.canvas.mpl_disconnect(self.cidrelease)
-        self.canvas.mpl_disconnect(self.cidhome)
-        self.canvas.mpl_disconnect(self.cidzoom)
         self.canvas.mpl_disconnect(self.ciddraw)
 
     def _isnotebook(self):
