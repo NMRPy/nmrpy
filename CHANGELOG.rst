@@ -1,6 +1,15 @@
 Changelog
 =========
 
+v0.2.8 (2022-09-29)
+-------------------
+
+Fix
+~~~
+- Fix plotting widget callbacks for matplotlib 3.6.0. [JM Rohwer]
+- Fix parsing of Bruker D1 parameter when reading in data. [JM Rohwer]
+
+
 v0.2.7 (2022-01-14)
 -------------------
 
