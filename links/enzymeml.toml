@@ -1,0 +1,22 @@
+__model__ = "NMRpy"
+
+[__sources__]
+EnzymeMLDocument = "https://github.com/EnzymeML/enzymeml-specifications.git@markdown-parser-refactor"
+
+[NMRpy]
+datetime_created = "EnzymeMLDocument.created"
+datetime_modified = "EnzymeMLDocument.modified"
+
+[experiment]
+name = "EnzymeMLDocument.name"
+
+[citation]
+doi = "EnzymeMLDocument.doi"
+
+["citation.authors"]
+last_name = "EnzymeMLDocument.creators.given_name"
+first_name = "EnzymeMLDocument.creators.family_name"
+email = "EnzymeMLDocument.creators.mail"
+
+["citation.related_publications"]
+doi = "EnzymeMLDocument.url"
