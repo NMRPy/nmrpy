@@ -1400,6 +1400,19 @@ class FidArray(Base):
             datetime_modified=_now,
         )
         del _now
+        self._force_pyenzyme = False
+
+    @property
+    def force_pyenzyme(self):
+        return self._force_pyenzyme
+
+    @force_pyenzyme.setter
+    def force_pyenzyme(self):
+        raise PermissionError("Forbidden!")
+
+    @force_pyenzyme.deleter
+    def force_pyenzyme(self):
+        raise PermissionError("Forbidden!")
 
     @property
     def data_model(self):
@@ -2284,6 +2297,16 @@ Ctrl+Alt+Right - assign
 
     def save_data(self, file_format: str, filename=None, overwrite=False):
         print("~~~ Method under contruction ~~~")
+        if self.force_pyenzyme:
+            import pyenzyme as pe
+
+            enzymeml = pe.EnzymeMLDocument(
+                name=self.data_mode.experiment.name
+                if hasattr(self.data_model.experiment, "name")
+                else "NMR experiment"
+            )
+            ...
+            return 1
         if file_format.lower() == ("enzymeml" or "nmrml"):
             # model = self.data_model.convert_to(
             #     template=Path(__file__).parent.parent / "links/enzymeml.toml"
