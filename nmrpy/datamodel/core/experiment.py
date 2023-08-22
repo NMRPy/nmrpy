@@ -7,8 +7,8 @@ from sdRDM.base.utils import forge_signature, IDGenerator
 
 
 from .fidarray import FIDArray
-from .fid import FID
 from .parameters import Parameters
+from .fid import FID
 
 
 @forge_signature
