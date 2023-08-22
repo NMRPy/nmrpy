@@ -7,9 +7,9 @@ from sdRDM.base.utils import forge_signature, IDGenerator
 
 from pydantic import AnyUrl
 
-from .identifiertypes import IdentifierTypes
 from .person import Person
 from .publicationtypes import PublicationTypes
+from .identifiertypes import IdentifierTypes
 
 
 @forge_signature

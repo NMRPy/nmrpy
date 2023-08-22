@@ -14,8 +14,8 @@ name = "EnzymeMLDocument.name"
 doi = "EnzymeMLDocument.doi"
 
 ["citation.authors"]
-last_name = "EnzymeMLDocument.creators.given_name"
-first_name = "EnzymeMLDocument.creators.family_name"
+last_name = "EnzymeMLDocument.creators.family_name"
+first_name = "EnzymeMLDocument.creators.given_name"
 email = "EnzymeMLDocument.creators.mail"
 
 ["citation.related_publications"]

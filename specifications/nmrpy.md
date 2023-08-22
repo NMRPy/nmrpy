@@ -94,7 +94,7 @@ Container for relevant NMR parameters.
 
 ### FIDArray
 
-Container for processing of multiple spectra. Must reference the respective `FID` objects by `id`. {Add reference back.}
+Container for processing of multiple spectra. Must reference the respective `FID` objects by `id`. {Add reference back. Setup time for experiment, Default 0.5}
 
 - __fids__
   - Type: string
