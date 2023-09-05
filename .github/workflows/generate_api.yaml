@@ -23,7 +23,7 @@ jobs:
         env:
           URL: ${{github.repositoryUrl}}
           COMMIT: ${{github.sha}}
-        run: sdrdm generate --path ./specifications/ --out ./nmrpy/ --name datamodel --url "$URL" --commit "$COMMIT"
+        run: sdrdm generate --path ./specifications/ --out ./nmrpy/ --name "datamodel" --url "$URL" --commit "$COMMIT"
 
       - name: Push source code
         run: |
