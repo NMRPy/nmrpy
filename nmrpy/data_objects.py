@@ -263,6 +263,7 @@ class Fid(Base):
         self.data = kwargs.get("data", [])
         self.peaks = None
         self.ranges = None
+        self.identities = None
         self._deconvoluted_peaks = None
         self._flags = {
             "ft": False,
@@ -352,6 +353,24 @@ class Fid(Base):
             if not all(isinstance(i, numbers.Number) for i in r):
                 raise AttributeError("ranges must be numbers")
         self._ranges = ranges
+
+    @property
+    def identities(self):
+        """
+        Assigned identities corresponding to the various ranges in :attr:`~nmrpy.data_objects.Fid.ranges`.
+        """
+        return self._identitites
+
+    @identities.setter
+    def identities(self, identities):
+        if identities is not None:
+            if not Fid._is_flat_iter(identities):
+                raise AttributeError("identitites must be a flat iterable")
+            if not all(isinstance(i, str) for i in identities):
+                raise AttributeError("identities must be strings")
+            self._identitites = numpy.array(identities)
+        else:
+            self._identities = identities
 
     @property
     def _bl_ppm(self):
@@ -1375,6 +1394,23 @@ Ctrl+Alt+Right - assign
         plt._plot_deconv(self, **kwargs)
         setattr(self, plt.id, plt)
         pyplot.show()
+
+    def assign_identities(self):
+        """
+        Instantiate a identity-assignment GUI widget. Select a range from dropdown menu containing
+        :attr:`~nmrpy.data_objects.Fid.ranges`. Select a species from second dropdown menu
+        containing species defined in EnzymeML. When satisfied with assignment, press Assign button
+        to apply.
+        """
+
+        widget_title = "Assign identitiy for {}".format(self.id)
+        self._assigner_widget = IdentityAssigner(fid=self, title=widget_title)
+
+    def clear_identities(self):
+        """
+        Clear assigned identities stored in :attr:`~nmrpy.data_objects.Fid.identities`.
+        """
+        self.identities = None
 
 
 class FidArray(Base):

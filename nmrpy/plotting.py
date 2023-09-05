@@ -11,7 +11,7 @@ from matplotlib.transforms import blended_transform_factory
 from matplotlib.widgets import Cursor
 from matplotlib.backend_bases import NavigationToolbar2, Event
 
-from ipywidgets import FloatText, Output, VBox
+from ipywidgets import FloatText, Output, VBox, Dropdown, Label, Button
 from IPython.display import display
 import asyncio
 
@@ -948,7 +948,7 @@ class SpanSelectorMixin(BaseSelectorMixin):
             transform=trans,
             visible=False,
             animated=True,
-            **self.ssm.rectprops
+            **self.ssm.rectprops,
         )
         self.ax.add_patch(self.ssm.rect)
 
@@ -963,7 +963,7 @@ class SpanSelectorMixin(BaseSelectorMixin):
             transform=trans,
             visible=True,
             # animated=True,
-            **self.ssm.rectprops
+            **self.ssm.rectprops,
         )
         self.ax.add_patch(rect)
         return rect
@@ -1380,6 +1380,105 @@ class PeakDataSelector(DataSelector, PeakSelectorMixin):
 
 class SpanDataSelector(DataSelector, SpanSelectorMixin, AssignMixin):
     pass
+
+
+class IdentityAssigner:
+    def __init__(self, fid, title):
+        self.fid = fid
+        self.title = title
+        self.selected_values = {}
+        if fid.data is [] or fid.data is None:
+            raise ValueError("data must exist.")
+        if fid.peaks is [] or fid.peaks is None:
+            raise RuntimeError(
+                f"`fid.peaks` are required but still empty. Please either assign them manually or using the `peakpicker` method."
+            )
+
+        # Create the label widget for the title
+        title_label = Label(value=title)
+
+        # Create the dropdown widget for the peaks
+        peak_dropdown = Dropdown(
+            options=[str(peak) for peak in fid.peaks],
+            description="Select a peak:",
+            layout={"width": "max-content"},
+            style={"description_width": "initial"},
+        )
+
+        # Create the dropdown widget for the species
+        species_dropdown = Dropdown(
+            options=[],
+            description="Select a species:",
+            layout={"width": "max-content"},
+            style={"description_width": "initial"},
+            disabled=True,
+        )
+
+        # Create the button to save selection to dict
+        save_button = Button(
+            description="Save selection", icon="file-arrow-down", disabled=True
+        )
+
+        # Create an output widget to display the selection
+        selection_output = Output()
+
+        # Define a method to handle the peak dropdown's change event
+        def on_peak_dropdown_change(event):
+            if event["type"] == "change" and event["name"] == "value":
+                selected_option = event["new"]
+                if selected_option != "":
+                    species_dropdown.options = [
+                        "3PG",
+                        "2PG",
+                        "Phosphate",
+                        "TEP",
+                        "PEP",
+                    ]
+                    species_dropdown.disabled = False
+                    save_button.disabled = False
+
+        # Attach the function to the dropdown's change event
+        peak_dropdown.observe(on_peak_dropdown_change)
+
+        # Define a method to handle the species dropdown's change event
+        def on_species_dropdown_change(event):
+            if event["type"] == "change" and event["name"] == "value":
+                selected_option = event["new"]
+                if selected_option != "":
+                    new_key = peak_dropdown.value
+                    self.selected_values[new_key] = selected_option
+
+        # Attach the function to the second dropdown's change event
+        species_dropdown.observe(on_species_dropdown_change)
+
+        # Define a function to handle the save button click event
+        def on_save_button_click(b):
+            with selection_output:
+                selection_output.clear_output(wait=True)
+                print("\nSaved selections:")
+                for key, value in self.selected_values.items():
+                    print(f"{key}: {value}")
+
+        # Attach the function to the save button's click event
+        save_button.on_click(on_save_button_click)
+
+        # Create a container for both the title and the dropdown
+        container = VBox(
+            [
+                title_label,
+                peak_dropdown,
+                species_dropdown,
+                save_button,
+                selection_output,
+            ]
+        )
+
+        # Display the container
+        display(container)
+
+
+class IdentityRangeAssigner:
+    ...
 
 
 class DataTraceSelector:
