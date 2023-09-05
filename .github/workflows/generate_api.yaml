@@ -17,13 +17,13 @@ jobs:
           python-version: 3.9
           
       - name: Install sdRDM
-        run: python3 -m pip install git+https://github.com/JR-1991/software-driven-rdm.git@20-lowest-level-elements-in-xml-cannot-have-attributes-and-content
+        run: python3 -m pip install git+https://github.com/JR-1991/software-driven-rdm.git@linking-refactor
         
       - name: Generate API
         env:
           URL: ${{github.repositoryUrl}}
           COMMIT: ${{github.sha}}
-        run: sdrdm generate --path ./specifications/ --out . --name "$LIB_NAME" --url "$URL" --commit "$COMMIT"
+        run: sdrdm generate --path ./specifications/ --out ./nmrpy/ --name datamodel --url "$URL" --commit "$COMMIT"
 
       - name: Push source code
         run: |
