@@ -6,7 +6,7 @@ jobs:
   generate-api:
     runs-on: ubuntu-latest
     env:
-      LIB_NAME: ${{ secrets.LIB_NAME }}
+      LIB_NAME: datamodel
     steps:
       - name: Checkout
         uses: actions/checkout@v2
@@ -23,12 +23,12 @@ jobs:
         env:
           URL: ${{github.repositoryUrl}}
           COMMIT: ${{github.sha}}
-        run: sdrdm generate --path ./specifications/ --out ./nmrpy/ --name "datamodel" --url "$URL" --commit "$COMMIT"
+        run: sdrdm generate --path ./specifications/ --out ./nmrpy/ --name "LIB_NAME" --url "$URL" --commit "$COMMIT"
 
       - name: Push source code
         run: |
           if [[ `git status --porcelain` ]]; then
-            git add "datamodel"
+            git add "$LIB_NAME"
             git config --global user.name 'sdRDM Bot'
             git config --global user.email 'sdRDM@bot.com'
             git commit -am "API update"
