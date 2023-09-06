@@ -11,7 +11,15 @@ from matplotlib.transforms import blended_transform_factory
 from matplotlib.widgets import Cursor
 from matplotlib.backend_bases import NavigationToolbar2, Event
 
-from ipywidgets import FloatText, Output, VBox, Dropdown, Label, Button
+from ipywidgets import (
+    FloatText,
+    Output,
+    VBox,
+    Dropdown,
+    Label,
+    Button,
+    Combobox,
+)
 from IPython.display import display
 import asyncio
 
@@ -1387,11 +1395,9 @@ class IdentityAssigner:
         self.fid = fid
         self.title = title
         self.selected_values = {}
-        if fid.data is [] or fid.data is None:
-            raise ValueError("data must exist.")
         if fid.peaks is [] or fid.peaks is None:
             raise RuntimeError(
-                f"`fid.peaks` are required but still empty. Please either assign them manually or using the `peakpicker` method."
+                f"`fid.peaks` is required but still empty. Please either assign them manually or using the `peakpicker` method."
             )
 
         # Create the label widget for the title
@@ -1458,6 +1464,9 @@ class IdentityAssigner:
                 print("\nSaved selections:")
                 for key, value in self.selected_values.items():
                     print(f"{key}: {value}")
+                self.fid.identities = [
+                    value for value in self.selected_values.values()
+                ]
 
         # Attach the function to the save button's click event
         save_button.on_click(on_save_button_click)
@@ -1478,7 +1487,130 @@ class IdentityAssigner:
 
 
 class IdentityRangeAssigner:
-    ...
+    """Wow, such documentation.
+    for fid in [self.fids[i] for i in self.fid_number]:
+    """
+
+    def __init__(self, fid_array):
+        self.fid_array = fid_array
+        self.fids = fid_array.get_fids()
+        self.selected_fid = None
+        self.selected_values = {}
+        for fid in self.fids:
+            if fid.peaks is [] or fid.peaks is None:
+                raise RuntimeError(
+                    f"`fid.peaks` is required but still empty. Please either assign them manually or using the `peakpicker` method."
+                )
+
+        # Create the label widget for the title
+        title_label = Label(value="Assign identities for all FIDs")
+
+        # Create the combobox for the selection of the FID ID
+        combobox = Combobox(
+            options=[fid.id for fid in self.fids],
+            description="Select FID to base entire array on:",
+            layout={"width": "max-content"},
+            style={"description_width": "initial"},
+        )
+
+        # Create the dropdown widget for the peaks
+        peak_dropdown = Dropdown(
+            options=[],
+            description="Select a peak:",
+            layout={"width": "max-content"},
+            style={"description_width": "initial"},
+            disabled=True,
+        )
+
+        # Create the dropdown widget for the species
+        species_dropdown = Dropdown(
+            options=[],
+            description="Select a species:",
+            layout={"width": "max-content"},
+            style={"description_width": "initial"},
+            disabled=True,
+        )
+
+        # Create the button to save selection to dict
+        save_button = Button(
+            description="Save selection", icon="file-arrow-down", disabled=True
+        )
+
+        # Create an output widget to display the selection
+        selection_output = Output()
+
+        # Define a method to handle selection in combobox
+        def on_combobox_change(event):
+            if event["type"] == "change" and event["name"] == "value":
+                selected_option = event["new"]
+                if selected_option in combobox.options:
+                    peak_dropdown.disabled = False
+                    self.selected_fid = self.fid_array.get_fid(selected_option)
+                    peak_dropdown.options = [
+                        str(peak) for peak in self.selected_fid.peaks
+                    ]
+
+        # Attach the method to the combobox's change event:
+        combobox.observe(on_combobox_change)
+
+        # Define a method to handle the peak dropdown's change event
+        def on_peak_dropdown_change(event):
+            if event["type"] == "change" and event["name"] == "value":
+                selected_option = event["new"]
+                if selected_option != "":
+                    species_dropdown.options = [
+                        "3PG",
+                        "2PG",
+                        "Phosphate",
+                        "TEP",
+                        "PEP",
+                    ]
+                species_dropdown.disabled = False
+                save_button.disabled = False
+
+        # Attach the method to the dropdown's change event
+        peak_dropdown.observe(on_peak_dropdown_change)
+
+        # Define a method to handle the species dropdown's change event
+        def on_species_dropdown_change(event):
+            if event["type"] == "change" and event["name"] == "value":
+                selected_option = event["new"]
+                if selected_option != "":
+                    new_key = peak_dropdown.value
+                    self.selected_values[new_key] = selected_option
+
+        # Attach the function to the second dropdown's change event
+        species_dropdown.observe(on_species_dropdown_change)
+
+        # Define a function to handle the save button click event
+        def on_save_button_click(b):
+            with selection_output:
+                selection_output.clear_output(wait=True)
+                print("\nSaved selections:")
+                for key, value in self.selected_values.items():
+                    print(f"{key}: {value}")
+                for fid in self.fids:
+                    fid.identities = [
+                        value for value in self.selected_values.values()
+                    ]
+
+        # Attach the function to the save button's click event
+        save_button.on_click(on_save_button_click)
+
+        # Create a container for both the title and the dropdown
+        container = VBox(
+            [
+                title_label,
+                combobox,
+                peak_dropdown,
+                species_dropdown,
+                save_button,
+                selection_output,
+            ]
+        )
+
+        # Display the container
+        display(container)
 
 
 class DataTraceSelector:

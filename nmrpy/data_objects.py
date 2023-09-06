@@ -364,8 +364,8 @@ class Fid(Base):
     @identities.setter
     def identities(self, identities):
         if identities is not None:
-            if not Fid._is_flat_iter(identities):
-                raise AttributeError("identitites must be a flat iterable")
+            # if not Fid._is_flat_iter(identities):
+            #     raise AttributeError("identitites must be a flat iterable")
             if not all(isinstance(i, str) for i in identities):
                 raise AttributeError("identities must be strings")
             self._identitites = numpy.array(identities)
@@ -925,6 +925,12 @@ Ctrl+Alt+Right - assign
         """
         self.ranges = None
 
+    def clear_identitites(self):
+        """
+        Clear identities stored in :attr:`~nmrpy.data_objects.Fid.identities`.
+        """
+        self.identities = None
+
     def baseliner(self):
         """
         Instantiate a baseline-correction GUI widget. Right-click-dragging
@@ -1397,18 +1403,20 @@ Ctrl+Alt+Right - assign
 
     def assign_identities(self):
         """
-        Instantiate a identity-assignment GUI widget. Select a range from dropdown menu containing
-        :attr:`~nmrpy.data_objects.Fid.ranges`. Select a species from second dropdown menu
-        containing species defined in EnzymeML. When satisfied with assignment, press Assign button
-        to apply.
+        Instantiate a identity-assignment GUI widget. Select peaks from
+        dropdown menu containing :attr:`~nmrpy.data_objects.Fid.peaks`.
+        Attach a species to the selected peak from second dropdown menu
+        containing species defined in EnzymeML. When satisfied with
+        assignment, press Assign button to apply.
         """
 
-        widget_title = "Assign identitiy for {}".format(self.id)
+        widget_title = "Assign identities for {}".format(self.id)
         self._assigner_widget = IdentityAssigner(fid=self, title=widget_title)
 
     def clear_identities(self):
         """
-        Clear assigned identities stored in :attr:`~nmrpy.data_objects.Fid.identities`.
+        Clear assigned identities stored in
+        :attr:`~nmrpy.data_objects.Fid.identities`.
         """
         self.identities = None
 
@@ -2381,6 +2389,26 @@ Ctrl+Alt+Right - assign
             return 1
         with open(filename, "w") as f:
             f.write(model)
+
+    def assign_identities(self):
+        """
+        Instantiate a identity-assignment GUI widget. Select a FID by
+        its ID from the combobox. Select peaks from dropdown menu
+        containing :attr:`~nmrpy.data_objects.Fid.peaks`. Attach a
+        species to the selected peak from second dropdown menu
+        containing species defined in EnzymeML. When satisfied with
+        assignment, press Assign button to apply.
+        """
+
+        self._assigner_widget = IdentityRangeAssigner(fid_array=self)
+
+    def clear_identities(self):
+        """
+        Clear assigned identities stored in
+        :attr:`~nmrpy.data_objects.Fid.identities`.
+        """
+        for fid in self.get_fids():
+            fid.identities = None
 
 
 class Importer(Base):
