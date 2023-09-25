@@ -12,6 +12,7 @@ import os
 import pickle
 from ipywidgets import SelectMultiple
 from sdRDM import DataModel
+from nmrpy.datamodel.core import *
 
 
 class Base:
@@ -29,17 +30,17 @@ class Base:
         self._params = None
         self.fid_path = kwargs.get("fid_path", ".")
         self._file_format = None
-        # self.parameters_object = self.lib.Parameters()
 
-    @property
-    def lib(self):
-        try:
-            self.__lib
-        except:
-            self.__lib = DataModel.from_markdown(
-                path=Path(__file__).parent.parent / "specifications"
-            )
-        return self.__lib
+    # Probably not required anymore
+    # @property
+    # def lib(self):
+    #     try:
+    #         self.__lib
+    #     except:
+    #         self.__lib = DataModel.from_markdown(
+    #             path=Path(__file__).parent.parent / "specifications"
+    #         )
+    #     return self.__lib
 
     # @property
     # def parameters_object(self):
@@ -120,24 +121,6 @@ class Base:
         elif isinstance(procpar, dict):
             self.__procpar = procpar
             self._params = self._extract_procpar(procpar)
-            # self.parameters_object(
-            #     acquisition_time=self._params.get("at"),
-            #     relaxation_time=self._params.get("d1"),
-            #     repetition_time=self._params.get("rt"),
-            #     spectral_width_ppm=self._params.get("sw"),
-            #     spectral_width_hz=self._params.get("sw_hz"),
-            #     spectrometer_frequency=self._params.get("sfrq"),
-            #     reference_frequency=self._params.get("reffrq"),
-            #     spectral_width_left=self._params.get("sw_left"),
-            # )
-            # for _ in self._params.get("nt"):
-            #     if type(_) is not None:
-            #         self.fid_object.parameters.number_of_transients.append(_)
-            # for _ in self._params.get("acqtime"):
-            #     if type(_) is not None:
-            #         self.fid_object.parameters.acquisition_times_array.append(
-            #             _
-            #         )
         else:
             raise AttributeError("procpar must be a dictionary or None.")
 
@@ -256,7 +239,6 @@ class Fid(Base):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fid_object = self.lib.FID()
         self.data = kwargs.get("data", [])
         self.peaks = None
         self.ranges = None
@@ -265,6 +247,13 @@ class Fid(Base):
         self._flags = {
             "ft": False,
         }
+        self.fid_object = FID(
+            raw_data=[(str(datum)) for datum in self.data],
+            processed_data=[],
+            nmr_parameters=Parameters(),
+            processing_steps=ProcessingSteps(),
+            peak_identities=[],
+        )
 
     def __str__(self):
         return "FID: %s (%i data)" % (self.id, len(self.data))
@@ -279,6 +268,14 @@ class Fid(Base):
             self.__fid_object = fid_object
 
     @property
+    def processing_steps(self):
+        return self.__processing_steps
+
+    @processing_steps.setter
+    def processing_steps(self, processing_steps):
+        raise PermissionError("Forbidden!")
+
+    @property
     def data(self):
         """
         The spectral data. This is the primary object upon which the processing and analysis functions work.
@@ -289,9 +286,6 @@ class Fid(Base):
     def data(self, data):
         if Fid._is_valid_dataset(data):
             self.__data = numpy.array(data)
-            # for _ in self.__data:
-            #     if type(_) is not None:
-            #         self.fid_object.data.append(float(_))
 
     @property
     def _ppm(self):
@@ -354,18 +348,21 @@ class Fid(Base):
     @property
     def identities(self):
         """
-        Assigned identities corresponding to the various ranges in :attr:`~nmrpy.data_objects.Fid.ranges`.
+        Assigned identities corresponding to the various peaks in :attr:`~nmrpy.data_objects.Fid.peaks`.
         """
-        return self._identitites
+        return self._identities
 
     @identities.setter
     def identities(self, identities):
+        if identities is None:
+            self._identities = None
+            return
         if identities is not None:
             # if not Fid._is_flat_iter(identities):
             #     raise AttributeError("identitites must be a flat iterable")
             if not all(isinstance(i, str) for i in identities):
                 raise AttributeError("identities must be strings")
-            self._identitites = numpy.array(identities)
+            self._identities = numpy.array(identities)
         else:
             self._identities = identities
 
@@ -602,8 +599,8 @@ class Fid(Base):
 
         """
         self.data = numpy.append(self.data, 0 * self.data)
-        for _ in self.data:
-            self.fid_object.data.append(float(_))
+        self.fid_object.processed_data = [str(datum) for datum in self.data]
+        self.fid_object.processing_steps.is_zero_filled = True
 
     def emhz(self, lb=5.0):
         """
@@ -622,16 +619,17 @@ class Fid(Base):
             )
             * self.data
         )
-        for _ in self.data:
-            self.fid_object.data.append(float(_))
+        self.fid_object.processed_data = [str(datum) for datum in self.data]
+        self.fid_object.processing_steps.is_apodised = True
+        self.fid_object.processing_steps.apodisation_frequency = lb
 
     def real(self):
         """
         Discard imaginary component of :attr:`~nmrpy.data_objects.Fid.data`.
         """
         self.data = numpy.real(self.data)
-        for _ in self.data:
-            self.fid_object.data.append(float(_))
+        self.fid_object.processed_data = [float(datum) for datum in self.data]
+        self.fid_object.processing_steps.is_only_real = True
 
     # GENERAL FUNCTIONS
     def ft(self):
@@ -649,9 +647,10 @@ class Fid(Base):
         if Fid._is_valid_dataset(self.data):
             list_params = (self.data, self._file_format)
             self.data = Fid._ft(list_params)
-            for _ in self.data:
-                self.fid_object.data.append(float(_))
             self._flags["ft"] = True
+        self.fid_object.processed_data = [str(datum) for datum in self.data]
+        self.fid_object.processing_steps.is_fourier_transformed = True
+        self.fid_object.processing_steps.fourier_transform_type = "FFT"
 
     @classmethod
     def _ft(cls, list_params):
@@ -735,8 +734,8 @@ class Fid(Base):
             )
         print("phasing: %s" % self.id)
         self.data = Fid._phase_correct((self.data, method))
-        for _ in self.data:
-            self.fid_object.data.append(float(_))
+        self.fid_object.processed_data = [str(datum) for datum in self.data]
+        self.fid_object.processing_steps.is_phased = True
 
     @classmethod
     def _phase_correct(cls, list_params):
@@ -809,8 +808,10 @@ class Fid(Base):
         size = len(self.data)
         ph = numpy.exp(1.0j * (p0 + (p1 * numpy.arange(size) / size)))
         self.data = ph * self.data
-        for _ in self.data:
-            self.fid_object.data.append(float(_))
+        self.fid_object.processed_data = [str(datum) for datum in self.data]
+        self.fid_object.processing_steps.is_phased = True
+        self.fid_object.processing_steps.zero_order_phase = p0
+        self.fid_object.processing_steps.first_order_phase = p1
 
     def phaser(self):
         """
@@ -876,8 +877,8 @@ Left - select peak
         self._bl_poly = yp
         data_bl = data - yp
         self.data = numpy.array(data_bl)
-        for _ in self.data:
-            self.fid_object.data.append(float(_))
+        self.fid_object.processed_data = [float(datum) for datum in self.data]
+        self.fid_object.processing_steps.is_baseline_corrected = True
 
     def peakpick(self, thresh=0.1):
         """
@@ -1445,7 +1446,7 @@ class FidArray(Base):
 
     def __init__(self):
         _now = str(datetime.now())
-        self.data_model = self.lib.NMRpy(
+        self.data_model = NMRpy(
             datetime_created=_now,
             datetime_modified=_now,
         )
@@ -1738,6 +1739,10 @@ class FidArray(Base):
             for fid, datum in zip(fids, ft_data):
                 fid.data = datum
                 fid._flags["ft"] = True
+                fid.fid_object.processed_data = [str(data) for data in datum]
+                fid.fid_object.processing_steps.is_fourier_transformed = True
+                fid.fid_object.processing_steps.fourier_transform_type = "FFT"
+
         else:
             for fid in self.get_fids():
                 fid.ft()
@@ -1759,6 +1764,11 @@ class FidArray(Base):
         dmax = self.data.max()
         for fid in self.get_fids():
             fid.data = fid.data / dmax
+            fid.fid_object.processed_data = [
+                float(datum) for datum in fid.data
+            ]
+            fid.fid_object.processing_steps.is_normalised = True
+            fid.fid_object.processing_steps.max_value = float(dmax)
 
     def phase_correct_fids(self, method="leastsq", mp=True, cpus=None):
         """
@@ -1784,6 +1794,8 @@ class FidArray(Base):
             )
             for fid, datum in zip(fids, phased_data):
                 fid.data = datum
+                fid.fid_object.processed_data = [str(data) for data in datum]
+                fid.fid_object.processing_steps.is_phased = True
         else:
             for fid in self.get_fids():
                 fid.phase_correct(method=method)
@@ -1906,6 +1918,7 @@ Ctrl+Alt+Right - assign
                 fid._deconvoluted_peaks = numpy.array(
                     [j for i in datum for j in i]
                 )
+                fid.fid_object.processing_steps.is_deconvoluted = True
         else:
             for fid in self.get_fids():
                 fid.deconv(frac_gauss=frac_gauss)
@@ -2299,25 +2312,35 @@ Ctrl+Alt+Right - assign
         with open(filename, "wb") as f:
             pickle.dump(self, f)
 
+    # TODO: Will probably create a measurement object for each FID(?)
+    # and add them to the EnzymeML document provided
+    # Issue: How to get species for IdentityAssigner? __init__()?
+    def add_to_enzymeml(self, enzymeml_document=None) -> None:
+        ...
+
+    # TODO: Refactor save_data method
+    # possibly make saving to EnzymeML a get_measurements method
     def save_data(self, file_format: str, filename=None, overwrite=False):
         print("~~~ Method under contruction ~~~")
         if self.force_pyenzyme:
-            import pyenzyme as pe
-
+            try:
+                import pyenzyme as pe
+            except:
+                self.force_pyenzyme = False
+                raise ModuleNotFoundError(
+                    "PyEnzyme is not installed in your current environment. Use EnzymeML data model instead or install PyEnzyme."
+                )
             enzymeml = pe.EnzymeMLDocument(
-                name=self.data_mode.experiment.name
+                name=self.data_model.experiment.name
                 if hasattr(self.data_model.experiment, "name")
                 else "NMR experiment"
             )
             ...
             return 1
         if file_format.lower() == ("enzymeml" or "nmrml"):
-            # model = self.data_model.convert_to(
-            #     template=Path(__file__).parent.parent / "links/enzymeml.toml"
-            # )
             enzymeml = DataModel.from_git(
                 url="https://github.com/EnzymeML/enzymeml-specifications.git",
-                tag="markdown-parser-refactor",
+                tag="linking-refactor",
             )
             doc = enzymeml.EnzymeMLDocument(
                 name=(

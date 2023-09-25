@@ -24,6 +24,15 @@ from IPython.display import display
 import asyncio
 
 
+SPECIES_DECOY = [
+    "TEP",
+    "PEP",
+    "3PG",
+    "2PG",
+    "Phosphate",
+]
+
+
 class Plot:
     """
     Basic 'plot' class containing functions for various types of plots.
@@ -1419,23 +1428,18 @@ class IdentityAssigner:
             description="Save selection", icon="file-arrow-down", disabled=True
         )
 
+        # Create a reset button
+        reset_button = Button(description="Reset selection", disabled=True)
+
         # Create an output widget to display the selection
         selection_output = Output()
 
         # Define a method to handle the peak dropdown's change event
         def on_peak_dropdown_change(event):
             if event["type"] == "change" and event["name"] == "value":
-                selected_option = event["new"]
-                if selected_option != "":
-                    species_dropdown.options = [
-                        "3PG",
-                        "2PG",
-                        "Phosphate",
-                        "TEP",
-                        "PEP",
-                    ]
-                    species_dropdown.disabled = False
-                    save_button.disabled = False
+                species_dropdown.options = SPECIES_DECOY
+                species_dropdown.disabled = False
+                save_button.disabled = False
 
         # Attach the function to the dropdown's change event
         peak_dropdown.observe(on_peak_dropdown_change)
@@ -1444,9 +1448,8 @@ class IdentityAssigner:
         def on_species_dropdown_change(event):
             if event["type"] == "change" and event["name"] == "value":
                 selected_option = event["new"]
-                if selected_option != "":
-                    new_key = peak_dropdown.value
-                    self.selected_values[new_key] = selected_option
+                new_key = peak_dropdown.value
+                self.selected_values[new_key] = selected_option
 
         # Attach the function to the second dropdown's change event
         species_dropdown.observe(on_species_dropdown_change)
@@ -1461,9 +1464,21 @@ class IdentityAssigner:
                 self.fid.identities = [
                     value for value in self.selected_values.values()
                 ]
+            reset_button.disabled = False
 
         # Attach the function to the save button's click event
         save_button.on_click(on_save_button_click)
+
+        # Define a function to handle the reset event
+        def on_reset_button_click(b):
+            with selection_output:
+                selection_output.clear_output(wait=True)
+                print("\nCleared selections!")
+                self.fid.identities = []
+                self.selected_values = {}
+
+        # Attach the function to the reset click event
+        reset_button.on_click(on_reset_button_click)
 
         # Create a container for both the title and the dropdown
         container = VBox(
@@ -1472,6 +1487,7 @@ class IdentityAssigner:
                 peak_dropdown,
                 species_dropdown,
                 save_button,
+                reset_button,
                 selection_output,
             ]
         )
@@ -1530,6 +1546,9 @@ class IdentityRangeAssigner:
             description="Save selection", icon="file-arrow-down", disabled=True
         )
 
+        # Create a reset button
+        reset_button = Button(description="Reset selection", disabled=True)
+
         # Create an output widget to display the selection
         selection_output = Output()
 
@@ -1550,15 +1569,7 @@ class IdentityRangeAssigner:
         # Define a method to handle the peak dropdown's change event
         def on_peak_dropdown_change(event):
             if event["type"] == "change" and event["name"] == "value":
-                selected_option = event["new"]
-                if selected_option != "":
-                    species_dropdown.options = [
-                        "3PG",
-                        "2PG",
-                        "Phosphate",
-                        "TEP",
-                        "PEP",
-                    ]
+                species_dropdown.options = SPECIES_DECOY
                 species_dropdown.disabled = False
                 save_button.disabled = False
 
@@ -1569,9 +1580,8 @@ class IdentityRangeAssigner:
         def on_species_dropdown_change(event):
             if event["type"] == "change" and event["name"] == "value":
                 selected_option = event["new"]
-                if selected_option != "":
-                    new_key = peak_dropdown.value
-                    self.selected_values[new_key] = selected_option
+                new_key = peak_dropdown.value
+                self.selected_values[new_key] = selected_option
 
         # Attach the function to the second dropdown's change event
         species_dropdown.observe(on_species_dropdown_change)
@@ -1587,9 +1597,22 @@ class IdentityRangeAssigner:
                     fid.identities = [
                         value for value in self.selected_values.values()
                     ]
+            reset_button.disabled = False
 
         # Attach the function to the save button's click event
         save_button.on_click(on_save_button_click)
+
+        # Define a function to handle the reset event
+        def on_reset_button_click(b):
+            with selection_output:
+                selection_output.clear_output(wait=True)
+                print("\nCleared selections!")
+                for fid in self.fids:
+                    fid.identities = []
+                self.selected_values = {}
+
+        # Attach the function to the reset click event
+        reset_button.on_click(on_reset_button_click)
 
         # Create a container for both the title and the dropdown
         container = VBox(
@@ -1599,6 +1622,7 @@ class IdentityRangeAssigner:
                 peak_dropdown,
                 species_dropdown,
                 save_button,
+                reset_button,
                 selection_output,
             ]
         )

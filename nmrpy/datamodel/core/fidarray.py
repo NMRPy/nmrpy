@@ -1,6 +1,6 @@
 import sdRDM
 
-from typing import List
+from typing import List, Optional
 from pydantic import Field
 from sdRDM.base.listplus import ListPlus
 from sdRDM.base.utils import forge_signature, IDGenerator
@@ -8,10 +8,9 @@ from sdRDM.base.utils import forge_signature, IDGenerator
 
 @forge_signature
 class FIDArray(sdRDM.DataModel):
+    """Container for processing of multiple spectra. Must reference the respective `FID` objects by `id`. {Add reference back. Setup time for experiment, Default 0.5}"""
 
-    """Container for processing of multiple spectra. Must reference the respective `FID` objects by `id`. {Add reference back.}"""
-
-    id: str = Field(
+    id: Optional[str] = Field(
         description="Unique identifier of the given object.",
         default_factory=IDGenerator("fidarrayINDEX"),
         xml="@id",
