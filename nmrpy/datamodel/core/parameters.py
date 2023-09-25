@@ -8,10 +8,9 @@ from sdRDM.base.utils import forge_signature, IDGenerator
 
 @forge_signature
 class Parameters(sdRDM.DataModel):
-
     """Container for relevant NMR parameters."""
 
-    id: str = Field(
+    id: Optional[str] = Field(
         description="Unique identifier of the given object.",
         default_factory=IDGenerator("parametersINDEX"),
         xml="@id",

@@ -5,23 +5,22 @@ from pydantic import Field
 from sdRDM.base.listplus import ListPlus
 from sdRDM.base.utils import forge_signature, IDGenerator
 
-from pydantic import AnyUrl
 from typing import Any
+from pydantic import AnyUrl
 
-from .term import Term
-from .person import Person
-from .subjects import Subjects
 from .publication import Publication
+from .term import Term
 from .publicationtypes import PublicationTypes
+from .subjects import Subjects
+from .person import Person
 from .identifiertypes import IdentifierTypes
 
 
 @forge_signature
 class Citation(sdRDM.DataModel):
-
     """Container for various types of metadata primarily used in the publication and citation of the dataset."""
 
-    id: str = Field(
+    id: Optional[str] = Field(
         description="Unique identifier of the given object.",
         default_factory=IDGenerator("citationINDEX"),
         xml="@id",
@@ -128,6 +127,8 @@ class Citation(sdRDM.DataModel):
 
         self.authors.append(Person(**params))
 
+        return self.authors[-1]
+
     def add_to_keywords(
         self,
         name: str,
@@ -159,6 +160,8 @@ class Citation(sdRDM.DataModel):
 
         self.keywords.append(Term(**params))
 
+        return self.keywords[-1]
+
     def add_to_topics(
         self,
         name: str,
@@ -189,6 +192,8 @@ class Citation(sdRDM.DataModel):
             params["id"] = id
 
         self.topics.append(Term(**params))
+
+        return self.topics[-1]
 
     def add_to_related_publications(
         self,
@@ -223,3 +228,5 @@ class Citation(sdRDM.DataModel):
             params["id"] = id
 
         self.related_publications.append(Publication(**params))
+
+        return self.related_publications[-1]
