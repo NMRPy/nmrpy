@@ -9,10 +9,9 @@ from typing import Any
 
 @forge_signature
 class Term(sdRDM.DataModel):
-
     """lorem ipsum {Add reference back to term_cv_reference.}"""
 
-    id: str = Field(
+    id: Optional[str] = Field(
         description="Unique identifier of the given object.",
         default_factory=IDGenerator("termINDEX"),
         xml="@id",

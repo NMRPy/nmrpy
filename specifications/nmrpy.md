@@ -32,6 +32,10 @@ Also preparation of EnzymeML doc
 - __name__
   - Type: string
   - Description: A descriptive name for the overarching experiment.
+- enzymeml_species
+  - Type: https://github.com/EnzymeML/enzymeml-specifications/@AbstractSpecies, https://github.com/EnzymeML/enzymeml-specifications/@Protein, https://github.com/EnzymeML/enzymeml-specifications/@Reactant
+  - Description: A species object from an EnzymeML document.
+  - Multiple: True
 - fid
   - Type: [FID](#fid)
   - Description: A single NMR spectrum.
@@ -45,13 +49,24 @@ Also preparation of EnzymeML doc
 
 Container for a single NMR spectrum.
 
-- data
-  - Type: float
-  - Description: Spectral data from numpy array.
+- raw_data
+  - Type: string
+  - Description: Complex spectral data from numpy array as string of format `{array.real}+{array.imag}j`.
   - Multiple: True
-- parameters
+- processed_data
+  - Type: string,float
+  - Description: Processed data array.
+  - Multiple: True
+- nmr_parameters
   - Type: [Parameters](#parameters)
   - Description: Contains commonly-used NMR parameters.
+- processing_steps
+  - Type: [ProcessingSteps](#processingsteps)
+  - Description: Contains the processing steps performed, as well as the parameters used for them.
+- peak_identities
+  - Type: [Identity](#identity)
+  - Description: Container holding and mapping integrals resulting from peaks and their ranges to EnzymeML species.
+  - Multiple: True
 
 
 ### Parameters
@@ -90,6 +105,82 @@ Container for relevant NMR parameters.
 - spectral_width_left
   - Type: float
   - Description: sw_left
+
+
+### ProcessingSteps
+
+Container for processing steps performed, as well as parameter for them.
+
+- is_apodised
+  - Type: boolean
+  - Description: Whether or not Apodisation (line-broadening) has been performed.
+- apodisation_frequency
+  - Type: float
+  - Description: Degree of Apodisation (line-broadening) in Hz.
+- is_zero_filled
+  - Type: boolean
+  - Description: Whether or not Zero-filling has been performed.
+  - Default: False
+- is_fourier_transformed
+  - Type: boolean
+  - Description: Whether or not Fourier transform has been performed.
+  - Default: False
+- fourier_transform_type
+  - Type: string
+  - Description: The type of Fourier transform used.
+- is_phased
+  - Type: boolean
+  - Description: Whether or not Phasing was performed.
+  - Default: False
+- zero_order_phase
+  - Type: float
+  - Description: Zero-order phase used for Phasing.
+- first_order_phase
+  - Type: float
+  - Description: First-order phase used for Phasing.
+- is_only_real
+  - Type: boolean
+  - Description: Whether or not the imaginary part has been discarded.
+  - Default: False
+- is_normalised
+  - Type: boolean
+  - Description: Whether or not Normalisation was performed.
+  - Default: False
+- max_value
+  - Type: float
+  - Description: Maximum value of the dataset used for Normalisation.
+- is_deconvoluted
+  - Type: boolean
+  - Description: Whether or not Deconvolution was performed.
+  - Default: False
+- is_baseline_corrected
+  - Type: boolean
+  - Description: Whether or not Baseline correction was performed.
+  - Default: False
+
+
+### Identity
+
+Container mapping one or more peaks to the respective species.
+
+- name
+  - Type: string
+  - Description: Descriptive name for the species
+- species_id
+  - Type: string
+  - Description: ID of an EnzymeML species 
+- associated_peaks
+  - Type: float
+  - Description: Peaks belonging to the given species
+  - Multiple: True
+- associated_ranges
+  - Type: frozenset
+  - Description: Sets of ranges belonging to the given peaks
+  - Multiple: True
+- associated_integrals
+  - Type: float
+  - Description: Integrals resulting from the given peaks and ranges of a species
+  - Multiple: True
 
 
 ### FIDArray

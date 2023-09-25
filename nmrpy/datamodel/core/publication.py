@@ -7,17 +7,16 @@ from sdRDM.base.utils import forge_signature, IDGenerator
 
 from pydantic import AnyUrl
 
-from .person import Person
 from .publicationtypes import PublicationTypes
+from .person import Person
 from .identifiertypes import IdentifierTypes
 
 
 @forge_signature
 class Publication(sdRDM.DataModel):
-
     """Container for citation information of a relevant publication."""
 
-    id: str = Field(
+    id: Optional[str] = Field(
         description="Unique identifier of the given object.",
         default_factory=IDGenerator("publicationINDEX"),
         xml="@id",
@@ -88,3 +87,5 @@ class Publication(sdRDM.DataModel):
             params["id"] = id
 
         self.authors.append(Person(**params))
+
+        return self.authors[-1]

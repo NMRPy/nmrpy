@@ -11,10 +11,9 @@ from .identifiertypes import IdentifierTypes
 
 @forge_signature
 class Person(sdRDM.DataModel):
-
     """Container for information regarding a person that worked on an experiment."""
 
-    id: str = Field(
+    id: Optional[str] = Field(
         description="Unique identifier of the given object.",
         default_factory=IDGenerator("personINDEX"),
         xml="@id",
