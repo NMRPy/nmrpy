@@ -27,13 +27,13 @@ Root element of the NMRpy data model.
 ### Experiment
 
 Rohdaten -> Zwischenschritte nur nennen + interessante Parameter -> Endergebnis; Peaklist + Rangelist; rapidly pulsed (if then +calibration factor) vs fully relaxed
-Also preparation of EnzymeML doc
+Also preparation of EnzymeML doc https://github.com/EnzymeML/enzymeml-specifications/@AbstractSpecies, https://github.com/EnzymeML/enzymeml-specifications/@Protein, https://github.com/EnzymeML/enzymeml-specifications/@Reactant
 
 - __name__
   - Type: string
   - Description: A descriptive name for the overarching experiment.
 - enzymeml_species
-  - Type: https://github.com/EnzymeML/enzymeml-specifications/@AbstractSpecies, https://github.com/EnzymeML/enzymeml-specifications/@Protein, https://github.com/EnzymeML/enzymeml-specifications/@Reactant
+  - Type: string
   - Description: A species object from an EnzymeML document.
   - Multiple: True
 - fid

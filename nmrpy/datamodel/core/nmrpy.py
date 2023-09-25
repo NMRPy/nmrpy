@@ -6,8 +6,8 @@ from sdRDM.base.utils import forge_signature, IDGenerator
 
 from datetime import datetime as Datetime
 
-from .citation import Citation
 from .experiment import Experiment
+from .citation import Citation
 
 
 @forge_signature
