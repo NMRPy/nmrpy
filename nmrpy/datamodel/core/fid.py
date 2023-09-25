@@ -7,12 +7,9 @@ from sdRDM.base.utils import forge_signature, IDGenerator
 
 from pydantic.types import FrozenSet
 
-from .processingsteps import ProcessingSteps
-from .abstractspecies import AbstractSpecies
-from .protein import Protein
-from .identity import Identity
 from .parameters import Parameters
-from .reactant import Reactant
+from .processingsteps import ProcessingSteps
+from .identity import Identity
 
 
 @forge_signature
@@ -64,8 +61,8 @@ class FID(sdRDM.DataModel):
 
     def add_to_peak_identities(
         self,
-        name: str,
-        enzymeml_species: Union[AbstractSpecies, Protein, Reactant, None] = None,
+        name: Optional[str] = None,
+        species_id: Optional[str] = None,
         associated_peaks: List[float] = ListPlus(),
         associated_ranges: List[FrozenSet] = ListPlus(),
         associated_integrals: List[float] = ListPlus(),
@@ -76,8 +73,8 @@ class FID(sdRDM.DataModel):
 
         Args:
             id (str): Unique identifier of the 'Identity' object. Defaults to 'None'.
-            name (): Descriptive name for the species.
-            enzymeml_species (): A species object from an EnzymeML document.. Defaults to None
+            name (): Descriptive name for the species. Defaults to None
+            species_id (): ID of an EnzymeML species. Defaults to None
             associated_peaks (): Peaks belonging to the given species. Defaults to ListPlus()
             associated_ranges (): Sets of ranges belonging to the given peaks. Defaults to ListPlus()
             associated_integrals (): Integrals resulting from the given peaks and ranges of a species. Defaults to ListPlus()
@@ -85,7 +82,7 @@ class FID(sdRDM.DataModel):
 
         params = {
             "name": name,
-            "enzymeml_species": enzymeml_species,
+            "species_id": species_id,
             "associated_peaks": associated_peaks,
             "associated_ranges": associated_ranges,
             "associated_integrals": associated_integrals,

@@ -5,15 +5,15 @@ from pydantic import Field
 from sdRDM.base.listplus import ListPlus
 from sdRDM.base.utils import forge_signature, IDGenerator
 
-from typing import Any
 from pydantic import AnyUrl
+from typing import Any
 
-from .publication import Publication
 from .term import Term
-from .publicationtypes import PublicationTypes
-from .subjects import Subjects
-from .person import Person
 from .identifiertypes import IdentifierTypes
+from .publication import Publication
+from .subjects import Subjects
+from .publicationtypes import PublicationTypes
+from .person import Person
 
 
 @forge_signature

@@ -1,15 +1,11 @@
 import sdRDM
 
-from typing import Optional, Union, List
+from typing import List, Optional
 from pydantic import Field
 from sdRDM.base.listplus import ListPlus
 from sdRDM.base.utils import forge_signature, IDGenerator
 
 from pydantic.types import FrozenSet
-
-from .abstractspecies import AbstractSpecies
-from .protein import Protein
-from .reactant import Reactant
 
 
 @forge_signature
@@ -22,14 +18,14 @@ class Identity(sdRDM.DataModel):
         xml="@id",
     )
 
-    name: str = Field(
-        ...,
+    name: Optional[str] = Field(
+        default=None,
         description="Descriptive name for the species",
     )
 
-    enzymeml_species: Union[AbstractSpecies, Protein, Reactant, None] = Field(
+    species_id: Optional[str] = Field(
         default=None,
-        description="A species object from an EnzymeML document.",
+        description="ID of an EnzymeML species",
     )
 
     associated_peaks: List[float] = Field(

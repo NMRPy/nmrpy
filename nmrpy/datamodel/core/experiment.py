@@ -6,17 +6,18 @@ from sdRDM.base.listplus import ListPlus
 from sdRDM.base.utils import forge_signature, IDGenerator
 
 
+from .fidarray import FIDArray
+from .fid import FID
+from .parameters import Parameters
 from .processingsteps import ProcessingSteps
 from .identity import Identity
-from .parameters import Parameters
-from .fid import FID
-from .fidarray import FIDArray
 
 
 @forge_signature
 class Experiment(sdRDM.DataModel):
     """Rohdaten -> Zwischenschritte nur nennen + interessante Parameter -> Endergebnis; Peaklist + Rangelist; rapidly pulsed (if then +calibration factor) vs fully relaxed
-    Also preparation of EnzymeML doc"""
+    Also preparation of EnzymeML doc https://github.com/EnzymeML/enzymeml-specifications/@AbstractSpecies, https://github.com/EnzymeML/enzymeml-specifications/@Protein, https://github.com/EnzymeML/enzymeml-specifications/@Reactant
+    """
 
     id: Optional[str] = Field(
         description="Unique identifier of the given object.",
@@ -27,6 +28,12 @@ class Experiment(sdRDM.DataModel):
     name: str = Field(
         ...,
         description="A descriptive name for the overarching experiment.",
+    )
+
+    enzymeml_species: List[str] = Field(
+        description="A species object from an EnzymeML document.",
+        default_factory=ListPlus,
+        multiple=True,
     )
 
     fid: List[FID] = Field(
