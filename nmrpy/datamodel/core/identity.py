@@ -5,7 +5,18 @@ from pydantic import Field
 from sdRDM.base.listplus import ListPlus
 from sdRDM.base.utils import forge_signature, IDGenerator
 
-from pydantic.types import FrozenSet
+
+@forge_signature
+class AssociatedRanges(sdRDM.DataModel):
+    """Small type for attribute 'associated_ranges'"""
+
+    id: Optional[str] = Field(
+        description="Unique identifier of the given object.",
+        default_factory=IDGenerator("associatedrangesINDEX"),
+        xml="@id",
+    )
+    start: Optional[float] = Field()
+    end: Optional[float] = Field()
 
 
 @forge_signature
@@ -34,9 +45,9 @@ class Identity(sdRDM.DataModel):
         multiple=True,
     )
 
-    associated_ranges: List[FrozenSet] = Field(
-        description="Sets of ranges belonging to the given peaks",
+    associated_ranges: List[AssociatedRanges] = Field(
         default_factory=ListPlus,
+        description="Sets of ranges belonging to the given peaks",
         multiple=True,
     )
 
@@ -45,3 +56,23 @@ class Identity(sdRDM.DataModel):
         default_factory=ListPlus,
         multiple=True,
     )
+
+    def add_to_associated_ranges(
+        self,
+        start: Optional[float] = None,
+        end: Optional[float] = None,
+        id: Optional[str] = None,
+    ) -> None:
+        """
+        This method adds an object of type 'AssociatedRanges' to attribute associated_ranges
+
+        Args:
+            id (str): Unique identifier of the 'AssociatedRanges' object. Defaults to 'None'.
+            start (): . Defaults to None
+            end (): . Defaults to None
+        """
+        params = {"start": start, "end": end}
+        if id is not None:
+            params["id"] = id
+        self.associated_ranges.append(AssociatedRanges(**params))
+        return self.associated_ranges[-1]

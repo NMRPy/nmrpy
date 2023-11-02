@@ -4,13 +4,11 @@ from typing import Optional, Union, List
 from pydantic import Field
 from sdRDM.base.listplus import ListPlus
 from sdRDM.base.utils import forge_signature, IDGenerator
-
-
-from .fidarray import FIDArray
-from .fid import FID
 from .parameters import Parameters
+from .fidarray import FIDArray
 from .processingsteps import ProcessingSteps
 from .identity import Identity
+from .fidobject import FIDObject
 
 
 @forge_signature
@@ -36,7 +34,7 @@ class Experiment(sdRDM.DataModel):
         multiple=True,
     )
 
-    fid: List[FID] = Field(
+    fid: List[FIDObject] = Field(
         description="A single NMR spectrum.",
         default_factory=ListPlus,
         multiple=True,
@@ -57,17 +55,16 @@ class Experiment(sdRDM.DataModel):
         id: Optional[str] = None,
     ) -> None:
         """
-        This method adds an object of type 'FID' to attribute fid
+        This method adds an object of type 'FIDObject' to attribute fid
 
         Args:
-            id (str): Unique identifier of the 'FID' object. Defaults to 'None'.
+            id (str): Unique identifier of the 'FIDObject' object. Defaults to 'None'.
             raw_data (): Complex spectral data from numpy array as string of format `{array.real}+{array.imag}j`.. Defaults to ListPlus()
             processed_data (): Processed data array.. Defaults to ListPlus()
             nmr_parameters (): Contains commonly-used NMR parameters.. Defaults to None
             processing_steps (): Contains the processing steps performed, as well as the parameters used for them.. Defaults to None
             peak_identities (): Container holding and mapping integrals resulting from peaks and their ranges to EnzymeML species.. Defaults to ListPlus()
         """
-
         params = {
             "raw_data": raw_data,
             "processed_data": processed_data,
@@ -75,10 +72,7 @@ class Experiment(sdRDM.DataModel):
             "processing_steps": processing_steps,
             "peak_identities": peak_identities,
         }
-
         if id is not None:
             params["id"] = id
-
-        self.fid.append(FID(**params))
-
+        self.fid.append(FIDObject(**params))
         return self.fid[-1]

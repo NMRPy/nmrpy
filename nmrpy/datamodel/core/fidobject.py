@@ -4,21 +4,18 @@ from typing import Optional, Union, List
 from pydantic import Field
 from sdRDM.base.listplus import ListPlus
 from sdRDM.base.utils import forge_signature, IDGenerator
-
-from pydantic.types import FrozenSet
-
 from .parameters import Parameters
 from .processingsteps import ProcessingSteps
-from .identity import Identity
+from .identity import Identity, AssociatedRanges
 
 
 @forge_signature
-class FID(sdRDM.DataModel):
+class FIDObject(sdRDM.DataModel):
     """Container for a single NMR spectrum."""
 
     id: Optional[str] = Field(
         description="Unique identifier of the given object.",
-        default_factory=IDGenerator("fidINDEX"),
+        default_factory=IDGenerator("fidobjectINDEX"),
         xml="@id",
     )
 
@@ -64,7 +61,7 @@ class FID(sdRDM.DataModel):
         name: Optional[str] = None,
         species_id: Optional[str] = None,
         associated_peaks: List[float] = ListPlus(),
-        associated_ranges: List[FrozenSet] = ListPlus(),
+        associated_ranges: List[AssociatedRanges] = ListPlus(),
         associated_integrals: List[float] = ListPlus(),
         id: Optional[str] = None,
     ) -> None:
@@ -79,7 +76,6 @@ class FID(sdRDM.DataModel):
             associated_ranges (): Sets of ranges belonging to the given peaks. Defaults to ListPlus()
             associated_integrals (): Integrals resulting from the given peaks and ranges of a species. Defaults to ListPlus()
         """
-
         params = {
             "name": name,
             "species_id": species_id,
@@ -87,10 +83,7 @@ class FID(sdRDM.DataModel):
             "associated_ranges": associated_ranges,
             "associated_integrals": associated_integrals,
         }
-
         if id is not None:
             params["id"] = id
-
         self.peak_identities.append(Identity(**params))
-
         return self.peak_identities[-1]
