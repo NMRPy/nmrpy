@@ -37,7 +37,7 @@ Also preparation of EnzymeML doc https://github.com/EnzymeML/enzymeml-specificat
   - Description: A species object from an EnzymeML document.
   - Multiple: True
 - fid
-  - Type: [FID](#fid)
+  - Type: [FIDObject](#fidobject)
   - Description: A single NMR spectrum.
   - Multiple: True
 - fid_array
@@ -45,7 +45,7 @@ Also preparation of EnzymeML doc https://github.com/EnzymeML/enzymeml-specificat
   - Description: Multiple NMR spectra to be processed together.
 
 
-### FID
+### FIDObject
 
 Container for a single NMR spectrum.
 
@@ -174,7 +174,7 @@ Container mapping one or more peaks to the respective species.
   - Description: Peaks belonging to the given species
   - Multiple: True
 - associated_ranges
-  - Type: frozenset
+  - Type: {start: float, end: float}
   - Description: Sets of ranges belonging to the given peaks
   - Multiple: True
 - associated_integrals
@@ -185,11 +185,11 @@ Container mapping one or more peaks to the respective species.
 
 ### FIDArray
 
-Container for processing of multiple spectra. Must reference the respective `FID` objects by `id`. {Add reference back. Setup time for experiment, Default 0.5}
+Container for processing of multiple spectra. Must reference the respective `FIDObject` by `id`. {Add reference back. Setup time for experiment, Default 0.5}
 
 - __fids__
   - Type: string
-  - Description: List of `FID.id` belonging to this array.
+  - Description: List of `FIDObject.id` belonging to this array.
   - Multiple: True
 
 

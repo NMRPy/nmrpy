@@ -12,8 +12,6 @@ import os
 import pickle
 from ipywidgets import SelectMultiple
 from sdRDM import DataModel
-from sdRDM.base.importedmodules import ImportedModules
-from nmrpy.datamodel.core import *
 
 
 class Base:
@@ -31,17 +29,17 @@ class Base:
         self._params = None
         self.fid_path = kwargs.get("fid_path", ".")
         self._file_format = None
+        # self.parameters_object = self.lib.Parameters()
 
-    # Probably not required anymore
-    # @property
-    # def lib(self):
-    #     try:
-    #         self.__lib
-    #     except:
-    #         self.__lib = DataModel.from_markdown(
-    #             path=Path(__file__).parent.parent / "specifications"
-    #         )
-    #     return self.__lib
+    @property
+    def lib(self):
+        try:
+            self.__lib
+        except:
+            self.__lib = DataModel.from_markdown(
+                path=Path(__file__).parent.parent / "specifications"
+            )
+        return self.__lib
 
     # @property
     # def parameters_object(self):
@@ -122,6 +120,24 @@ class Base:
         elif isinstance(procpar, dict):
             self.__procpar = procpar
             self._params = self._extract_procpar(procpar)
+            # self.parameters_object(
+            #     acquisition_time=self._params.get("at"),
+            #     relaxation_time=self._params.get("d1"),
+            #     repetition_time=self._params.get("rt"),
+            #     spectral_width_ppm=self._params.get("sw"),
+            #     spectral_width_hz=self._params.get("sw_hz"),
+            #     spectrometer_frequency=self._params.get("sfrq"),
+            #     reference_frequency=self._params.get("reffrq"),
+            #     spectral_width_left=self._params.get("sw_left"),
+            # )
+            # for _ in self._params.get("nt"):
+            #     if type(_) is not None:
+            #         self.fid_object.parameters.number_of_transients.append(_)
+            # for _ in self._params.get("acqtime"):
+            #     if type(_) is not None:
+            #         self.fid_object.parameters.acquisition_times_array.append(
+            #             _
+            #         )
         else:
             raise AttributeError("procpar must be a dictionary or None.")
 
@@ -151,41 +167,40 @@ class Base:
         Extract some commonely-used NMR parameters (using Varian denotations)
         and return a parameter dictionary 'params'.
         """
-        at = float(procpar['procpar']['at']['values'][0])
-        d1 = float(procpar['procpar']['d1']['values'][0])
-        sfrq = float(procpar['procpar']['sfrq']['values'][0])
-        reffrq = float(procpar['procpar']['reffrq']['values'][0])
-        rfp = float(procpar['procpar']['rfp']['values'][0])
-        rfl = float(procpar['procpar']['rfl']['values'][0])
-        tof = float(procpar['procpar']['tof']['values'][0])
-        rt = at+d1
-        nt_array = numpy.array(
-            [procpar['procpar']['nt']['values']], dtype=int).flatten()
-        acqtime_array = numpy.zeros(nt_array.shape)
-        acqtime_array[0] = (rt * nt_array[0] / 2)
-        for i in range(1, len(nt_array)):
-            acqtime_array[i] = acqtime_array[i - 1] + (nt_array[i - 1] + nt_array[i]) / 2 * rt
-        acqtime_array /= 60.   # convert to min
-        sw_hz = float(procpar['procpar']['sw']['values'][0])
-        sw = round(sw_hz/reffrq, 2)
-        sw_left = (0.5+1e6*(sfrq-reffrq)/sw_hz)*sw_hz/sfrq
+        at = float(procpar["procpar"]["at"]["values"][0])
+        d1 = float(procpar["procpar"]["d1"]["values"][0])
+        sfrq = float(procpar["procpar"]["sfrq"]["values"][0])
+        reffrq = float(procpar["procpar"]["reffrq"]["values"][0])
+        rfp = float(procpar["procpar"]["rfp"]["values"][0])
+        rfl = float(procpar["procpar"]["rfl"]["values"][0])
+        tof = float(procpar["procpar"]["tof"]["values"][0])
+        rt = at + d1
+        nt = numpy.array(
+            [procpar["procpar"]["nt"]["values"]], dtype=int
+        ).flatten()
+        acqtime = numpy.zeros(nt.shape)
+        acqtime[0] = rt * nt[0] / 2
+        for i in range(1, len(nt)):
+            acqtime[i] = acqtime[i - 1] + (nt[i - 1] + nt[i]) / 2 * rt
+        acqtime /= 60.0  # convert to min
+        sw_hz = float(procpar["procpar"]["sw"]["values"][0])
+        sw = round(sw_hz / reffrq, 2)
+        sw_left = (0.5 + 1e6 * (sfrq - reffrq) / sw_hz) * sw_hz / sfrq
         params = dict(
-            at=at,
-            d1=d1,
-            rt=rt,
-            nt_array=nt_array,
-            nt=None,
-            acqtime_array=acqtime_array,
-            acqtime=None,
-            sw=sw,
-            sw_hz=sw_hz,
-            sfrq=sfrq,
-            reffrq=reffrq,
-            rfp=rfp,
-            rfl=rfl,
-            tof=tof,
-            sw_left=sw_left,
-            )
+            at=at,  # acquisition time
+            d1=d1,  # relaxation delay
+            rt=rt,  # repetition time (at+d1)
+            nt=nt,  # number of transients
+            acqtime=acqtime,  # acquisition times array (nt, 2nt, .., ntxrt)
+            sw=sw,  # spectral width / ppm
+            sw_hz=sw_hz,  # sw / Hz
+            sfrq=sfrq,  # spectrometer frequency
+            reffrq=reffrq,  # reference frequency
+            rfp=rfp,  # irrelevant
+            rfl=rfl,  # irrelevant
+            tof=tof,  # irrelevant
+            sw_left=sw_left,  # spectral window left
+        )
         return params
 
     @staticmethod
@@ -204,28 +219,26 @@ class Base:
             sfrq = procpar["procs"]["SF"]
             sw_left = procpar["procs"]["OFFSET"]
         else:
-            sfrq = procpar['acqus']['BF1']
-            sw_left = (0.5+1e6*(sfrq-reffrq)/sw_hz)*sw_hz/sfrq
-        at = procpar['acqus']['TD']/(2*sw_hz)
-        rt = at+d1
-        td = procpar['tdelta']
-        cumulative = procpar['tcum']
-        single = procpar['tsingle']
-        tstart = cumulative - 0.5*single    # tstart for acquisition
-        al = procpar['arraylength']
-        a = procpar['arrayset']
-        acqtime_array = numpy.zeros((al))
-        acqtime_array[0] = tstart[a-1]
+            sfrq = procpar["acqus"]["BF1"]
+            sw_left = (0.5 + 1e6 * (sfrq - reffrq) / sw_hz) * sw_hz / sfrq
+        at = procpar["acqus"]["TD"] / (2 * sw_hz)
+        rt = at + d1
+        td = procpar["tdelta"]
+        cumulative = procpar["tcum"]
+        single = procpar["tsingle"]
+        tstart = cumulative - 0.5 * single  # tstart for acquisition
+        al = procpar["arraylength"]
+        a = procpar["arrayset"]
+        acqtime = numpy.zeros((al))
+        acqtime[0] = tstart[a - 1]
         for i in range(1, al):
-            acqtime_array[i] = acqtime_array[i-1] + td
+            acqtime[i] = acqtime[i - 1] + td
         params = dict(
             at=at,
             d1=d1,
             rt=rt,
-            nt_array=None,
             nt=nt,
-            acqtime_array=acqtime_array,
-            acqtime=None,
+            acqtime=acqtime,
             sw=sw,
             sw_hz=sw_hz,
             sfrq=sfrq,
@@ -243,20 +256,14 @@ class Fid(Base):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.fid_object = self.lib.FID()
         self.data = kwargs.get("data", [])
         self.peaks = None
         self.ranges = None
-        self.identities = None
         self._deconvoluted_peaks = None
         self._flags = {
             "ft": False,
         }
-        self.fid_object = FIDObject(
-            raw_data=[(str(datum)) for datum in self.data],
-            processed_data=[],
-            nmr_parameters=Parameters(),
-            processing_steps=ProcessingSteps(),
-        )
 
     def __str__(self):
         return "FID: %s (%i data)" % (self.id, len(self.data))
@@ -271,14 +278,6 @@ class Fid(Base):
             self.__fid_object = fid_object
 
     @property
-    def processing_steps(self):
-        return self.__processing_steps
-
-    @processing_steps.setter
-    def processing_steps(self, processing_steps):
-        raise PermissionError("Forbidden!")
-
-    @property
     def data(self):
         """
         The spectral data. This is the primary object upon which the processing and analysis functions work.
@@ -289,6 +288,9 @@ class Fid(Base):
     def data(self, data):
         if Fid._is_valid_dataset(data):
             self.__data = numpy.array(data)
+            # for _ in self.__data:
+            #     if type(_) is not None:
+            #         self.fid_object.data.append(float(_))
 
     @property
     def _ppm(self):
@@ -347,27 +349,6 @@ class Fid(Base):
             if not all(isinstance(i, numbers.Number) for i in r):
                 raise AttributeError("ranges must be numbers")
         self._ranges = ranges
-
-    @property
-    def identities(self):
-        """
-        Assigned identities corresponding to the various peaks in :attr:`~nmrpy.data_objects.Fid.peaks`.
-        """
-        return self._identities
-
-    @identities.setter
-    def identities(self, identities):
-        if identities is None:
-            self._identities = None
-            return
-        if identities is not None:
-            # if not Fid._is_flat_iter(identities):
-            #     raise AttributeError("identitites must be a flat iterable")
-            if not all(isinstance(i, str) for i in identities):
-                raise AttributeError("identities must be strings")
-            self._identities = numpy.array(identities)
-        else:
-            self._identities = identities
 
     @property
     def _bl_ppm(self):
@@ -602,8 +583,8 @@ class Fid(Base):
 
         """
         self.data = numpy.append(self.data, 0 * self.data)
-        self.fid_object.processed_data = [str(datum) for datum in self.data]
-        self.fid_object.processing_steps.is_zero_filled = True
+        for _ in self.data:
+            self.fid_object.data.append(float(_))
 
     def emhz(self, lb=5.0):
         """
@@ -622,17 +603,16 @@ class Fid(Base):
             )
             * self.data
         )
-        self.fid_object.processed_data = [str(datum) for datum in self.data]
-        self.fid_object.processing_steps.is_apodised = True
-        self.fid_object.processing_steps.apodisation_frequency = lb
+        for _ in self.data:
+            self.fid_object.data.append(float(_))
 
     def real(self):
         """
         Discard imaginary component of :attr:`~nmrpy.data_objects.Fid.data`.
         """
         self.data = numpy.real(self.data)
-        self.fid_object.processed_data = [float(datum) for datum in self.data]
-        self.fid_object.processing_steps.is_only_real = True
+        for _ in self.data:
+            self.fid_object.data.append(float(_))
 
     # GENERAL FUNCTIONS
     def ft(self):
@@ -650,10 +630,9 @@ class Fid(Base):
         if Fid._is_valid_dataset(self.data):
             list_params = (self.data, self._file_format)
             self.data = Fid._ft(list_params)
+            for _ in self.data:
+                self.fid_object.data.append(float(_))
             self._flags["ft"] = True
-        self.fid_object.processed_data = [str(datum) for datum in self.data]
-        self.fid_object.processing_steps.is_fourier_transformed = True
-        self.fid_object.processing_steps.fourier_transform_type = "FFT"
 
     @classmethod
     def _ft(cls, list_params):
@@ -695,24 +674,24 @@ class Fid(Base):
 
     @staticmethod
     def _conv_to_index(data, ppm, sw_left, sw):
-            """
-            Convert ppm array to index. 
-            """
-            conv_to_int = False
-            if not Fid._is_iter(ppm):
-                ppm = [ppm]
-                conv_to_int = True
-            if isinstance(ppm, list):
-                    ppm = numpy.array(ppm)
-            if any(ppm > sw_left) or any(ppm < sw_left-sw):
-                raise ValueError('ppm must be within spectral width.')
-            indices = len(data)*(sw_left-ppm)/sw
-            if conv_to_int:
-                return int(numpy.ceil(indices))
-            return numpy.array(numpy.ceil(indices), dtype=int)
-    
-    def phase_correct(self, method='leastsq', verbose = True):
-            """
+        """
+        Convert ppm array to index.
+        """
+        conv_to_int = False
+        if not Fid._is_iter(ppm):
+            ppm = [ppm]
+            conv_to_int = True
+        if isinstance(ppm, list):
+            ppm = numpy.array(ppm)
+        if any(ppm > sw_left) or any(ppm < sw_left - sw):
+            raise ValueError("ppm must be within spectral width.")
+        indices = len(data) * (sw_left - ppm) / sw
+        if conv_to_int:
+            return int(numpy.ceil(indices))
+        return numpy.array(numpy.ceil(indices), dtype=int)
+
+    def phase_correct(self, method="leastsq"):
+        """
 
         Automatically phase-correct :attr:`~nmrpy.data_objects.Fid.data` by minimising
         total absolute area.
@@ -726,43 +705,46 @@ class Fid(Base):
                 Conjugate Gradient (cg)
 
                 Powell (powell)
-                
-                Newton-CG  (newton)
 
-            :keyword verbose: prints out phase angles if True (default)
-            """
-            if self.data.dtype not in self._complex_dtypes:
-                raise TypeError('Only complex data can be phase-corrected.')
-            if not self._flags['ft']:
-                raise ValueError('Only Fourier-transformed data can be phase-corrected.')
-            if verbose:
-                print('phasing: %s'%self.id)
-            self.data = Fid._phase_correct((self.data, method, verbose))
-            self.fid_object.processed_data = [str(datum) for datum in self.data]
-            self.fid_object.processing_steps.is_phased = True
+                Newton-CG  (newton)
+        """
+        if self.data.dtype not in self._complex_dtypes:
+            raise TypeError("Only complex data can be phase-corrected.")
+        if not self._flags["ft"]:
+            raise ValueError(
+                "Only Fourier-transformed data can be phase-corrected."
+            )
+        print("phasing: %s" % self.id)
+        self.data = Fid._phase_correct((self.data, method))
+        for _ in self.data:
+            self.fid_object.data.append(float(_))
 
     @classmethod
     def _phase_correct(cls, list_params):
-            """
-            Class method for phase-correction using multiprocessing.
-            list_params is a tuple of (<data>, <fitting method>, <verbose>).
-            """
-            data, method, verbose = list_params
-            p = lmfit.Parameters()
-            p.add_many(
-                    ('p0', 1.0, True),
-                    ('p1', 0.0, True),
-                    )
-            mz = lmfit.minimize(Fid._phased_data_sum, p, args=([data]), method=method)
-            phased_data = Fid._ps(data, p0=mz.params['p0'].value, p1=mz.params['p1'].value)
-            if abs(phased_data.min()) > abs(phased_data.max()):
-                    phased_data *= -1
-            if sum(phased_data) < 0.0:
-                    phased_data *= -1
-            if verbose:
-                print('Zero order: %d\tFirst order: %d\t (In degrees)'%(mz.params['p0'].value, mz.params['p1'].value))
-            return phased_data
-        
+        """
+        Class method for phase-correction using multiprocessing.
+        list_params is a tuple of (<data>, <fitting method>).
+        """
+        data, method = list_params
+        p = lmfit.Parameters()
+        p.add_many(
+            ("p0", 1.0, True),
+            ("p1", 0.0, True),
+        )
+        mz = lmfit.minimize(
+            Fid._phased_data_sum, p, args=([data]), method=method
+        )
+        phased_data = Fid._ps(
+            data, p0=mz.params["p0"].value, p1=mz.params["p1"].value
+        )
+        # data model
+        if abs(phased_data.min()) > abs(phased_data.max()):
+            phased_data *= -1
+        if sum(phased_data) < 0.0:
+            phased_data *= -1
+        print("%d\t%d" % (mz.params["p0"].value, mz.params["p1"].value))
+        return phased_data
+
     @classmethod
     def _phased_data_sum(cls, pars, data):
         err = Fid._ps(data, p0=pars["p0"].value, p1=pars["p1"].value).real
@@ -808,10 +790,8 @@ class Fid(Base):
         size = len(self.data)
         ph = numpy.exp(1.0j * (p0 + (p1 * numpy.arange(size) / size)))
         self.data = ph * self.data
-        self.fid_object.processed_data = [str(datum) for datum in self.data]
-        self.fid_object.processing_steps.is_phased = True
-        self.fid_object.processing_steps.zero_order_phase = p0
-        self.fid_object.processing_steps.first_order_phase = p1
+        for _ in self.data:
+            self.fid_object.data.append(float(_))
 
     def phaser(self):
         """
@@ -873,12 +853,12 @@ Left - select peak
         ym = numpy.ma.masked_array(data, m)
         xm = numpy.ma.masked_array(x, m)
         p = numpy.ma.polyfit(xm, ym, deg)
-        yp = numpy.polyval(p, x)
+        yp = scipy.polyval(p, x)
         self._bl_poly = yp
         data_bl = data - yp
         self.data = numpy.array(data_bl)
-        self.fid_object.processed_data = [float(datum) for datum in self.data]
-        self.fid_object.processing_steps.is_baseline_corrected = True
+        for _ in self.data:
+            self.fid_object.data.append(float(_))
 
     def peakpick(self, thresh=0.1):
         """
@@ -931,12 +911,6 @@ Ctrl+Alt+Right - assign
         Clear ranges stored in :attr:`~nmrpy.data_objects.Fid.ranges`.
         """
         self.ranges = None
-
-    def clear_identitites(self):
-        """
-        Clear identities stored in :attr:`~nmrpy.data_objects.Fid.identities`.
-        """
-        self.identities = None
 
     def baseliner(self):
         """
@@ -1408,27 +1382,6 @@ Ctrl+Alt+Right - assign
         setattr(self, plt.id, plt)
         pyplot.show()
 
-    def assign_identities(self):
-        """
-        Instantiate a identity-assignment GUI widget. Select peaks from
-        dropdown menu containing :attr:`~nmrpy.data_objects.Fid.peaks`.
-        Attach a species to the selected peak from second dropdown menu
-        containing species defined in EnzymeML. When satisfied with
-        assignment, press Assign button to apply.
-        """
-        raise NotImplementedError
-        widget_title = "Assign identities for {}".format(self.id)
-        self._assigner_widget = IdentityAssigner(
-            fid=self, title=widget_title, available_species=[]
-        )
-
-    def clear_identities(self):
-        """
-        Clear assigned identities stored in
-        :attr:`~nmrpy.data_objects.Fid.identities`.
-        """
-        self.identities = None
-
 
 class FidArray(Base):
     """
@@ -1448,7 +1401,7 @@ class FidArray(Base):
 
     def __init__(self):
         _now = str(datetime.now())
-        self.data_model = NMRpy(
+        self.data_model = self.lib.NMRpy(
             datetime_created=_now,
             datetime_modified=_now,
         )
@@ -1484,41 +1437,6 @@ class FidArray(Base):
     def data_model(self):
         del self.__data_model
         print("The current data model has been deleted.")
-
-    @property
-    def enzymeml_document(self):
-        return self.__enzymeml_document
-
-    @enzymeml_document.setter
-    def enzymeml_document(self, enzymeml_document: DataModel):
-        if not isinstance(enzymeml_document, DataModel):
-            raise AttributeError(
-                f"Parameter `enzymeml_document` has to be of type `sdrdm.DataModel`, got {type(enzymeml_document)} instead."
-            )
-        self.__enzymeml_document = enzymeml_document
-        self.__enzymeml_document.modified = datetime.now()
-
-    @enzymeml_document.deleter
-    def enzymeml_document(self):
-        del self.__enzymeml_document
-        print("The current EnzymeML document has been deleted.")
-
-    @property
-    def enzymeml_library(self):
-        return self.__enzymeml_library
-
-    @enzymeml_library.setter
-    def enzymeml_library(self, enzymeml_library: ImportedModules):
-        if not isinstance(enzymeml_library, ImportedModules):
-            raise AttributeError(
-                f"Parameter `enzymeml_library` has to be of type `sdrdm.base.importedmodules.ImportedModules`, got {type(enzymeml_library)} instead."
-            )
-        self.__enzymeml_library = enzymeml_library
-
-    @enzymeml_library.deleter
-    def enzymeml_library(self):
-        del self.__enzymeml_library
-        print("The current EnzymeML library has been deleted.")
 
     def __str__(self):
         return "FidArray of {} FID(s)".format(len(self.data))
@@ -1607,12 +1525,7 @@ class FidArray(Base):
         t = None
         if nfids > 0:
             try:
-                if "acqtime_array" in self._params.keys():
-                    # New NMRpy _params structure
-                    t = self._params['acqtime_array']
-                else:
-                    # Old NMRpy _params structure
-                    t = self._params['acqtime']
+                t = self._params["acqtime"]
             except:
                 t = numpy.arange(len(self.get_fids()))
         return t
@@ -1662,15 +1575,10 @@ class FidArray(Base):
                 fids = [f.id for f in self.get_fids()]
                 idx = fids.index(fid_id)
                 delattr(self, fid_id)
-                if hasattr(self, '_params') and self._params is not None:
-                    at = list(self._params['acqtime_array']) if "acqtime_array" in self._params.keys() else list(self._params['acqtime'])
+                if hasattr(self, "_params") and self._params is not None:
+                    at = list(self._params["acqtime"])
                     at.pop(idx)
-                    if "acqtime_array" in self._params.keys():
-                        # New NMRpy _params structure
-                        self._params['acqtime_array'] = at
-                    else:
-                        # Old NMRpy _params structure
-                        self._params['acqtime'] = at
+                    self._params["acqtime"] = at
             else:
                 raise AttributeError("{} is not an FID object.".format(fid_id))
         else:
@@ -1693,54 +1601,6 @@ class FidArray(Base):
                     self.add_fid(fid)
                 except AttributeError as e:
                     print(e)
-    
-    @staticmethod
-    def _setup_params(fid_array):
-        """Setup the parameters nt, nt_array, acqtime, and acqtime_array
-        for the :class:`~nmrpy.data_objects.FidArray` object.
-
-        :arg fid_array: a :class:`~nmrpy.data_objects.FidArray` object
-        """
-        nt_list = []
-        is_bruker = False
-        for fid in fid_array.get_fids():
-            fid_index = int(fid.id.split('fid')[1])
-            if fid._file_format == 'varian':
-                # Varian files provide nt_array and acqtime_array. For
-                # each FID, nt and acqtime are extracted from these.
-                fid._params['nt'] = float(fid._params['nt_array'][fid_index])
-                fid._params['acqtime'] = float(fid._params['acqtime_array'][fid_index])
-                # Remove nt_array and acqtime_array from the Fid objects
-                del fid._params['nt_array']
-                del fid._params['acqtime_array']
-            elif fid._file_format == 'bruker':
-                # Bruker files provide nt and acqtime_array. For each
-                # FID, acqtime is extracted from acqtime_array.
-                # Additionally, nt is added to the nt_list for later use
-                # in the FidArray object.
-                is_bruker = True
-                nt_list.append(fid._params['nt'])
-                fid._params['acqtime'] = float(fid._params['acqtime_array'][fid_index])
-                # Remove nt_array and acqtime_array from the Fid objects
-                del fid._params['nt_array']
-                del fid._params['acqtime_array']
-        if is_bruker:
-            # Create nt_array from the nt_list for the FidArray object
-            fid_array._params['nt_array'] = numpy.array(nt_list)
-        # Remove nt and acqtime from the FidArray object
-        del fid_array._params['nt']
-        del fid_array._params['acqtime']
-
-    def parse_enzymeml_document(self, path_to_enzymeml_document) -> None:
-        """Parse an EnzymeML document and its library from specified
-        file path.
-
-        Args:
-            path_to_enzymeml_document (str): Path to file containing an EnzymeML document
-        """
-        self.enzymeml_document, self.enzymeml_library = DataModel.parse(
-            path_to_enzymeml_document
-        )
 
     @classmethod
     def from_data(cls, data):
@@ -1799,8 +1659,7 @@ class FidArray(Base):
                 fid._file_format = fid_array._file_format
                 fid.fid_path = fid_array.fid_path
                 fid._procpar = fid_array._procpar
-            cls._setup_params(fid_array)
-            return fid_array 
+            return fid_array
         else:
             raise IOError("Data could not be imported.")
 
@@ -1835,10 +1694,6 @@ class FidArray(Base):
             for fid, datum in zip(fids, ft_data):
                 fid.data = datum
                 fid._flags["ft"] = True
-                fid.fid_object.processed_data = [str(data) for data in datum]
-                fid.fid_object.processing_steps.is_fourier_transformed = True
-                fid.fid_object.processing_steps.fourier_transform_type = "FFT"
-
         else:
             for fid in self.get_fids():
                 fid.ft()
@@ -1860,14 +1715,9 @@ class FidArray(Base):
         dmax = self.data.max()
         for fid in self.get_fids():
             fid.data = fid.data / dmax
-            fid.fid_object.processed_data = [
-                float(datum) for datum in fid.data
-            ]
-            fid.fid_object.processing_steps.is_normalised = True
-            fid.fid_object.processing_steps.max_value = float(dmax)
 
-    def phase_correct_fids(self, method='leastsq', mp=True, cpus=None, verbose=True):
-        """ 
+    def phase_correct_fids(self, method="leastsq", mp=True, cpus=None):
+        """
         Apply automatic phase-correction to all :class:`~nmrpy.data_objects.Fid` objects owned by this :class:`~nmrpy.data_objects.FidArray`
 
         :keyword method: see :meth:`~nmrpy.data_objects.Fid.phase_correct`
@@ -1875,25 +1725,25 @@ class FidArray(Base):
         :keyword mp: parallelise the phasing process over multiple processors, significantly reducing computation time
 
         :keyword cpus: defines number of CPUs to utilise if 'mp' is set to True
-
-        :keyword verbose: prints out phase angles if True (default)
         """
         if mp:
             fids = self.get_fids()
             if not all(fid.data.dtype in self._complex_dtypes for fid in fids):
-                raise TypeError('Only complex data can be phase-corrected.')
-            if not all(fid._flags['ft'] for fid in fids):
-                raise ValueError('Only Fourier-transformed data can be phase-corrected.')
-            list_params = [[fid.data, method, verbose] for fid in fids]
-            phased_data = self._generic_mp(Fid._phase_correct, list_params, cpus)
+                raise TypeError("Only complex data can be phase-corrected.")
+            if not all(fid._flags["ft"] for fid in fids):
+                raise ValueError(
+                    "Only Fourier-transformed data can be phase-corrected."
+                )
+            list_params = [[fid.data, method] for fid in fids]
+            phased_data = self._generic_mp(
+                Fid._phase_correct, list_params, cpus
+            )
             for fid, datum in zip(fids, phased_data):
                 fid.data = datum
-                fid.fid_object.processed_data = [str(data) for data in datum]
-                fid.fid_object.processing_steps.is_phased = True
         else:
             for fid in self.get_fids():
-                fid.phase_correct(method=method, verbose=verbose)
-        print('phase-correction completed')
+                fid.phase_correct(method=method)
+        print("phase-correction completed")
 
     def baseliner_fids(self):
         """
@@ -2012,7 +1862,6 @@ Ctrl+Alt+Right - assign
                 fid._deconvoluted_peaks = numpy.array(
                     [j for i in datum for j in i]
                 )
-                fid.fid_object.processing_steps.is_deconvoluted = True
         else:
             for fid in self.get_fids():
                 fid.deconv(frac_gauss=frac_gauss)
@@ -2406,35 +2255,25 @@ Ctrl+Alt+Right - assign
         with open(filename, "wb") as f:
             pickle.dump(self, f)
 
-    # TODO: Will probably create a measurement object for each FID(?)
-    # and add them to the EnzymeML document provided
-    # Issue: How to get species for IdentityAssigner? __init__()?
-    def add_to_enzymeml(self, enzymeml_document=None) -> None:
-        ...
-
-    # TODO: Refactor save_data method
-    # possibly make saving to EnzymeML a get_measurements method
     def save_data(self, file_format: str, filename=None, overwrite=False):
         print("~~~ Method under contruction ~~~")
         if self.force_pyenzyme:
-            try:
-                import pyenzyme as pe
-            except:
-                self.force_pyenzyme = False
-                raise ModuleNotFoundError(
-                    "PyEnzyme is not installed in your current environment. Use EnzymeML data model instead or install PyEnzyme."
-                )
+            import pyenzyme as pe
+
             enzymeml = pe.EnzymeMLDocument(
-                name=self.data_model.experiment.name
+                name=self.data_mode.experiment.name
                 if hasattr(self.data_model.experiment, "name")
                 else "NMR experiment"
             )
             ...
             return 1
         if file_format.lower() == ("enzymeml" or "nmrml"):
+            # model = self.data_model.convert_to(
+            #     template=Path(__file__).parent.parent / "links/enzymeml.toml"
+            # )
             enzymeml = DataModel.from_git(
                 url="https://github.com/EnzymeML/enzymeml-specifications.git",
-                tag="linking-refactor",
+                tag="markdown-parser-refactor",
             )
             doc = enzymeml.EnzymeMLDocument(
                 name=(
@@ -2466,26 +2305,6 @@ Ctrl+Alt+Right - assign
             return 1
         with open(filename, "w") as f:
             f.write(model)
-
-    def assign_identities(self):
-        """
-        Instantiate a identity-assignment GUI widget. Select a FID by
-        its ID from the combobox. Select peaks from dropdown menu
-        containing :attr:`~nmrpy.data_objects.Fid.peaks`. Attach a
-        species to the selected peak from second dropdown menu
-        containing species defined in EnzymeML. When satisfied with
-        assignment, press Assign button to apply.
-        """
-
-        self._assigner_widget = IdentityRangeAssigner(fid_array=self)
-
-    def clear_identities(self):
-        """
-        Clear assigned identities stored in
-        :attr:`~nmrpy.data_objects.Fid.identities`.
-        """
-        for fid in self.get_fids():
-            fid.identities = None
 
 
 class Importer(Base):

@@ -1,19 +1,15 @@
 import sdRDM
 
-from typing import List, Optional
-from pydantic import Field
+from typing import Any, List, Optional
+from pydantic import AnyUrl, Field
 from sdRDM.base.listplus import ListPlus
 from sdRDM.base.utils import forge_signature, IDGenerator
-
-from pydantic import AnyUrl
-from typing import Any
-
-from .term import Term
-from .identifiertypes import IdentifierTypes
-from .publication import Publication
-from .subjects import Subjects
 from .publicationtypes import PublicationTypes
 from .person import Person
+from .identifiertypes import IdentifierTypes
+from .term import Term
+from .publication import Publication
+from .subjects import Subjects
 
 
 @forge_signature
@@ -111,7 +107,6 @@ class Citation(sdRDM.DataModel):
             identifier_type (): Recognized identifier for the person.. Defaults to None
             identifier_value (): Value of the identifier for the person.. Defaults to None
         """
-
         params = {
             "last_name": last_name,
             "first_name": first_name,
@@ -121,12 +116,9 @@ class Citation(sdRDM.DataModel):
             "identifier_type": identifier_type,
             "identifier_value": identifier_value,
         }
-
         if id is not None:
             params["id"] = id
-
         self.authors.append(Person(**params))
-
         return self.authors[-1]
 
     def add_to_keywords(
@@ -147,19 +139,15 @@ class Citation(sdRDM.DataModel):
             term_cv_reference (): Reference to the `CV.id` of a controlled vocabulary that has been defined for this dataset.. Defaults to None
             value (): Value of the term, if applicable.. Defaults to None
         """
-
         params = {
             "name": name,
             "accession": accession,
             "term_cv_reference": term_cv_reference,
             "value": value,
         }
-
         if id is not None:
             params["id"] = id
-
         self.keywords.append(Term(**params))
-
         return self.keywords[-1]
 
     def add_to_topics(
@@ -180,19 +168,15 @@ class Citation(sdRDM.DataModel):
             term_cv_reference (): Reference to the `CV.id` of a controlled vocabulary that has been defined for this dataset.. Defaults to None
             value (): Value of the term, if applicable.. Defaults to None
         """
-
         params = {
             "name": name,
             "accession": accession,
             "term_cv_reference": term_cv_reference,
             "value": value,
         }
-
         if id is not None:
             params["id"] = id
-
         self.topics.append(Term(**params))
-
         return self.topics[-1]
 
     def add_to_related_publications(
@@ -215,7 +199,6 @@ class Citation(sdRDM.DataModel):
             year (): Year of publication.. Defaults to None
             doi (): The DOI pointing to the publication.. Defaults to None
         """
-
         params = {
             "type": type,
             "title": title,
@@ -223,10 +206,7 @@ class Citation(sdRDM.DataModel):
             "year": year,
             "doi": doi,
         }
-
         if id is not None:
             params["id"] = id
-
         self.related_publications.append(Publication(**params))
-
         return self.related_publications[-1]
