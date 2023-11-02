@@ -1,10 +1,8 @@
 import sdRDM
 
 from typing import Optional
-from pydantic import Field
+from pydantic import AnyUrl, Field
 from sdRDM.base.utils import forge_signature, IDGenerator
-
-from pydantic import AnyUrl
 
 
 @forge_signature

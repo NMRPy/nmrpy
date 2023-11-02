@@ -23,14 +23,7 @@ from ipywidgets import (
 from IPython.display import display
 import asyncio
 
-
-SPECIES_DECOY = [
-    "TEP",
-    "PEP",
-    "3PG",
-    "2PG",
-    "Phosphate",
-]
+from .utils import get_species_from_enzymeml
 
 
 class Plot:
@@ -1394,9 +1387,10 @@ class SpanDataSelector(DataSelector, SpanSelectorMixin, AssignMixin):
 
 
 class IdentityAssigner:
-    def __init__(self, fid, title):
+    def __init__(self, fid, title, available_species):
         self.fid = fid
         self.title = title
+        self.available_species = available_species
         self.selected_values = {}
         if fid.peaks is [] or fid.peaks is None:
             raise RuntimeError(
@@ -1437,7 +1431,7 @@ class IdentityAssigner:
         # Define a method to handle the peak dropdown's change event
         def on_peak_dropdown_change(event):
             if event["type"] == "change" and event["name"] == "value":
-                species_dropdown.options = SPECIES_DECOY
+                species_dropdown.options = self.available_species
                 species_dropdown.disabled = False
                 save_button.disabled = False
 
@@ -1504,6 +1498,13 @@ class IdentityRangeAssigner:
     def __init__(self, fid_array):
         self.fid_array = fid_array
         self.fids = fid_array.get_fids()
+        self.available_peaks = []
+        self.available_species = [
+            species.name
+            for species in get_species_from_enzymeml(
+                self.fid_array.enzymeml_document
+            )
+        ]
         self.selected_fid = None
         self.selected_values = {}
         for fid in self.fids:
@@ -1559,9 +1560,10 @@ class IdentityRangeAssigner:
                 if selected_option in combobox.options:
                     peak_dropdown.disabled = False
                     self.selected_fid = self.fid_array.get_fid(selected_option)
-                    peak_dropdown.options = [
+                    self.available_peaks = [
                         str(peak) for peak in self.selected_fid.peaks
                     ]
+                    peak_dropdown.options = self.available_peaks
 
         # Attach the method to the combobox's change event:
         combobox.observe(on_combobox_change)
@@ -1569,34 +1571,84 @@ class IdentityRangeAssigner:
         # Define a method to handle the peak dropdown's change event
         def on_peak_dropdown_change(event):
             if event["type"] == "change" and event["name"] == "value":
-                species_dropdown.options = SPECIES_DECOY
+                species_dropdown.options = self.available_species
                 species_dropdown.disabled = False
-                save_button.disabled = False
 
         # Attach the method to the dropdown's change event
         peak_dropdown.observe(on_peak_dropdown_change)
 
-        # Define a method to handle the species dropdown's change event
+        # Define a method to handle the peak dropdown's change event
         def on_species_dropdown_change(event):
             if event["type"] == "change" and event["name"] == "value":
-                selected_option = event["new"]
-                new_key = peak_dropdown.value
-                self.selected_values[new_key] = selected_option
+                save_button.disabled = False
 
-        # Attach the function to the second dropdown's change event
+        # Attach the method to the dropdown's change event
         species_dropdown.observe(on_species_dropdown_change)
 
         # Define a function to handle the save button click event
         def on_save_button_click(b):
             with selection_output:
                 selection_output.clear_output(wait=True)
+                # Fetch the values from the species dropdown and peak
+                # dropdown and add them to a dictionary with species as
+                # keys
+                if species_dropdown.value not in self.selected_values:
+                    self.selected_values[species_dropdown.value] = []
+                self.selected_values[species_dropdown.value].append(
+                    float(peak_dropdown.value)
+                )
+                # Remove the assigned peaks from the options of the peak
+                # dropdown, as they cannot belong to two species at once
+                # and disable the peak dropdown if all are assigned
+                self.available_peaks.remove(peak_dropdown.value)
+                peak_dropdown.options = self.available_peaks
+                if not self.available_peaks:
+                    peak_dropdown.disabled = True
+                # Iterate over the dictionary of assigned peaks and
+                # print the saved selections.
                 print("\nSaved selections:")
                 for key, value in self.selected_values.items():
                     print(f"{key}: {value}")
-                for fid in self.fids:
-                    fid.identities = [
-                        value for value in self.selected_values.values()
-                    ]
+                    # Iterate over every FID, check if a given species
+                    # already exists as an identity in the FID data
+                    # model. If it does not, create a new Identity for
+                    # the species and add name and associated peaks to
+                    # it. If it already exists, check if the current
+                    # value is already in the associated peaks and if
+                    # not, append it.
+                    for fid in self.fids:
+                        identity_exists = False
+                        for identity in fid.fid_object.peak_identities:
+                            if identity.name == key:
+                                for peak in value:
+                                    if peak not in identity.associated_peaks:
+                                        identity.associated_peaks.append(peak)
+                                        peak_index = list(fid.peaks).index(
+                                            peak
+                                        )
+                                        associated_range = list(
+                                            list(fid.ranges)[peak_index]
+                                        )
+                                        identity.add_to_associated_ranges(
+                                            start=associated_range[0],
+                                            end=associated_range[1],
+                                        )
+                                identity_exists = True
+                        if not identity_exists:
+                            peak_index = list(fid.peaks).index(value)
+                            associated_range = list(
+                                list(fid.ranges)[peak_index]
+                            )
+                            fid.fid_object.add_to_peak_identities(
+                                name=key,
+                                associated_peaks=value,
+                                associated_ranges=[
+                                    {
+                                        "start": associated_range[0],
+                                        "end": associated_range[1],
+                                    }
+                                ],
+                            )
             reset_button.disabled = False
 
         # Attach the function to the save button's click event
@@ -1606,10 +1658,21 @@ class IdentityRangeAssigner:
         def on_reset_button_click(b):
             with selection_output:
                 selection_output.clear_output(wait=True)
+                # Iterate over every FID and clear the Identities in the
+                # respective data model and reset the selection dict
                 print("\nCleared selections!")
                 for fid in self.fids:
-                    fid.identities = []
+                    fid.fid_object.peak_identities = []
                 self.selected_values = {}
+                # Refill the list of available peaks as before,
+                # re-enable the peak dropdown, and disable the reset
+                # button again
+                self.available_peaks = [
+                    str(peak) for peak in self.selected_fid.peaks
+                ]
+                peak_dropdown.options = self.available_peaks
+                peak_dropdown.disabled = False
+                reset_button.disabled = True
 
         # Attach the function to the reset click event
         reset_button.on_click(on_reset_button_click)

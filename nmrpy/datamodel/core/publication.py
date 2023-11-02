@@ -1,15 +1,12 @@
 import sdRDM
 
 from typing import List, Optional
-from pydantic import Field
+from pydantic import AnyUrl, Field
 from sdRDM.base.listplus import ListPlus
 from sdRDM.base.utils import forge_signature, IDGenerator
-
-from pydantic import AnyUrl
-
-from .identifiertypes import IdentifierTypes
 from .publicationtypes import PublicationTypes
 from .person import Person
+from .identifiertypes import IdentifierTypes
 
 
 @forge_signature
@@ -72,7 +69,6 @@ class Publication(sdRDM.DataModel):
             identifier_type (): Recognized identifier for the person.. Defaults to None
             identifier_value (): Value of the identifier for the person.. Defaults to None
         """
-
         params = {
             "last_name": last_name,
             "first_name": first_name,
@@ -82,10 +78,7 @@ class Publication(sdRDM.DataModel):
             "identifier_type": identifier_type,
             "identifier_value": identifier_value,
         }
-
         if id is not None:
             params["id"] = id
-
         self.authors.append(Person(**params))
-
         return self.authors[-1]

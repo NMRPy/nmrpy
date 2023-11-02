@@ -2,11 +2,11 @@
 classDiagram
     NMRpy *-- Experiment
     NMRpy *-- Citation
-    Experiment *-- FID
+    Experiment *-- FIDObject
     Experiment *-- FIDArray
-    FID *-- Parameters
-    FID *-- ProcessingSteps
-    FID *-- Identity
+    FIDObject *-- Parameters
+    FIDObject *-- ProcessingSteps
+    FIDObject *-- Identity
     Citation *-- Subjects
     Citation *-- Person
     Citation *-- Publication
@@ -25,11 +25,11 @@ classDiagram
     class Experiment {
         +string name*
         +string[0..*] enzymeml_species
-        +FID[0..*] fid
+        +FIDObject[0..*] fid
         +FIDArray fid_array
     }
     
-    class FID {
+    class FIDObject {
         +string[0..*] raw_data
         +string, float[0..*] processed_data
         +Parameters nmr_parameters
@@ -70,7 +70,7 @@ classDiagram
         +string name
         +string species_id
         +float[0..*] associated_peaks
-        +frozenset[0..*] associated_ranges
+        +AssociatedRanges[0..*] associated_ranges
         +float[0..*] associated_integrals
     }
     

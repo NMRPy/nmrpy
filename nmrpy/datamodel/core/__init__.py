@@ -1,6 +1,6 @@
 from .nmrpy import NMRpy
 from .experiment import Experiment
-from .fid import FID
+from .fidobject import FIDObject
 from .parameters import Parameters
 from .processingsteps import ProcessingSteps
 from .identity import Identity
@@ -16,11 +16,10 @@ from .publicationtypes import PublicationTypes
 from .identifiertypes import IdentifierTypes
 
 __doc__ = ""
-
 __all__ = [
     "NMRpy",
     "Experiment",
-    "FID",
+    "FIDObject",
     "Parameters",
     "ProcessingSteps",
     "Identity",
