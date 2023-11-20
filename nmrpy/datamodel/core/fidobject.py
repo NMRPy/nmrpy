@@ -4,8 +4,8 @@ from typing import Optional, Union, List
 from pydantic import Field
 from sdRDM.base.listplus import ListPlus
 from sdRDM.base.utils import forge_signature, IDGenerator
-from .parameters import Parameters
 from .processingsteps import ProcessingSteps
+from .parameters import Parameters
 from .identity import Identity, AssociatedRanges
 
 

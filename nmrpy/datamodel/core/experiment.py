@@ -4,11 +4,11 @@ from typing import Optional, Union, List
 from pydantic import Field
 from sdRDM.base.listplus import ListPlus
 from sdRDM.base.utils import forge_signature, IDGenerator
-from .parameters import Parameters
-from .fidarray import FIDArray
-from .processingsteps import ProcessingSteps
-from .identity import Identity
 from .fidobject import FIDObject
+from .processingsteps import ProcessingSteps
+from .parameters import Parameters
+from .identity import Identity
+from .fidarray import FIDArray
 
 
 @forge_signature
@@ -26,12 +26,6 @@ class Experiment(sdRDM.DataModel):
     name: str = Field(
         ...,
         description="A descriptive name for the overarching experiment.",
-    )
-
-    enzymeml_species: List[str] = Field(
-        description="A species object from an EnzymeML document.",
-        default_factory=ListPlus,
-        multiple=True,
     )
 
     fid: List[FIDObject] = Field(
