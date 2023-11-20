@@ -4,12 +4,12 @@ from typing import Any, List, Optional
 from pydantic import AnyUrl, Field
 from sdRDM.base.listplus import ListPlus
 from sdRDM.base.utils import forge_signature, IDGenerator
-from .publicationtypes import PublicationTypes
 from .person import Person
 from .identifiertypes import IdentifierTypes
-from .term import Term
-from .publication import Publication
 from .subjects import Subjects
+from .publication import Publication
+from .publicationtypes import PublicationTypes
+from .term import Term
 
 
 @forge_signature
