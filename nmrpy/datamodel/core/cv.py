@@ -1,7 +1,7 @@
 import sdRDM
 
 from typing import Optional
-from pydantic import AnyUrl, Field
+from pydantic import AnyUrl, Field, PrivateAttr
 from sdRDM.base.utils import forge_signature, IDGenerator
 
 
@@ -28,4 +28,8 @@ class CV(sdRDM.DataModel):
     url: AnyUrl = Field(
         ...,
         description="URL pointing to the CV used.",
+    )
+    __repo__: Optional[str] = PrivateAttr(default="https://github.com/NMRPy/nmrpy")
+    __commit__: Optional[str] = PrivateAttr(
+        default="dec2cda6676f8d04070715fe079ed786515ea918"
     )

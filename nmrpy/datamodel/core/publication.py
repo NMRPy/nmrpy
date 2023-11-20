@@ -1,11 +1,11 @@
 import sdRDM
 
 from typing import List, Optional
-from pydantic import AnyUrl, Field
+from pydantic import AnyUrl, Field, PrivateAttr
 from sdRDM.base.listplus import ListPlus
 from sdRDM.base.utils import forge_signature, IDGenerator
-from .person import Person
 from .identifiertypes import IdentifierTypes
+from .person import Person
 from .publicationtypes import PublicationTypes
 
 
@@ -43,6 +43,10 @@ class Publication(sdRDM.DataModel):
     doi: Optional[AnyUrl] = Field(
         default=None,
         description="The DOI pointing to the publication.",
+    )
+    __repo__: Optional[str] = PrivateAttr(default="https://github.com/NMRPy/nmrpy")
+    __commit__: Optional[str] = PrivateAttr(
+        default="dec2cda6676f8d04070715fe079ed786515ea918"
     )
 
     def add_to_authors(
