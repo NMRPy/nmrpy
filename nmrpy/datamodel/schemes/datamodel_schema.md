@@ -24,7 +24,6 @@ classDiagram
     
     class Experiment {
         +string name*
-        +string[0..*] enzymeml_species
         +FIDObject[0..*] fid
         +FIDArray fid_array
     }
