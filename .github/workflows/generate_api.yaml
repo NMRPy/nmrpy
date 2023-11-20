@@ -10,5 +10,5 @@ jobs:
         uses: JR-1991/generate-sdrdm-api@main
         with:
           library_name: "datamodel"
-          output_path: "./nmrpy/"
+          out_dir: "./nmrpy/"
           schema: "true"
