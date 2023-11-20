@@ -1,7 +1,7 @@
 import sdRDM
 
 from typing import List, Optional
-from pydantic import Field
+from pydantic import Field, PrivateAttr
 from sdRDM.base.listplus import ListPlus
 from sdRDM.base.utils import forge_signature, IDGenerator
 
@@ -17,6 +17,10 @@ class AssociatedRanges(sdRDM.DataModel):
     )
     start: Optional[float] = Field()
     end: Optional[float] = Field()
+    __repo__: Optional[str] = PrivateAttr(default="https://github.com/NMRPy/nmrpy")
+    __commit__: Optional[str] = PrivateAttr(
+        default="dec2cda6676f8d04070715fe079ed786515ea918"
+    )
 
 
 @forge_signature
@@ -55,6 +59,10 @@ class Identity(sdRDM.DataModel):
         description="Integrals resulting from the given peaks and ranges of a species",
         default_factory=ListPlus,
         multiple=True,
+    )
+    __repo__: Optional[str] = PrivateAttr(default="https://github.com/NMRPy/nmrpy")
+    __commit__: Optional[str] = PrivateAttr(
+        default="dec2cda6676f8d04070715fe079ed786515ea918"
     )
 
     def add_to_associated_ranges(

@@ -1,15 +1,15 @@
 import sdRDM
 
 from typing import Any, List, Optional
-from pydantic import AnyUrl, Field
+from pydantic import AnyUrl, Field, PrivateAttr
 from sdRDM.base.listplus import ListPlus
 from sdRDM.base.utils import forge_signature, IDGenerator
-from .person import Person
 from .identifiertypes import IdentifierTypes
-from .subjects import Subjects
-from .publication import Publication
+from .person import Person
 from .publicationtypes import PublicationTypes
+from .subjects import Subjects
 from .term import Term
+from .publication import Publication
 
 
 @forge_signature
@@ -81,6 +81,10 @@ class Citation(sdRDM.DataModel):
     license: Optional[str] = Field(
         default="CC BY 4.0",
         description="License information for this dataset. Defaults to `CC BY 4.0`.",
+    )
+    __repo__: Optional[str] = PrivateAttr(default="https://github.com/NMRPy/nmrpy")
+    __commit__: Optional[str] = PrivateAttr(
+        default="dec2cda6676f8d04070715fe079ed786515ea918"
     )
 
     def add_to_authors(

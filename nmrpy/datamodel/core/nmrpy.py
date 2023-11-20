@@ -1,11 +1,11 @@
 import sdRDM
 
 from typing import Optional
-from pydantic import Field
+from pydantic import Field, PrivateAttr
 from sdRDM.base.utils import forge_signature, IDGenerator
 from datetime import datetime as Datetime
-from .experiment import Experiment
 from .citation import Citation
+from .experiment import Experiment
 
 
 @forge_signature
@@ -39,4 +39,8 @@ class NMRpy(sdRDM.DataModel):
             "Relevant information regarding the publication and citation of this"
             " dataset."
         ),
+    )
+    __repo__: Optional[str] = PrivateAttr(default="https://github.com/NMRPy/nmrpy")
+    __commit__: Optional[str] = PrivateAttr(
+        default="dec2cda6676f8d04070715fe079ed786515ea918"
     )
