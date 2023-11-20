@@ -1,14 +1,14 @@
 import sdRDM
 
 from typing import Optional, Union, List
-from pydantic import Field
+from pydantic import Field, PrivateAttr
 from sdRDM.base.listplus import ListPlus
 from sdRDM.base.utils import forge_signature, IDGenerator
 from .fidobject import FIDObject
 from .processingsteps import ProcessingSteps
-from .parameters import Parameters
 from .identity import Identity
 from .fidarray import FIDArray
+from .parameters import Parameters
 
 
 @forge_signature
@@ -37,6 +37,10 @@ class Experiment(sdRDM.DataModel):
     fid_array: Optional[FIDArray] = Field(
         default=None,
         description="Multiple NMR spectra to be processed together.",
+    )
+    __repo__: Optional[str] = PrivateAttr(default="https://github.com/NMRPy/nmrpy")
+    __commit__: Optional[str] = PrivateAttr(
+        default="dec2cda6676f8d04070715fe079ed786515ea918"
     )
 
     def add_to_fid(
