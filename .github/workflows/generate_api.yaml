@@ -11,4 +11,3 @@ jobs:
         with:
           library_name: "datamodel"
           out_dir: "./nmrpy/"
-          schema: "true"
