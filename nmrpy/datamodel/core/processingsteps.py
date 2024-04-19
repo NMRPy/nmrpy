@@ -1,7 +1,7 @@
 import sdRDM
 
 from typing import Optional
-from pydantic import Field
+from pydantic import Field, PrivateAttr
 from sdRDM.base.utils import forge_signature, IDGenerator
 
 
@@ -78,4 +78,8 @@ class ProcessingSteps(sdRDM.DataModel):
     is_baseline_corrected: Optional[bool] = Field(
         default=False,
         description="Whether or not Baseline correction was performed.",
+    )
+    __repo__: Optional[str] = PrivateAttr(default="https://github.com/NMRPy/nmrpy")
+    __commit__: Optional[str] = PrivateAttr(
+        default="478f8467aed0bc8b72d82a7fb9e649202e3b1026"
     )

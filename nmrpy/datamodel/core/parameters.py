@@ -1,7 +1,7 @@
 import sdRDM
 
 from typing import List, Optional
-from pydantic import Field
+from pydantic import Field, PrivateAttr
 from sdRDM.base.listplus import ListPlus
 from sdRDM.base.utils import forge_signature, IDGenerator
 
@@ -66,4 +66,8 @@ class Parameters(sdRDM.DataModel):
     spectral_width_left: Optional[float] = Field(
         default=None,
         description="sw_left",
+    )
+    __repo__: Optional[str] = PrivateAttr(default="https://github.com/NMRPy/nmrpy")
+    __commit__: Optional[str] = PrivateAttr(
+        default="478f8467aed0bc8b72d82a7fb9e649202e3b1026"
     )

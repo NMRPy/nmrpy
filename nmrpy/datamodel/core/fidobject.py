@@ -1,15 +1,12 @@
 import sdRDM
 
 from typing import Optional, Union, List
-from pydantic import Field
+from pydantic import Field, PrivateAttr
 from sdRDM.base.listplus import ListPlus
 from sdRDM.base.utils import forge_signature, IDGenerator
-
-
-from .processingsteps import ProcessingSteps
+from .identity import Identity, AssociatedRanges
 from .parameters import Parameters
-from .identity import Identity
-from .identity import AssociatedRanges
+from .processingsteps import ProcessingSteps
 
 
 @forge_signature
@@ -23,10 +20,7 @@ class FIDObject(sdRDM.DataModel):
     )
 
     raw_data: List[str] = Field(
-        description=(
-            "Complex spectral data from numpy array as string of format"
-            " `{array.real}+{array.imag}j`."
-        ),
+        description="Complex spectral data from numpy array as string of format `{array.real}+{array.imag}j`.",
         default_factory=ListPlus,
         multiple=True,
     )
@@ -43,20 +37,18 @@ class FIDObject(sdRDM.DataModel):
     )
 
     processing_steps: Optional[ProcessingSteps] = Field(
-        description=(
-            "Contains the processing steps performed, as well as the parameters used"
-            " for them."
-        ),
+        description="Contains the processing steps performed, as well as the parameters used for them.",
         default_factory=ProcessingSteps,
     )
 
     peak_identities: List[Identity] = Field(
-        description=(
-            "Container holding and mapping integrals resulting from peaks and their"
-            " ranges to EnzymeML species."
-        ),
+        description="Container holding and mapping integrals resulting from peaks and their ranges to EnzymeML species.",
         default_factory=ListPlus,
         multiple=True,
+    )
+    __repo__: Optional[str] = PrivateAttr(default="https://github.com/NMRPy/nmrpy")
+    __commit__: Optional[str] = PrivateAttr(
+        default="478f8467aed0bc8b72d82a7fb9e649202e3b1026"
     )
 
     def add_to_peak_identities(
@@ -79,7 +71,6 @@ class FIDObject(sdRDM.DataModel):
             associated_ranges (): Sets of ranges belonging to the given peaks. Defaults to ListPlus()
             associated_integrals (): Integrals resulting from the given peaks and ranges of a species. Defaults to ListPlus()
         """
-
         params = {
             "name": name,
             "species_id": species_id,
@@ -87,10 +78,7 @@ class FIDObject(sdRDM.DataModel):
             "associated_ranges": associated_ranges,
             "associated_integrals": associated_integrals,
         }
-
         if id is not None:
             params["id"] = id
-
         self.peak_identities.append(Identity(**params))
-
         return self.peak_identities[-1]

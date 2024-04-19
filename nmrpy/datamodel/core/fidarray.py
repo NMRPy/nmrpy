@@ -1,7 +1,7 @@
 import sdRDM
 
 from typing import List, Optional
-from pydantic import Field
+from pydantic import Field, PrivateAttr
 from sdRDM.base.listplus import ListPlus
 from sdRDM.base.utils import forge_signature, IDGenerator
 
@@ -20,4 +20,8 @@ class FIDArray(sdRDM.DataModel):
         description="List of `FIDObject.id` belonging to this array.",
         multiple=True,
         default_factory=ListPlus,
+    )
+    __repo__: Optional[str] = PrivateAttr(default="https://github.com/NMRPy/nmrpy")
+    __commit__: Optional[str] = PrivateAttr(
+        default="478f8467aed0bc8b72d82a7fb9e649202e3b1026"
     )
