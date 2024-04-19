@@ -1,16 +1,14 @@
 import sdRDM
 
 from typing import Optional, Union, List
-from pydantic import Field
+from pydantic import Field, PrivateAttr
 from sdRDM.base.listplus import ListPlus
 from sdRDM.base.utils import forge_signature, IDGenerator
-
-
 from .fidobject import FIDObject
+from .identity import Identity
+from .parameters import Parameters
 from .processingsteps import ProcessingSteps
 from .fidarray import FIDArray
-from .parameters import Parameters
-from .identity import Identity
 
 
 @forge_signature
@@ -40,6 +38,10 @@ class Experiment(sdRDM.DataModel):
         default=None,
         description="Multiple NMR spectra to be processed together.",
     )
+    __repo__: Optional[str] = PrivateAttr(default="https://github.com/NMRPy/nmrpy")
+    __commit__: Optional[str] = PrivateAttr(
+        default="478f8467aed0bc8b72d82a7fb9e649202e3b1026"
+    )
 
     def add_to_fid(
         self,
@@ -61,7 +63,6 @@ class Experiment(sdRDM.DataModel):
             processing_steps (): Contains the processing steps performed, as well as the parameters used for them.. Defaults to None
             peak_identities (): Container holding and mapping integrals resulting from peaks and their ranges to EnzymeML species.. Defaults to ListPlus()
         """
-
         params = {
             "raw_data": raw_data,
             "processed_data": processed_data,
@@ -69,10 +70,7 @@ class Experiment(sdRDM.DataModel):
             "processing_steps": processing_steps,
             "peak_identities": peak_identities,
         }
-
         if id is not None:
             params["id"] = id
-
         self.fid.append(FIDObject(**params))
-
         return self.fid[-1]

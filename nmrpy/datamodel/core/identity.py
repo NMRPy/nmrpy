@@ -1,7 +1,7 @@
 import sdRDM
 
 from typing import List, Optional
-from pydantic import Field
+from pydantic import Field, PrivateAttr
 from sdRDM.base.listplus import ListPlus
 from sdRDM.base.utils import forge_signature, IDGenerator
 
@@ -15,10 +15,12 @@ class AssociatedRanges(sdRDM.DataModel):
         default_factory=IDGenerator("associatedrangesINDEX"),
         xml="@id",
     )
-
     start: Optional[float] = Field()
-
     end: Optional[float] = Field()
+    __repo__: Optional[str] = PrivateAttr(default="https://github.com/NMRPy/nmrpy")
+    __commit__: Optional[str] = PrivateAttr(
+        default="478f8467aed0bc8b72d82a7fb9e649202e3b1026"
+    )
 
 
 @forge_signature
@@ -58,6 +60,10 @@ class Identity(sdRDM.DataModel):
         default_factory=ListPlus,
         multiple=True,
     )
+    __repo__: Optional[str] = PrivateAttr(default="https://github.com/NMRPy/nmrpy")
+    __commit__: Optional[str] = PrivateAttr(
+        default="478f8467aed0bc8b72d82a7fb9e649202e3b1026"
+    )
 
     def add_to_associated_ranges(
         self,
@@ -73,15 +79,8 @@ class Identity(sdRDM.DataModel):
             start (): . Defaults to None
             end (): . Defaults to None
         """
-
-        params = {
-            "start": start,
-            "end": end,
-        }
-
+        params = {"start": start, "end": end}
         if id is not None:
             params["id"] = id
-
         self.associated_ranges.append(AssociatedRanges(**params))
-
         return self.associated_ranges[-1]
