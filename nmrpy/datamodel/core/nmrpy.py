@@ -1,11 +1,9 @@
 import sdRDM
 
 from typing import Optional
-from pydantic import Field
+from pydantic import Field, PrivateAttr
 from sdRDM.base.utils import forge_signature, IDGenerator
-
 from datetime import datetime as Datetime
-
 from .experiment import Experiment
 
 
@@ -32,4 +30,8 @@ class NMRpy(sdRDM.DataModel):
     experiment: Optional[Experiment] = Field(
         default=None,
         description="List of experiments associated with this dataset.",
+    )
+    __repo__: Optional[str] = PrivateAttr(default="https://github.com/NMRPy/nmrpy")
+    __commit__: Optional[str] = PrivateAttr(
+        default="478f8467aed0bc8b72d82a7fb9e649202e3b1026"
     )

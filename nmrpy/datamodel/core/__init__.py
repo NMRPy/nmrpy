@@ -10,7 +10,6 @@ from .term import Term
 from .fileformats import FileFormats
 
 __doc__ = ""
-
 __all__ = [
     "NMRpy",
     "Experiment",
