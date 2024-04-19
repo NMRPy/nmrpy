@@ -19,11 +19,13 @@ from ipywidgets import (
     Label,
     Button,
     Combobox,
+    Text,
+    HTML,
 )
 from IPython.display import display
 import asyncio
 
-from .utils import get_species_from_enzymeml
+from .utils import get_species_from_enzymeml, get_ordered_list_of_species_names
 
 
 class Plot:
@@ -185,7 +187,9 @@ class Plot:
             ax.text(
                 ppm[numpy.argmax(peak)],
                 label_pad + peak.max(),
-                str(n),
+                get_ordered_list_of_species_names(fid)[n]
+                if fid.fid_object.peak_identities
+                else str(n),
                 ha="center",
             )
         ax.invert_xaxis()
@@ -1458,6 +1462,7 @@ class IdentityAssigner:
                                 }
                             ],
                         )
+            self.fid.identities = get_ordered_list_of_species_names(self.fid)
             self.fid._flags["assigned"] = True
             reset_button.disabled = False
 
@@ -1480,6 +1485,7 @@ class IdentityAssigner:
                 peak_dropdown.options = self.available_peaks
                 peak_dropdown.disabled = False
                 save_button.disabled = False
+                self.fid.identities = None
                 self.fid._flags["assigned"] = False
                 reset_button.disabled = True
 
@@ -1657,6 +1663,7 @@ class IdentityRangeAssigner:
                                     }
                                 ],
                             )
+                        fid.identities = get_ordered_list_of_species_names(fid)
             reset_button.disabled = False
 
         # Attach the function to the save button's click event
@@ -1671,6 +1678,7 @@ class IdentityRangeAssigner:
                 print("\nCleared selections!")
                 for fid in self.fids:
                     fid.fid_object.peak_identities = []
+                    fid.identities = None
                 self.selected_values = {}
                 # Refill the list of available peaks as before,
                 # re-enable the peak dropdown, and disable the reset
@@ -2195,6 +2203,114 @@ class FidRangeSelector:
         bl_ppm = numpy.array([j for i in bl_ppm for j in i])
         self.fid._bl_ppm = bl_ppm
         plt.close(self.span_selector.fig)
+
+
+class ConcentrationCalculator:
+    def __init__(self, fid_array, integrals):
+        self.fid_array = fid_array
+        self.integrals = integrals
+        self.fids = fid_array.get_fids()
+        self.available_species = get_ordered_list_of_species_names(
+            self.fid_array.get_fid("fid00")
+        )
+        self.equation = ""
+
+        # Create the label widget for the title
+        title_label = Label(
+            value="[WORK IN PROGRESS]    Calculate concentrations from peak integrals for all FIDs    [WORK IN PROGRESS]"
+        )
+
+        # Create the dropdown widget for the internal standard
+        standard_dropdown = Dropdown(
+            options=self.available_species,
+            description="Select the internal standard:",
+            layout={"width": "max-content"},
+            style={"description_width": "initial"},
+        )
+
+        # Create a text input widget for the concentration equation
+        concentration_equation = Text(
+            value="",
+            placeholder="Enter the equation for the concentration here",
+            description="Concentration equation:",
+            layout={"width": "auto"},
+            style={
+                "description_width": "initial",
+            },
+        )
+
+        # Create an HTML widget to display a legend for the concentration equation
+        legend_html = HTML(
+            value="'c_s': Concentration of species<br>'c_n': Concentration of internal standard<br>'x_s': Peak integral of species<br>'x_n': Peak integral of internal standard<br>Example: c_s = c_n * x_s / x_n",
+            description="Legend:",
+        )
+
+        # Create a button to calculate the concentrations
+        calculate_button = Button(
+            description="Calculate concentrations",
+            icon="calculator",
+            layout={"width": "max-content"},
+            disabled=True,
+        )
+
+        # Create an output widget to display the calculation progress
+        output = Output()
+
+        # Define a method to handle the text input widget's change event
+        def on_text_change(event):
+            if event["type"] == "change" and event["name"] == "value":
+                calculate_button.disabled = False
+
+        # Attach the method to the text input widget's change event
+        concentration_equation.observe(on_text_change)
+
+        # Define a method to handle the calculate button's click event
+        def on_calculate_button_click(b):
+            with output:
+                output.clear_output(wait=True)
+                # Fetch the values from the standard dropdown and the
+                # text widget and add them to a dictionary with species as
+                # keys
+                print("\nCalculating concentrations...")
+                if (
+                    not concentration_equation.value.replace(" ", "")
+                    == "c_s=c_n*x_s/x_n"
+                ):
+                    raise NotImplementedError(
+                        "Only the example formula is currently supported."
+                    )
+                else:
+                    # TODO: Currently hard-coded for the example data
+                    standard_index = self.available_species.index(
+                        standard_dropdown.value
+                    )
+                    self.fid_array.concentrations = {
+                        species: 5
+                        * concentration
+                        / self.integrals[standard_index].mean()
+                        for species, concentration in zip(
+                            self.available_species, self.integrals
+                        )
+                    }
+                print(f"Done! Get concentrations with `FidArray.concentrations`.")
+
+        # Attach the function to the calculate button's click event
+        calculate_button.on_click(on_calculate_button_click)
+
+        # Create the container
+        container = VBox(
+            [
+                title_label,
+                standard_dropdown,
+                concentration_equation,
+                legend_html,
+                calculate_button,
+                output,
+            ]
+        )
+
+        # Display the container
+        display(container)
 
 
 if __name__ == "__main__":

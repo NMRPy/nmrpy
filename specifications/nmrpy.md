@@ -19,9 +19,6 @@ Root element of the NMRpy data model.
 - experiment
   - Type: [Experiment](#experiment)
   - Description: List of experiments associated with this dataset.
-- citation
-  - Type: [Citation](#citation)
-  - Description: Relevant information regarding the publication and citation of this dataset.
 
 
 ### Experiment
@@ -189,102 +186,6 @@ Container for processing of multiple spectra. Must reference the respective `FID
   - Multiple: True
 
 
-### Citation
-
-Container for various types of metadata primarily used in the publication and citation of the dataset.
-
-- title
-  - Type: string
-  - Description: Title the dataset should have when published.
-- doi
-  - Type: URL
-  - Description: DOI pointing to the published dataset
-- description
-  - Type: string
-  - Description: Description the dataset should have when published.
-- authors
-  - Type: [Person](#person)
-  - Description: List of authors for this dataset.
-  - Multiple: True
-- subjects
-  - Type: [Subjects](#subjects)
-  - Description: List of subjects this dataset belongs to.
-  - Multiple: True
-- keywords
-  - Type: [Term](#term)
-  - Description: List of CV-based keywords describing the dataset.
-  - Multiple: True
-- topics
-  - Type: [Term](#term)
-  - Description: List of CV-based topics the dataset addresses.
-  - Multiple: True
-- related_publications
-  - Type: [Publication](#publication)
-  - Description: List of publications relating to this dataset.
-  - Multiple: True
-- notes
-  - Type: string
-  - Description: Additional notes about the dataset.
-- funding
-  - Type: string
-  - Description: Funding information for this dataset.
-  - Multiple: True
-- license
-  - Type: string
-  - Description: License information for this dataset. Defaults to `CC BY 4.0`.
-  - Default: CC BY 4.0
-
-
-### Person
-
-Container for information regarding a person that worked on an experiment.
-
-- __last_name__
-  - Type: string
-  - Description: Family name of the person.
-- __first_name__
-  - Type: string
-  - Description: Given name of the person.
-- middle_names
-  - Type: string
-  - Description: List of middle names of the person.
-  - Multiple: True
-- affiliation
-  - Type: string
-  - Description: Institution the Person belongs to.
-- email
-  - Type: string
-  - Description: Email address of the person.
-- identifier_type
-  - Type: [IdentifierTypes](#identifiertypes)
-  - Description: Recognized identifier for the person.
-- identifier_value
-  - Type: string
-  - Description: Value of the identifier for the person.
-
-
-### Publication
-
-Container for citation information of a relevant publication.
-
-- __type__
-  - Type: [PublicationTypes](#publicationtypes)
-  - Description: Nature of the publication.
-- __title__
-  - Type: string
-  - Description: Title of the publication.
-- __authors__
-  - Type: [Person](#person)
-  - Description: Authors of the publication.
-  - Multiple: True
-- year
-  - Type: integer
-  - Description: Year of publication.  
-- doi
-  - Type: URL
-  - Description: The DOI pointing to the publication.
-
-
 ## Utility objects
 
 
@@ -333,34 +234,4 @@ Enumeration containing the file formats accepted by the NMRpy library.
 VARIAN = "varian"
 BRUKER = "bruker"
 NONE = None
-```
-
-
-### Subjects
-
-Enumeration containing common subjects (research fields) that implement NMR.
-
-```python
-BIOLOGY = "Biology"
-CHEMISTRY = "Chemistry"
-IT = "Computer and Information Science"
-PHYSICS = "Physics"
-```
-
-
-### PublicationTypes
-
-Enumeration containing accepted types of publication.
-
-```python
-ARTICLE = "Journal article"
-```
-
-
-### IdentifierTypes
-
-Enumeration containing recognized identifiers for persons.
-
-```python
-ORCID = "ORCID"
 ```

@@ -1,8 +1,10 @@
 import sdRDM
 
-from typing import Any, Optional
-from pydantic import Field, PrivateAttr
+from typing import Optional
+from pydantic import Field
 from sdRDM.base.utils import forge_signature, IDGenerator
+
+from typing import Any
 
 
 @forge_signature
@@ -38,8 +40,4 @@ class Term(sdRDM.DataModel):
     value: Optional[Any] = Field(
         default=None,
         description="Value of the term, if applicable.",
-    )
-    __repo__: Optional[str] = PrivateAttr(default="https://github.com/NMRPy/nmrpy")
-    __commit__: Optional[str] = PrivateAttr(
-        default="dec2cda6676f8d04070715fe079ed786515ea918"
     )
