@@ -1,12 +1,15 @@
 import sdRDM
 
 from typing import Optional, Union, List
-from pydantic import Field, PrivateAttr
+from pydantic import Field
 from sdRDM.base.listplus import ListPlus
 from sdRDM.base.utils import forge_signature, IDGenerator
+
+
 from .processingsteps import ProcessingSteps
-from .identity import Identity, AssociatedRanges
 from .parameters import Parameters
+from .identity import Identity
+from .identity import AssociatedRanges
 
 
 @forge_signature
@@ -35,16 +38,16 @@ class FIDObject(sdRDM.DataModel):
     )
 
     nmr_parameters: Optional[Parameters] = Field(
-        default=Parameters(),
         description="Contains commonly-used NMR parameters.",
+        default_factory=Parameters,
     )
 
     processing_steps: Optional[ProcessingSteps] = Field(
-        default=ProcessingSteps(),
         description=(
             "Contains the processing steps performed, as well as the parameters used"
             " for them."
         ),
+        default_factory=ProcessingSteps,
     )
 
     peak_identities: List[Identity] = Field(
@@ -54,10 +57,6 @@ class FIDObject(sdRDM.DataModel):
         ),
         default_factory=ListPlus,
         multiple=True,
-    )
-    __repo__: Optional[str] = PrivateAttr(default="https://github.com/NMRPy/nmrpy")
-    __commit__: Optional[str] = PrivateAttr(
-        default="dec2cda6676f8d04070715fe079ed786515ea918"
     )
 
     def add_to_peak_identities(
@@ -80,6 +79,7 @@ class FIDObject(sdRDM.DataModel):
             associated_ranges (): Sets of ranges belonging to the given peaks. Defaults to ListPlus()
             associated_integrals (): Integrals resulting from the given peaks and ranges of a species. Defaults to ListPlus()
         """
+
         params = {
             "name": name,
             "species_id": species_id,
@@ -87,7 +87,10 @@ class FIDObject(sdRDM.DataModel):
             "associated_ranges": associated_ranges,
             "associated_integrals": associated_integrals,
         }
+
         if id is not None:
             params["id"] = id
+
         self.peak_identities.append(Identity(**params))
+
         return self.peak_identities[-1]
