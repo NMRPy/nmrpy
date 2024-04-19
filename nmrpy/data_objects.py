@@ -14,6 +14,7 @@ from ipywidgets import SelectMultiple
 from sdRDM import DataModel
 from sdRDM.base.importedmodules import ImportedModules
 from nmrpy.datamodel.core import *
+from nmrpy.utils import create_enzymeml
 
 
 class Base:
@@ -519,10 +520,24 @@ class Fid(Base):
         """
         if self._deconvoluted_peaks is not None:
             integrals = []
+            i = 0
             for peak in self._deconvoluted_peaks:
                 int_gauss = peak[-1] * Fid._f_gauss_int(peak[3], peak[1])
                 int_lorentz = (1 - peak[-1]) * Fid._f_lorentz_int(peak[3], peak[2])
                 integrals.append(int_gauss + int_lorentz)
+
+                for peak_identity in self.fid_object.peak_identities:
+                    if peak_identity.name == self.identities[i]:
+                        try:
+                            peak_identity.associated_integrals.append(
+                                float(integrals[i])
+                            )
+                        except:
+                            peak_identity.associated_integrals = []
+                            peak_identity.associated_integrals.append(
+                                float(integrals[i])
+                            )
+                i += 1
             return integrals
 
     def _get_plots(self):
@@ -1517,6 +1532,24 @@ class FidArray(Base):
         del self.__enzymeml_library
         print("The current EnzymeML library has been deleted.")
 
+    @property
+    def concentrations(self):
+        """
+        An array of the concentration for each FID.
+        """
+        return self.__c
+
+    @concentrations.setter
+    def concentrations(self, c):
+        if not isinstance(c, dict):
+            raise TypeError("c must be a dictionary.")
+        self.__c = c
+
+    @concentrations.deleter
+    def concentrations(self):
+        del self.__c
+        print("The current concentrations have been deleted.")
+
     def __str__(self):
         return "FidArray of {} FID(s)".format(len(self.data))
 
@@ -1576,6 +1609,7 @@ class FidArray(Base):
             or isinstance(self.__dict__[id], FidArrayRangeSelector)
             or isinstance(self.__dict__[id], DataTraceRangeSelector)
             or isinstance(self.__dict__[id], DataTraceSelector)
+            or isinstance(self.__dict__[id], IdentityRangeAssigner)
         ]
         return widgets
 
@@ -2381,14 +2415,22 @@ Ctrl+Alt+Right - assign
         self._del_widgets()
         for fid in self.get_fids():
             fid._del_widgets()
+        # delete EnzymeML library & document (can't be pickled)
+        try:
+            del self.enzymeml_library
+            del self.enzymeml_document
+        except:
+            pass
         with open(filename, "wb") as f:
             pickle.dump(self, f)
 
     # TODO: Will probably create a measurement object for each FID(?)
     # and add them to the EnzymeML document provided
     # Issue: How to get species for IdentityAssigner? __init__()?
-    def add_to_enzymeml(self, enzymeml_document=None) -> None:
-        ...
+    def to_enzymeml(self, enzymeml_document: DataModel = None) -> DataModel:
+        if not enzymeml_document:
+            enzymeml_document = self.enzymeml_document
+        return create_enzymeml(self, enzymeml_document)
 
     # TODO: Refactor save_data method
     # possibly make saving to EnzymeML a get_measurements method
@@ -2464,6 +2506,12 @@ Ctrl+Alt+Right - assign
         """
         for fid in self.get_fids():
             fid.identities = None
+
+    def calculate_concentrations(self):
+        integrals = self.deconvoluted_integrals.transpose()
+        self._concentration_widget = ConcentrationCalculator(
+            fid_array=self, integrals=integrals
+        )
 
 
 class Importer(Base):
