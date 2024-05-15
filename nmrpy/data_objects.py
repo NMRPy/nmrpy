@@ -560,7 +560,7 @@ class Fid(Base):
                 return int(numpy.ceil(indices))
             return numpy.array(numpy.ceil(indices), dtype=int)
     
-    def phase_correct(self, method='leastsq'):
+    def phase_correct(self, method='leastsq', verbose = True):
             """
 
             Automatically phase-correct :attr:`~nmrpy.data_objects.Fid.data` by minimising
@@ -583,10 +583,10 @@ class Fid(Base):
             if not self._flags['ft']:
                 raise ValueError('Only Fourier-transformed data can be phase-corrected.')
             print('phasing: %s'%self.id)
-            self.data = Fid._phase_correct((self.data, method))
+            self.data = Fid._phase_correct((self.data, method), verbose)
 
     @classmethod
-    def _phase_correct(cls, list_params):
+    def _phase_correct(cls, list_params, verbose):
             """
             Class method for phase-correction using multiprocessing.
             list_params is a tuple of (<data>, <fitting method>).
@@ -603,7 +603,8 @@ class Fid(Base):
                     phased_data *= -1
             if sum(phased_data) < 0.0:
                     phased_data *= -1
-            print('%d\t%d'%(mz.params['p0'].value, mz.params['p1'].value))
+            if verbose:
+                print('Zero order: %d\tFirst order: %d\t (In degrees)'%(mz.params['p0'].value, mz.params['p1'].value))
             return phased_data
         
     @classmethod
