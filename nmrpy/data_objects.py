@@ -577,21 +577,24 @@ class Fid(Base):
                     Powell (powell)
 
                     Newton-CG  (newton)
+
+            :keyword verbose: prints out phase angles if True (default)
             """
             if self.data.dtype not in self._complex_dtypes:
                 raise TypeError('Only complex data can be phase-corrected.')
             if not self._flags['ft']:
                 raise ValueError('Only Fourier-transformed data can be phase-corrected.')
-            print('phasing: %s'%self.id)
-            self.data = Fid._phase_correct((self.data, method), verbose)
+            if verbose:
+                print('phasing: %s'%self.id)
+            self.data = Fid._phase_correct((self.data, method, verbose))
 
     @classmethod
-    def _phase_correct(cls, list_params, verbose):
+    def _phase_correct(cls, list_params):
             """
             Class method for phase-correction using multiprocessing.
-            list_params is a tuple of (<data>, <fitting method>).
+            list_params is a tuple of (<data>, <fitting method>, <verbose>).
             """
-            data, method = list_params
+            data, method, verbose = list_params
             p = lmfit.Parameters()
             p.add_many(
                     ('p0', 1.0, True),
@@ -1478,7 +1481,7 @@ class FidArray(Base):
         for fid in self.get_fids():
             fid.data = fid.data/dmax
 
-    def phase_correct_fids(self, method='leastsq', mp=True, cpus=None):
+    def phase_correct_fids(self, method='leastsq', mp=True, cpus=None, verbose=True):
         """ 
         Apply automatic phase-correction to all :class:`~nmrpy.data_objects.Fid` objects owned by this :class:`~nmrpy.data_objects.FidArray`
 
@@ -1487,6 +1490,8 @@ class FidArray(Base):
         :keyword mp: parallelise the phasing process over multiple processors, significantly reducing computation time
 
         :keyword cpus: defines number of CPUs to utilise if 'mp' is set to True
+
+        :keyword verbose: prints out phase angles if True (default)
         """
         if mp: 
             fids = self.get_fids()
@@ -1494,13 +1499,13 @@ class FidArray(Base):
                 raise TypeError('Only complex data can be phase-corrected.')
             if not all(fid._flags['ft'] for fid in fids):
                 raise ValueError('Only Fourier-transformed data can be phase-corrected.')
-            list_params = [[fid.data, method] for fid in fids]
+            list_params = [[fid.data, method, verbose] for fid in fids]
             phased_data = self._generic_mp(Fid._phase_correct, list_params, cpus)
             for fid, datum in zip(fids, phased_data):
                 fid.data = datum
         else:
             for fid in self.get_fids():
-                fid.phase_correct(method=method)
+                fid.phase_correct(method=method, verbose=verbose)
         print('phase-correction completed')
 
     def baseliner_fids(self):
