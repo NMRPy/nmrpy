@@ -170,6 +170,10 @@ Container mapping one or more peaks to the respective species.
   - Type: {start: float, end: float}
   - Description: Sets of ranges belonging to the given peaks
   - Multiple: True
+- associated_indices
+  - Type: int
+  - Description: Indices in the NMR spectrum (counted from left to right) belonging to the given peaks
+  - Multiple: True
 - associated_integrals
   - Type: float
   - Description: Integrals resulting from the given peaks and ranges of a species
@@ -218,7 +222,7 @@ lorem ipsum {Add reference back to term_cv_reference.}
   - Type: string
   - Description: Reference to the `CV.id` of a controlled vocabulary that has been defined for this dataset.
 - value
-  - Type: any
+  - Type: string
   - Description: Value of the term, if applicable.
 
 
