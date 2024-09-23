@@ -25,7 +25,13 @@ from ipywidgets import (
 from IPython.display import display
 import asyncio
 
-from .utils import get_species_from_enzymeml, get_ordered_list_of_species_names
+import sympy as sp
+
+from .utils import (
+    get_species_from_enzymeml,
+    get_ordered_list_of_species_names,
+    get_initial_concentration_by_species_id,
+)
 
 
 class Plot:
@@ -187,9 +193,11 @@ class Plot:
             ax.text(
                 ppm[numpy.argmax(peak)],
                 label_pad + peak.max(),
-                get_ordered_list_of_species_names(fid)[n]
-                if fid.fid_object.peak_identities
-                else str(n),
+                (
+                    get_ordered_list_of_species_names(fid)[n]
+                    if fid.fid_object.peak_identities
+                    else str(n)
+                ),
                 ha="center",
             )
         ax.invert_xaxis()
@@ -1366,6 +1374,7 @@ class IdentityAssigner:
         self.title = title
         self.available_peaks = [str(peak) for peak in self.fid.peaks]
         self.available_species = self.fid.enzymeml_species
+        self.species_names = [name for name, _ in self.available_species]
         self.selected_values = {}
         if fid.peaks is [] or fid.peaks is None:
             raise RuntimeError(
@@ -1385,7 +1394,7 @@ class IdentityAssigner:
 
         # Create the dropdown widget for the species
         species_dropdown = Dropdown(
-            options=self.available_species,
+            options=self.species_names,
             description="Select a species:",
             layout={"width": "max-content"},
             style={"description_width": "initial"},
@@ -1441,26 +1450,33 @@ class IdentityAssigner:
                                 if peak not in identity.associated_peaks:
                                     identity.associated_peaks.append(peak)
                                     peak_index = list(self.fid.peaks).index(peak)
-                                    associated_range = list(
-                                        list(self.fid.ranges)[peak_index]
-                                    )
-                                    identity.add_to_associated_ranges(
-                                        start=float(associated_range[0]),
-                                        end=float(associated_range[1]),
-                                    )
+                                    # associated_range = list(
+                                    #     list(self.fid.ranges)[peak_index]
+                                    # )
+                                    # identity.add_to_associated_ranges(
+                                    #     start=float(associated_range[0]),
+                                    #     end=float(associated_range[1]),
+                                    # )
+                                    identity.add_to_associated_indices(peak_index)
                             identity_exists = True
                     if not identity_exists:
                         peak_index = list(self.fid.peaks).index(value)
-                        associated_range = list(list(self.fid.ranges)[peak_index])
+                        # associated_range = list(list(self.fid.ranges)[peak_index])
                         self.fid.fid_object.add_to_peak_identities(
                             name=key,
+                            species_id=next(
+                                species_id
+                                for name, species_id in self.available_species
+                                if name == key
+                            ),
                             associated_peaks=value,
-                            associated_ranges=[
-                                {
-                                    "start": float(associated_range[0]),
-                                    "end": float(associated_range[1]),
-                                }
-                            ],
+                            # associated_ranges=[
+                            #     {
+                            #         "start": float(associated_range[0]),
+                            #         "end": float(associated_range[1]),
+                            #     }
+                            # ],
+                            associated_indices=[peak_index],
                         )
             self.fid.identities = get_ordered_list_of_species_names(self.fid)
             self.fid._flags["assigned"] = True
@@ -1518,9 +1534,10 @@ class IdentityRangeAssigner:
         self.fids = fid_array.get_fids()
         self.available_peaks = []
         self.available_species = [
-            species.name
+            (species.name, species.id)
             for species in get_species_from_enzymeml(self.fid_array.enzymeml_document)
         ]
+        self.species_names = [name for name, _ in self.available_species]
         self.selected_fid = None
         self.selected_values = {}
         for fid in self.fids:
@@ -1587,7 +1604,7 @@ class IdentityRangeAssigner:
         # Define a method to handle the peak dropdown's change event
         def on_peak_dropdown_change(event):
             if event["type"] == "change" and event["name"] == "value":
-                species_dropdown.options = self.available_species
+                species_dropdown.options = self.species_names
                 species_dropdown.disabled = False
 
         # Attach the method to the dropdown's change event
@@ -1642,26 +1659,33 @@ class IdentityRangeAssigner:
                                     if peak not in identity.associated_peaks:
                                         identity.associated_peaks.append(peak)
                                         peak_index = list(fid.peaks).index(peak)
-                                        associated_range = list(
-                                            list(fid.ranges)[peak_index]
-                                        )
-                                        identity.add_to_associated_ranges(
-                                            start=float(associated_range[0]),
-                                            end=float(associated_range[1]),
-                                        )
+                                        # associated_range = list(
+                                        #     list(fid.ranges)[peak_index]
+                                        # )
+                                        # identity.add_to_associated_ranges(
+                                        #     start=float(associated_range[0]),
+                                        #     end=float(associated_range[1]),
+                                        # )
+                                        identity.add_to_associated_indices(peak_index)
                                 identity_exists = True
                         if not identity_exists:
                             peak_index = list(fid.peaks).index(value)
-                            associated_range = list(list(fid.ranges)[peak_index])
+                            # associated_range = list(list(fid.ranges)[peak_index])
                             fid.fid_object.add_to_peak_identities(
                                 name=key,
+                                species_id=next(
+                                    species_id
+                                    for name, species_id in self.available_species
+                                    if name == key
+                                ),
                                 associated_peaks=value,
-                                associated_ranges=[
-                                    {
-                                        "start": float(associated_range[0]),
-                                        "end": float(associated_range[1]),
-                                    }
-                                ],
+                                # associated_ranges=[
+                                #     {
+                                #         "start": float(associated_range[0]),
+                                #         "end": float(associated_range[1]),
+                                #     }
+                                # ],
+                                associated_indices=[peak_index],
                             )
                         fid.identities = get_ordered_list_of_species_names(fid)
             reset_button.disabled = False
@@ -2206,18 +2230,22 @@ class FidRangeSelector:
 
 
 class ConcentrationCalculator:
-    def __init__(self, fid_array, integrals):
+    def __init__(self, fid_array, enzymeml_document):
         self.fid_array = fid_array
-        self.integrals = integrals
-        self.fids = fid_array.get_fids()
+        self.enzymeml_document = enzymeml_document
         self.available_species = get_ordered_list_of_species_names(
-            self.fid_array.get_fid("fid00")
+            self.fid_array.get_fids()[0]
         )
-        self.equation = ""
+        self.c_n = sp.symbols("c_n")
+        self.x_s = sp.symbols("x_s")
+        self.x_n = sp.symbols("x_n")
+        self.c_n_value = float("nan")
+        self.x_s_value = float("nan")
+        self.x_n_value = float("nan")
 
         # Create the label widget for the title
         title_label = Label(
-            value="[WORK IN PROGRESS]    Calculate concentrations from peak integrals for all FIDs    [WORK IN PROGRESS]"
+            value="Calculate concentrations from peak integrals for all FIDs"
         )
 
         # Create the dropdown widget for the internal standard
@@ -2232,7 +2260,7 @@ class ConcentrationCalculator:
         concentration_equation = Text(
             value="",
             placeholder="Enter the equation for the concentration here",
-            description="Concentration equation:",
+            description="Concentration equation: c_s =",
             layout={"width": "auto"},
             style={
                 "description_width": "initial",
@@ -2272,26 +2300,72 @@ class ConcentrationCalculator:
                 # text widget and add them to a dictionary with species as
                 # keys
                 print("\nCalculating concentrations...")
-                if (
-                    not concentration_equation.value.replace(" ", "")
-                    == "c_s=c_n*x_s/x_n"
-                ):
-                    raise NotImplementedError(
-                        "Only the example formula is currently supported."
+
+                equation = sp.sympify(concentration_equation.value)
+                print(f"`equation` is {equation}.")
+                # Create a dictionary to store the concentrations for each species
+                self.fid_array.concentrations = {
+                    species: [] for species in self.available_species
+                }
+
+                for fid in self.fid_array.get_fids():
+                    # Get data from the internal standard using next()
+                    standard = next(
+                        (
+                            identity
+                            for identity in fid.fid_object.peak_identities
+                            if identity.name == standard_dropdown.value
+                        ),
+                        None,
                     )
-                else:
-                    # TODO: Currently hard-coded for the example data
-                    standard_index = self.available_species.index(
-                        standard_dropdown.value
+                    # Extract the initial concentration of the standard from the EnzymeML document by its ID
+                    self.c_n_value = get_initial_concentration_by_species_id(
+                        enzymeml_document=self.enzymeml_document,
+                        species_id=standard.species_id,
                     )
-                    self.fid_array.concentrations = {
-                        species: 5
-                        * concentration
-                        / self.integrals[standard_index].mean()
-                        for species, concentration in zip(
-                            self.available_species, self.integrals
+                    # Set the peak integral values for the standard
+                    self.x_n_value = sum(standard.associated_integrals)
+                    self.x_s_value = self.x_n_value
+                    # Calculate the concentration of the standard and append it to the list of concentrations
+                    concentration = equation.subs(
+                        {
+                            self.c_n: self.c_n_value,
+                            self.x_s: self.x_s_value,
+                            self.x_n: self.x_n_value,
+                        }
+                    )
+                    current_concentration = concentration.evalf()
+                    print(f"adding {current_concentration} to {standard.name}.")
+                    self.fid_array.concentrations[standard.name].append(
+                        current_concentration
+                    )
+                    print(
+                        f"`self.fid_array.concentrations` is {self.fid_array.concentrations}."
+                    )
+
+                    # Iterate over all identities but the standard
+                    for identity in fid.fid_object.peak_identities:
+                        if identity.name == standard_dropdown.value:
+                            pass
+                        # Calculate the peak integral value for the species
+                        self.x_s_value = sum(identity.associated_integrals)
+                        # Calculate the concentration of the species and append it to the list of concentrations
+                        concentration = equation.subs(
+                            {
+                                self.c_n: self.c_n_value,
+                                self.x_s: self.x_s_value,
+                                self.x_n: self.x_n_value,
+                            }
                         )
-                    }
+                        current_concentration = concentration.evalf()
+                        print(f"adding {current_concentration} to {identity.name}.")
+                        self.fid_array.concentrations[identity.name].append(
+                            current_concentration
+                        )
+                        print(
+                            f"`self.fid_array.concentrations` is {self.fid_array.concentrations}."
+                        )
+
                 print(f"Done! Get concentrations with `FidArray.concentrations`.")
 
         # Attach the function to the calculate button's click event

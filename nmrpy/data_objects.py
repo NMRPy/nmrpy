@@ -15,6 +15,9 @@ from sdRDM import DataModel
 from sdRDM.base.importedmodules import ImportedModules
 from nmrpy.datamodel.core import *
 from nmrpy.utils import create_enzymeml
+import pyenzyme as pe
+import pyenzyme.equations as peq
+from pyenzyme.model import EnzymeMLDocument
 
 
 class Base:
@@ -32,26 +35,6 @@ class Base:
         self._params = None
         self.fid_path = kwargs.get("fid_path", ".")
         self._file_format = None
-
-    # Probably not required anymore
-    # @property
-    # def lib(self):
-    #     try:
-    #         self.__lib
-    #     except:
-    #         self.__lib = DataModel.from_markdown(
-    #             path=Path(__file__).parent.parent / "specifications"
-    #         )
-    #     return self.__lib
-
-    # @property
-    # def parameters_object(self):
-    #     return self.__parameter_object
-
-    # @parameters_object.setter
-    # def parameters_object(self, parameters_object):
-    #     if isinstance(parameters_object, DataModel):
-    #         self.__parameters_object = parameters_object
 
     @property
     def id(self):
@@ -520,19 +503,54 @@ class Fid(Base):
                 int_gauss = peak[-1] * Fid._f_gauss_int(peak[3], peak[1])
                 int_lorentz = (1 - peak[-1]) * Fid._f_lorentz_int(peak[3], peak[2])
                 integrals.append(int_gauss + int_lorentz)
+                print(f"peak {i} integral: {integrals[i]}")
 
                 for peak_identity in self.fid_object.peak_identities:
-                    if peak_identity.name == self.identities[i]:
+                    print(f"peak_identity: {peak_identity.name}")
+                    if i in peak_identity.associated_indices:
+                        print(
+                            f"peak index {i} found in in associated indices {peak_identity.associated_indices} for peak identity {peak_identity.name}"
+                        )
+                        if integrals[i] in peak_identity.associated_integrals:
+                            print(
+                                f"integral {integrals[i]} already in associated integrals"
+                            )
+                            pass
                         try:
                             peak_identity.associated_integrals.append(
                                 float(integrals[i])
                             )
+                            print(
+                                f"added integral {integrals[i]} to associated integrals"
+                            )
                         except:
                             peak_identity.associated_integrals = []
+                            print(
+                                f"created new associated integrals list for peak identity {peak_identity.name}"
+                            )
                             peak_identity.associated_integrals.append(
                                 float(integrals[i])
                             )
-                i += 1
+                            print(
+                                f"added integral {integrals[i]} to associated integrals"
+                            )
+            i += 1
+            print(f"incremented i to {i}")
+
+            # for peak_identity in self.fid_object.peak_identities:
+            #     if peak_identity.name == self.identities[i]:
+            #         if integrals[i] in peak_identity.associated_integrals:
+            #             pass
+            #         try:
+            #             peak_identity.associated_integrals.append(
+            #                 float(integrals[i])
+            #             )
+            #         except:
+            #             peak_identity.associated_integrals = []
+            #             peak_identity.associated_integrals.append(
+            #                 float(integrals[i])
+            #             )
+            # i += 1
             return integrals
 
     def _get_plots(self):
@@ -964,18 +982,12 @@ Ctrl+Alt+Right - assign
 
     @classmethod
     def _f_gauss(cls, offset, amplitude, gauss_sigma, x):
-        return amplitude * numpy.exp(
-            -((offset - x) ** 2.0) / (2.0 * gauss_sigma**2.0)
-        )
+        return amplitude * numpy.exp(-((offset - x) ** 2.0) / (2.0 * gauss_sigma**2.0))
 
     @classmethod
     def _f_lorentz(cls, offset, amplitude, lorentz_hwhm, x):
         # return amplitude*lorentz_hwhm**2.0/(lorentz_hwhm**2.0+4.0*(offset-x)**2.0)
-        return (
-            amplitude
-            * lorentz_hwhm**2.0
-            / (lorentz_hwhm**2.0 + (x - offset) ** 2.0)
-        )
+        return amplitude * lorentz_hwhm**2.0 / (lorentz_hwhm**2.0 + (x - offset) ** 2.0)
 
     @classmethod
     def _f_gauss_int(cls, amplitude, gauss_sigma):
@@ -1361,6 +1373,9 @@ Ctrl+Alt+Right - assign
         self._deconvoluted_peaks = numpy.array(
             [j for i in Fid._deconv_datum(list_parameters) for j in i]
         )
+
+        print(self.deconvoluted_integrals)
+
         print("deconvolution completed")
 
     def plot_ppm(self, **kwargs):
@@ -1489,16 +1504,17 @@ class FidArray(Base):
         return self.__enzymeml_document
 
     @enzymeml_document.setter
-    def enzymeml_document(self, enzymeml_document: DataModel):
-        if not isinstance(enzymeml_document, DataModel):
+    def enzymeml_document(self, enzymeml_document: EnzymeMLDocument):
+        if not isinstance(enzymeml_document, EnzymeMLDocument):
             raise AttributeError(
-                f"Parameter `enzymeml_document` has to be of type `sdrdm.DataModel`, got {type(enzymeml_document)} instead."
+                f"Parameter `enzymeml_document` has to be of type `EnzymeMLDocument`, got {type(enzymeml_document)} instead."
             )
         self.__enzymeml_document = enzymeml_document
         self.__enzymeml_document.modified = datetime.now()
+        self.__data_model.experiment.name = self.__enzymeml_document.name
         for fid in self.get_fids():
             fid.enzymeml_species = [
-                species.name
+                (species.name, species.id)
                 for species in get_species_from_enzymeml(self.__enzymeml_document)
             ]
 
@@ -1506,23 +1522,6 @@ class FidArray(Base):
     def enzymeml_document(self):
         del self.__enzymeml_document
         print("The current EnzymeML document has been deleted.")
-
-    @property
-    def enzymeml_library(self):
-        return self.__enzymeml_library
-
-    @enzymeml_library.setter
-    def enzymeml_library(self, enzymeml_library: ImportedModules):
-        if not isinstance(enzymeml_library, ImportedModules):
-            raise AttributeError(
-                f"Parameter `enzymeml_library` has to be of type `sdrdm.base.importedmodules.ImportedModules`, got {type(enzymeml_library)} instead."
-            )
-        self.__enzymeml_library = enzymeml_library
-
-    @enzymeml_library.deleter
-    def enzymeml_library(self):
-        del self.__enzymeml_library
-        print("The current EnzymeML library has been deleted.")
 
     @property
     def concentrations(self):
@@ -1714,9 +1713,7 @@ class FidArray(Base):
         Args:
             path_to_enzymeml_document (str): Path to file containing an EnzymeML document
         """
-        self.enzymeml_document, self.enzymeml_library = DataModel.parse(
-            path_to_enzymeml_document
-        )
+        self.enzymeml_document = pe.load_enzymeml(path_to_enzymeml_document)
 
     @classmethod
     def from_data(cls, data):
@@ -1973,12 +1970,40 @@ Ctrl+Alt+Right - assign
                 for fid in fids
             ]
             deconv_datum = self._generic_mp(Fid._deconv_datum, list_params, cpus)
+
             for fid, datum in zip(fids, deconv_datum):
                 fid._deconvoluted_peaks = numpy.array([j for i in datum for j in i])
+                # Iterate over newly deconvoluted peaks and calculate integrals
+                integrals = []
+                i = 0
+                for peak in fid._deconvoluted_peaks:
+                    int_gauss = peak[-1] * Fid._f_gauss_int(peak[3], peak[1])
+                    int_lorentz = (1 - peak[-1]) * Fid._f_lorentz_int(peak[3], peak[2])
+                    integrals.append(int_gauss + int_lorentz)
+                    # Iterate over peak identities and assign integrals based on the peak and integral indices
+                    for peak_identity in fid.fid_object.peak_identities:
+                        if i in peak_identity.associated_indices:
+                            # Check if the integral has already been assigned to the peak identity
+                            if integrals[i] in peak_identity.associated_integrals:
+                                pass
+                            # If not, assign the integral to the peak identity
+                            try:
+                                peak_identity.associated_integrals.append(
+                                    float(integrals[i])
+                                )
+                            except:
+                                peak_identity.associated_integrals = []
+                                peak_identity.associated_integrals.append(
+                                    float(integrals[i])
+                                )
+                    i += 1
                 fid.fid_object.processing_steps.is_deconvoluted = True
+
         else:
             for fid in self.get_fids():
                 fid.deconv(frac_gauss=frac_gauss)
+                fid.fid_object.processing_steps.is_deconvoluted = True
+
         print("deconvolution completed")
 
     def get_masked_integrals(self):
@@ -2368,68 +2393,12 @@ Ctrl+Alt+Right - assign
         with open(filename, "wb") as f:
             pickle.dump(self, f)
 
-    # TODO: Will probably create a measurement object for each FID(?)
-    # and add them to the EnzymeML document provided
-    # Issue: How to get species for IdentityAssigner? __init__()?
-    def to_enzymeml(self, enzymeml_document: DataModel = None) -> DataModel:
+    def apply_to_enzymeml(
+        self, enzymeml_document: EnzymeMLDocument = None
+    ) -> EnzymeMLDocument:
         if not enzymeml_document:
             enzymeml_document = self.enzymeml_document
         return create_enzymeml(self, enzymeml_document)
-
-    # TODO: Refactor save_data method
-    # possibly make saving to EnzymeML a get_measurements method
-    def save_data(self, file_format: str, filename=None, overwrite=False):
-        print("~~~ Method under contruction ~~~")
-        if self.force_pyenzyme:
-            try:
-                import pyenzyme as pe
-            except:
-                self.force_pyenzyme = False
-                raise ModuleNotFoundError(
-                    "PyEnzyme is not installed in your current environment. Use EnzymeML data model instead or install PyEnzyme."
-                )
-            enzymeml = pe.EnzymeMLDocument(
-                name=self.data_model.experiment.name
-                if hasattr(self.data_model.experiment, "name")
-                else "NMR experiment"
-            )
-            ...
-            return 1
-        if file_format.lower() == ("enzymeml" or "nmrml"):
-            enzymeml = DataModel.from_git(
-                url="https://github.com/EnzymeML/enzymeml-specifications.git",
-                tag="linking-refactor",
-            )
-            doc = enzymeml.EnzymeMLDocument(
-                name=(
-                    self.data_model.experiment.name
-                    if hasattr(self.data_model.experiment, "name")
-                    else "NMR experiment"
-                ),
-                created=self.data_model.datetime_created,
-                modified=self.data_model.datetime_modified,
-            )
-            model = doc.xml()
-        elif file_format.lower() == "xml":
-            model = self.data_model.xml()
-        elif file_format.lower() == "json":
-            model = self.data_model.json()
-        elif file_format.lower() == "yaml":
-            model = self.data_model.yaml()
-        elif file_format.lower() == "hdf5":
-            model = self.data_model.hdf5()
-        else:
-            raise AttributeError(
-                f"Parameter `file_format` expected to be one of `enzymeml`; `nmrml`; `xml`; `json`; `yaml`; `hdf5`, got {file_format} instead."
-            )
-        if not filename:
-            basename = os.path.split(os.path.splitext(self.fid_path)[0])[-1]
-            filename = basename + "." + file_format.lower()
-        if os.path.isfile(filename) and not overwrite:
-            print("File " + filename + " exists, set overwrite=True to force.")
-            return 1
-        with open(filename, "w") as f:
-            f.write(model)
 
     def assign_identities(self):
         """
@@ -2452,9 +2421,8 @@ Ctrl+Alt+Right - assign
             fid.identities = None
 
     def calculate_concentrations(self):
-        integrals = self.deconvoluted_integrals.transpose()
         self._concentration_widget = ConcentrationCalculator(
-            fid_array=self, integrals=integrals
+            fid_array=self, enzymeml_document=self.enzymeml_document
         )
 
 
