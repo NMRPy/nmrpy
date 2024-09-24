@@ -2341,13 +2341,13 @@ class ConcentrationCalculator:
                         }
                     )
                     current_concentration = concentration.evalf()
-                    print(f"adding {current_concentration} to {standard.name}.")
+                    # print(f"adding {current_concentration} to {standard.name}.")
                     self.fid_array.concentrations[standard.name].append(
                         current_concentration
                     )
-                    print(
-                        f"`self.fid_array.concentrations` is {self.fid_array.concentrations}."
-                    )
+                    # print(
+                    #     f"`self.fid_array.concentrations` is {self.fid_array.concentrations}."
+                    # )
 
                     # Iterate over all identities but the standard
                     for identity in fid.fid_object.peak_identities:
@@ -2364,13 +2364,13 @@ class ConcentrationCalculator:
                             }
                         )
                         current_concentration = concentration.evalf()
-                        print(f"adding {current_concentration} to {identity.name}.")
+                        # print(f"adding {current_concentration} to {identity.name}.")
                         self.fid_array.concentrations[identity.name].append(
                             current_concentration
                         )
-                        print(
-                            f"`self.fid_array.concentrations` is {self.fid_array.concentrations}."
-                        )
+                        # print(
+                        #     f"`self.fid_array.concentrations` is {self.fid_array.concentrations}."
+                        # )
 
                 print(f"Done! Get concentrations with `FidArray.concentrations`.")
 
