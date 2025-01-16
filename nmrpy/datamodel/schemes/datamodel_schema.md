@@ -2,10 +2,9 @@
 classDiagram
     NMRpy *-- Experiment
     Experiment *-- FIDObject
-    Experiment *-- FIDArray
     FIDObject *-- Parameters
     FIDObject *-- ProcessingSteps
-    FIDObject *-- Identity
+    FIDObject *-- Peak
     
     class NMRpy {
         +datetime datetime_created*
@@ -15,8 +14,7 @@ classDiagram
     
     class Experiment {
         +string name*
-        +FIDObject[0..*] fid
-        +FIDArray fid_array
+        +FIDObject[0..*] fid_array
     }
     
     class FIDObject {
@@ -24,7 +22,7 @@ classDiagram
         +string, float[0..*] processed_data
         +Parameters nmr_parameters
         +ProcessingSteps processing_steps
-        +Identity[0..*] peak_identities
+        +Peak[0..*] peaks
     }
     
     class Parameters {
@@ -56,30 +54,12 @@ classDiagram
         +boolean is_baseline_corrected
     }
     
-    class Identity {
-        +string name
+    class Peak {
+        +int peak_index*
+        +float peak_position
+        +PeakRange peak_range
+        +float peak_integral
         +string species_id
-        +float[0..*] associated_peaks
-        +AssociatedRanges[0..*] associated_ranges
-        +int[0..*] associated_indices
-        +float[0..*] associated_integrals
-    }
-    
-    class FIDArray {
-        +string[0..*] fids*
-    }
-    
-    class CV {
-        +string vocabulary*
-        +string version*
-        +URL url*
-    }
-    
-    class Term {
-        +string name*
-        +string accession*
-        +string term_cv_reference
-        +string value
     }
     
     class FileFormats {

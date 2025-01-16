@@ -6,18 +6,20 @@ from lxml.etree import _Element
 from pydantic import PrivateAttr, model_validator
 from pydantic_xml import attr, element
 from sdRDM.base.listplus import ListPlus
+from sdRDM.base.utils import forge_signature
 from sdRDM.tools.utils import elem2dict
 
-from .identity import AssociatedRanges, Identity
 from .parameters import Parameters
+from .peak import Peak, PeakRange
 from .processingsteps import ProcessingSteps
 
 
+@forge_signature
 class FIDObject(
     sdRDM.DataModel,
     search_mode="unordered",
 ):
-    """Container for a single NMR spectrum."""
+    """Container for a single NMR spectrum, containing both raw data with relevant instrument parameters and processed data with processing steps applied. The `raw_data` field contains the complex spectral array as unaltered free induction decay from the NMR instrument. Every processing step is documented in the `processing_steps` field, together with any relevant parameters to reproduce the processing. Therefore, and to minimize redundancy, only the current state of the data is stored in the `processed_data` field. The `peaks` field is a list of `Peak` objects, each representing one single peak in the NMR spectrum."""
 
     id: Optional[str] = attr(
         name="id",
@@ -64,13 +66,13 @@ class FIDObject(
         json_schema_extra=dict(),
     )
 
-    peak_identities: List[Identity] = element(
+    peaks: List[Peak] = element(
         description=(
-            "Container holding and mapping integrals resulting from peaks and their"
-            " ranges to EnzymeML species."
+            "Container holding the peaks found in the NMR spectrum associated with"
+            " species from an EnzymeML document."
         ),
         default_factory=ListPlus,
-        tag="peak_identities",
+        tag="peaks",
         json_schema_extra=dict(
             multiple=True,
         ),
@@ -90,44 +92,41 @@ class FIDObject(
 
         return self
 
-    def add_to_peak_identities(
+    def add_to_peaks(
         self,
-        name: Optional[str] = None,
+        peak_index: int,
+        peak_position: Optional[float] = None,
+        peak_range: Optional[PeakRange] = None,
+        peak_integral: Optional[float] = None,
         species_id: Optional[str] = None,
-        associated_peaks: List[float] = ListPlus(),
-        associated_ranges: List[AssociatedRanges] = ListPlus(),
-        associated_indices: List[int] = ListPlus(),
-        associated_integrals: List[float] = ListPlus(),
         id: Optional[str] = None,
         **kwargs,
-    ) -> Identity:
+    ) -> Peak:
         """
-        This method adds an object of type 'Identity' to attribute peak_identities
+        This method adds an object of type 'Peak' to attribute peaks
 
         Args:
-            id (str): Unique identifier of the 'Identity' object. Defaults to 'None'.
-            name (): Descriptive name for the species. Defaults to None
-            species_id (): ID of an EnzymeML species. Defaults to None
-            associated_peaks (): Peaks belonging to the given species. Defaults to ListPlus()
-            associated_ranges (): Sets of ranges belonging to the given peaks. Defaults to ListPlus()
-            associated_indices (): Indices in the NMR spectrum (counted from left to right) belonging to the given peaks. Defaults to ListPlus()
-            associated_integrals (): Integrals resulting from the given peaks and ranges of a species. Defaults to ListPlus()
+            id (str): Unique identifier of the 'Peak' object. Defaults to 'None'.
+            peak_index (): Index of the peak in the NMR spectrum, counted from left to right..
+            peak_position (): Position of the peak in the NMR spectrum.. Defaults to None
+            peak_range (): Range of the peak, given as a start and end value.. Defaults to None
+            peak_integral (): Integral of the peak, resulting from the position and range given.. Defaults to None
+            species_id (): ID of an EnzymeML species.. Defaults to None
         """
 
         params = {
-            "name": name,
+            "peak_index": peak_index,
+            "peak_position": peak_position,
+            "peak_range": peak_range,
+            "peak_integral": peak_integral,
             "species_id": species_id,
-            "associated_peaks": associated_peaks,
-            "associated_ranges": associated_ranges,
-            "associated_indices": associated_indices,
-            "associated_integrals": associated_integrals,
         }
 
         if id is not None:
             params["id"] = id
 
-        obj = Identity(**params)
+        obj = Peak(**params)
 
-        self.peak_identities.append(obj)
+        self.peaks.append(obj)
 
-        return self.peak_identities[-1]
+        return self.peaks[-1]

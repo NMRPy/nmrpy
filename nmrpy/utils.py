@@ -43,12 +43,11 @@ def get_ordered_list_of_species_names(fid: "Fid") -> list:
         list: List of species names in desecending order by peak index.
     """
     list_of_tuples = []
-    # Iterate over the identies and then over their associated peaks of
-    # a given FID object and append a tuple of the identity's name and
+    # Iterate over the peak objects and then over their associated peaks
+    # of a given FID object and append a tuple of the identity's name and
     # corresponding peak (one tuple per peak) to a list of tuples.
-    for identity in fid.fid_object.peak_identities:
-        for peak in identity.associated_peaks:
-            list_of_tuples.append((identity.name, peak))
+    for peak_object in fid.fid_object.peaks:
+        list_of_tuples.append((peak_object.species_id, peak_object.peak_position))
     # Use the `sorted` function with a custom key to sort the list of
     # tuples by the second element of each tuple (the peak) from highest
     # value to lowest (reverse=True).
@@ -97,6 +96,39 @@ def get_species_id_by_name(
         if species.name == species_name:
             species_id = species.id
     return species_id
+
+
+def get_species_name_by_id(enzymeml_document: EnzymeMLDocument, species_id: str) -> str:
+    """Get the name of a species in an EnzymeML document by its `species_id`.
+
+    Args:
+        enzymeml_document (EnzymeMLDocument): An EnzymeML data model.
+        species_id (str): The `species_id` of the species for which to get the name.
+
+    Returns:
+        str: The name of the species.
+    """
+    species_name = None
+    for species in get_species_from_enzymeml(enzymeml_document):
+        if species.id == species_id:
+            species_name = species.name
+    return species_name
+
+
+def format_species_string(enzymeml_species) -> str:
+    """Format a species object from an EnzymeML document as a string
+    for display in widgets.
+
+    Args:
+        enzymeml_species: A species object from an EnzymeML document.
+
+    Returns:
+        str: The formatted species string.
+    """
+    if enzymeml_species.name:
+        return f"{enzymeml_species.id} ({enzymeml_species.name})"
+    else:
+        return f"{enzymeml_species.id}"
 
 
 def create_enzymeml(
