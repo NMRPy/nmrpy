@@ -13,7 +13,14 @@ import pickle
 from ipywidgets import SelectMultiple
 from sdRDM import DataModel
 from sdRDM.base.importedmodules import ImportedModules
-from nmrpy.datamodel.core import *
+from nmrpy.datamodel.core import (
+    NMRpy,
+    Experiment,
+    FIDObject,
+    Parameters,
+    ProcessingSteps,
+    Peak,
+)
 from nmrpy.utils import create_enzymeml
 import pyenzyme as pe
 import pyenzyme.equations as peq
@@ -223,7 +230,7 @@ class Fid(Base):
         self.data = kwargs.get("data", [])
         self.peaks = None
         self.ranges = None
-        self.identities = None
+        self.species = None
         self._deconvoluted_peaks = None
         self._flags = {
             "ft": False,
@@ -334,25 +341,23 @@ class Fid(Base):
         self._ranges = ranges
 
     @property
-    def identities(self):
+    def species(self):
         """
-        Assigned identities corresponding to the various peaks in :attr:`~nmrpy.data_objects.Fid.peaks`.
+        Assigned species corresponding to the various peaks in :attr:`~nmrpy.data_objects.Fid.peaks`.
         """
-        return self._identities
+        return self._species
 
-    @identities.setter
-    def identities(self, identities):
-        if identities is None:
-            self._identities = None
+    @species.setter
+    def species(self, species):
+        if species is None:
+            self._species = None
             return
-        if identities is not None:
-            # if not Fid._is_flat_iter(identities):
-            #     raise AttributeError("identitites must be a flat iterable")
-            if not all(isinstance(i, str) for i in identities):
-                raise AttributeError("identities must be strings")
-            self._identities = numpy.array(identities)
-        else:
-            self._identities = identities
+        if species is not None:
+            if not all((i is None) or isinstance(i, str) for i in species):
+                raise AttributeError("species must be strings")
+            if not len(species) == len(self.peaks):
+                raise AttributeError("species must have the same length as peaks")
+            self._species = numpy.array(species, dtype=object)
 
     @property
     def _bl_ppm(self):
@@ -503,54 +508,20 @@ class Fid(Base):
                 int_gauss = peak[-1] * Fid._f_gauss_int(peak[3], peak[1])
                 int_lorentz = (1 - peak[-1]) * Fid._f_lorentz_int(peak[3], peak[2])
                 integrals.append(int_gauss + int_lorentz)
-                print(f"peak {i} integral: {integrals[i]}")
+                print(f"Peak {i} integral: {integrals[i]}")
 
-                for peak_identity in self.fid_object.peak_identities:
-                    print(f"peak_identity: {peak_identity.name}")
-                    if i in peak_identity.associated_indices:
-                        print(
-                            f"peak index {i} found in in associated indices {peak_identity.associated_indices} for peak identity {peak_identity.name}"
-                        )
-                        if integrals[i] in peak_identity.associated_integrals:
+                for peak_object in self.fid_object.peaks:
+                    print(f"Peak object: {peak_object.peak_index}")
+                    if i == peak_object.peak_index:
+                        if integrals[i] == peak_object.peak_integral:
                             print(
-                                f"integral {integrals[i]} already in associated integrals"
+                                f"Integral {integrals[i]} already stored in peak object"
                             )
                             pass
-                        try:
-                            peak_identity.associated_integrals.append(
-                                float(integrals[i])
-                            )
-                            print(
-                                f"added integral {integrals[i]} to associated integrals"
-                            )
-                        except:
-                            peak_identity.associated_integrals = []
-                            print(
-                                f"created new associated integrals list for peak identity {peak_identity.name}"
-                            )
-                            peak_identity.associated_integrals.append(
-                                float(integrals[i])
-                            )
-                            print(
-                                f"added integral {integrals[i]} to associated integrals"
-                            )
+                        peak_object.peak_integral = float(integrals[i])
+                        print(f"Added integral {integrals[i]} to peak object")
             i += 1
             print(f"incremented i to {i}")
-
-            # for peak_identity in self.fid_object.peak_identities:
-            #     if peak_identity.name == self.identities[i]:
-            #         if integrals[i] in peak_identity.associated_integrals:
-            #             pass
-            #         try:
-            #             peak_identity.associated_integrals.append(
-            #                 float(integrals[i])
-            #             )
-            #         except:
-            #             peak_identity.associated_integrals = []
-            #             peak_identity.associated_integrals.append(
-            #                 float(integrals[i])
-            #             )
-            # i += 1
             return integrals
 
     def _get_plots(self):
@@ -953,11 +924,11 @@ Ctrl+Alt+Right - assign
         """
         self.ranges = None
 
-    def clear_identitites(self):
+    def clear_species(self):
         """
-        Clear identities stored in :attr:`~nmrpy.data_objects.Fid.identities`.
+        Clear species stored in :attr:`~nmrpy.data_objects.Fid.species`.
         """
-        self.identities = None
+        self.species = None
 
     def baseliner(self):
         """
@@ -1274,7 +1245,7 @@ Ctrl+Alt+Right - assign
         try:
             mz = lmfit.minimize(cls._f_res, params, args=([data]), method=method)
             fits = Fid._parameters_to_list(mz.params)
-        except:
+        except Exception:
             fits = None
         return fits
 
@@ -1418,24 +1389,33 @@ Ctrl+Alt+Right - assign
         setattr(self, plt.id, plt)
         pyplot.show()
 
-    def assign_identities(self):
+    def assign_peaks(self):
         """
-        Instantiate a identity-assignment GUI widget. Select peaks from
+        Instantiate a species-assignment GUI widget. Select peaks from
         dropdown menu containing :attr:`~nmrpy.data_objects.Fid.peaks`.
         Attach a species to the selected peak from second dropdown menu
         containing species defined in EnzymeML. When satisfied with
         assignment, press Assign button to apply.
         """
         # raise NotImplementedError
-        widget_title = "Assign identities for {}".format(self.id)
-        self._assigner_widget = IdentityAssigner(fid=self, title=widget_title)
+        widget_title = "Assign species for {}".format(self.id)
+        self._assigner_widget = PeakAssigner(fid=self, title=widget_title)
 
-    def clear_identities(self):
+    def index_peaks(self, list_of_species: list[str]):
         """
-        Clear assigned identities stored in
-        :attr:`~nmrpy.data_objects.Fid.identities`.
+        Index peaks based on species.
         """
-        self.identities = None
+        widget_title = "Index peaks for {}".format(self.id)
+        self._indexer_widget = PeakIndexer(
+            fid=self, species_list=list_of_species, title=widget_title
+        )
+
+    def clear_peaks(self):
+        """
+        Clear assigned species stored in
+        :attr:`~nmrpy.data_objects.Fid.species`.
+        """
+        self.species = None
 
 
 class FidArray(Base):
@@ -1455,35 +1435,14 @@ class FidArray(Base):
     """
 
     def __init__(self):
-        _now = str(datetime.now())
         self.data_model = NMRpy(
-            datetime_created=_now,
-            datetime_modified=_now,
+            datetime_created=str(datetime.now()),
+            experiment=Experiment(name="NMR experiment"),
         )
-        self.__data_model.experiment = Experiment(name="This is still a test")
-        del _now
-        self._force_pyenzyme = False
-
-    @property
-    def force_pyenzyme(self):
-        return self._force_pyenzyme
-
-    @force_pyenzyme.setter
-    def force_pyenzyme(self):
-        raise PermissionError("Forbidden!")
-
-    @force_pyenzyme.deleter
-    def force_pyenzyme(self):
-        raise PermissionError("Forbidden!")
 
     @property
     def data_model(self):
-        _data_model = self.__data_model
-        if not _data_model.experiment:
-            _data_model.experiment = Experiment(name="This is still a test")
-        for fid in self.get_fids():
-            _data_model.experiment.fid.append(fid.fid_object)
-        return _data_model
+        return self.__data_model
 
     @data_model.setter
     def data_model(self, data_model: DataModel):
@@ -1513,10 +1472,7 @@ class FidArray(Base):
         self.__enzymeml_document.modified = datetime.now()
         self.__data_model.experiment.name = self.__enzymeml_document.name
         for fid in self.get_fids():
-            fid.enzymeml_species = [
-                (species.name, species.id)
-                for species in get_species_from_enzymeml(self.__enzymeml_document)
-            ]
+            fid.enzymeml_species = get_species_from_enzymeml(self.__enzymeml_document)
 
     @enzymeml_document.deleter
     def enzymeml_document(self):
@@ -1600,7 +1556,7 @@ class FidArray(Base):
             or isinstance(self.__dict__[id], FidArrayRangeSelector)
             or isinstance(self.__dict__[id], DataTraceRangeSelector)
             or isinstance(self.__dict__[id], DataTraceSelector)
-            or isinstance(self.__dict__[id], IdentityRangeAssigner)
+            or isinstance(self.__dict__[id], PeakRangeAssigner)
         ]
         return widgets
 
@@ -1630,7 +1586,7 @@ class FidArray(Base):
         if nfids > 0:
             try:
                 t = self._params["acqtime"]
-            except:
+            except Exception:
                 t = numpy.arange(len(self.get_fids()))
         return t
 
@@ -1653,7 +1609,7 @@ class FidArray(Base):
         for fid in self.get_fids():
             try:
                 deconvoluted_peaks.append(fid._deconvoluted_peaks)
-            except:
+            except Exception:
                 deconvoluted_peaks.append([])
         return numpy.array(deconvoluted_peaks)
 
@@ -1713,7 +1669,9 @@ class FidArray(Base):
         Args:
             path_to_enzymeml_document (str): Path to file containing an EnzymeML document
         """
-        self.enzymeml_document = pe.load_enzymeml(path_to_enzymeml_document)
+        self.enzymeml_document = pe.read_enzymeml(
+            cls=pe.EnzymeMLDocument, path=path_to_enzymeml_document
+        )
 
     @classmethod
     def from_data(cls, data):
@@ -1749,7 +1707,7 @@ class FidArray(Base):
             try:
                 with open(fid_path, "rb") as f:
                     return pickle.load(f)
-            except:
+            except Exception:
                 print("Not NMRPy data file.")
                 importer = Importer(fid_path=fid_path)
                 importer.import_fid(arrayset=arrayset)
@@ -1894,7 +1852,7 @@ Ctrl+Alt+Right - assign
         for fid in self.get_fids():
             try:
                 fid.baseline_correct(deg=deg)
-            except:
+            except Exception:
                 print(
                     "failed for {}. Perhaps first run baseliner_fids()".format(fid.id)
                 )
@@ -1980,22 +1938,14 @@ Ctrl+Alt+Right - assign
                     int_gauss = peak[-1] * Fid._f_gauss_int(peak[3], peak[1])
                     int_lorentz = (1 - peak[-1]) * Fid._f_lorentz_int(peak[3], peak[2])
                     integrals.append(int_gauss + int_lorentz)
-                    # Iterate over peak identities and assign integrals based on the peak and integral indices
-                    for peak_identity in fid.fid_object.peak_identities:
-                        if i in peak_identity.associated_indices:
+                    # Iterate over peaks and assign integrals based on the peak and integral indices
+                    for peak_object in fid.fid_object.peaks:
+                        if i == peak_object.peak_index:
                             # Check if the integral has already been assigned to the peak identity
-                            if integrals[i] in peak_identity.associated_integrals:
+                            if integrals[i] == peak_object.peak_integral:
                                 pass
-                            # If not, assign the integral to the peak identity
-                            try:
-                                peak_identity.associated_integrals.append(
-                                    float(integrals[i])
-                                )
-                            except:
-                                peak_identity.associated_integrals = []
-                                peak_identity.associated_integrals.append(
-                                    float(integrals[i])
-                                )
+                            # If not, assign the integral to the peak
+                            peak_object.peak_integral = float(integrals[i])
                     i += 1
                 fid.fid_object.processing_steps.is_deconvoluted = True
 
@@ -2350,8 +2300,8 @@ Ctrl+Alt+Right - assign
             integrals_set[i] = integrals
         return integrals_set
 
-    def assign_integrals(self, integrals_set: list) -> dict:
-        print("~~~ Method under contruction ~~~")
+    def assign_integrals(self, integrals_set: list) -> dict:  # deprecated?
+        print("~~~ Method under contruction ~~~")  # TODO: make pretty
         widget_list = []
         for i, j in enumerate(integrals_set):
             widget_list.append((i, list(j)))
@@ -2388,7 +2338,7 @@ Ctrl+Alt+Right - assign
         try:
             del self.enzymeml_library
             del self.enzymeml_document
-        except:
+        except Exception:
             pass
         with open(filename, "wb") as f:
             pickle.dump(self, f)
@@ -2400,9 +2350,9 @@ Ctrl+Alt+Right - assign
             enzymeml_document = self.enzymeml_document
         return create_enzymeml(self, enzymeml_document)
 
-    def assign_identities(self):
+    def assign_peaks(self, index_list=None):
         """
-        Instantiate a identity-assignment GUI widget. Select a FID by
+        Instantiate a peak-assignment GUI widget. Select a FID by
         its ID from the combobox. Select peaks from dropdown menu
         containing :attr:`~nmrpy.data_objects.Fid.peaks`. Attach a
         species to the selected peak from second dropdown menu
@@ -2410,17 +2360,43 @@ Ctrl+Alt+Right - assign
         assignment, press Assign button to apply.
         """
 
-        self._assigner_widget = IdentityRangeAssigner(fid_array=self)
+        self._assigner_widget = PeakRangeAssigner(fid_array=self, index_list=index_list)
 
-    def clear_identities(self):
+    def index_peaks(self, species_list, index_list=None):
         """
-        Clear assigned identities stored in
-        :attr:`~nmrpy.data_objects.Fid.identities`.
+        Instantiate a peak-indexing GUI widget. Select a FID by ID to base the peak
+        assignments on, then assign species names to peaks. The assignments will be
+        applied to all FIDs in the array.
+
+        Parameters
+        ----------
+        species_list : list
+            List of species names to assign to peaks
+        index_list : list, optional
+            List of indices to select FIDs from the array. If None, all FIDs
+            will be included.
+
+        Example
+        -------
+        >>> species = ['ATP', 'ADP', 'Pi', 'Glucose']
+        >>> fid_array.index_peaks(species)  # Use all FIDs
+        >>> fid_array.index_peaks(species, [0, 1, 2])  # Use only first three FIDs
+        """
+        from nmrpy.plotting import PeakRangeIndexer
+
+        self._indexer_widget = PeakRangeIndexer(
+            fid_array=self, species_list=species_list, index_list=index_list
+        )
+
+    def clear_peaks(self):
+        """
+        Clear assigned peaks stored in
+        :attr:`~nmrpy.data_objects.Fid.species`.
         """
         for fid in self.get_fids():
-            fid.identities = None
+            fid.species = None
 
-    def calculate_concentrations(self):
+    def calculate_concentrations(self):  # TODO: Write docstring
         self._concentration_widget = ConcentrationCalculator(
             fid_array=self, enzymeml_document=self.enzymeml_document
         )

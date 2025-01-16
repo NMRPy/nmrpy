@@ -6,14 +6,16 @@ from lxml.etree import _Element
 from pydantic import PrivateAttr, model_validator
 from pydantic_xml import attr, element
 from sdRDM.base.listplus import ListPlus
+from sdRDM.base.utils import forge_signature
 from sdRDM.tools.utils import elem2dict
 
 
+@forge_signature
 class ProcessingSteps(
     sdRDM.DataModel,
     search_mode="unordered",
 ):
-    """Container for processing steps performed, as well as parameter for them."""
+    """Container for processing steps performed, as well as parameter for them. Processing steps that are reflected are apodisation, zero-filling, Fourier transformation, phasing, normalisation, deconvolution, and baseline correction."""
 
     id: Optional[str] = attr(
         name="id",
