@@ -1,6 +1,6 @@
 # NMRpy data model
 
-Python object model specifications based on the [software-driven-rdm](https://github.com/JR-1991/software-driven-rdm) Python library. The NMRpy data model is designed to store both raw and processed NMR data, as well as the parameters used for processing. As NMRpy is primarily used for the analysis of time-course data, often for determining (enzyme) kinetics, the data model is designed for maximum compatibility with the [EnzymeML](https://enzymeml.github.io/services/) standard, which provides a standardised data exchange format for kinetics data from biocatalysis, enzymology, and beyond. Therefore, relevant fields that are mandatory in the EnzymeML standard are also mandatory in this NMRpy data model.
+Python object model specifications based on the [md-models](https://github.com/FAIRChemistry/md-models) Rust library. The NMRpy data model is designed to store both raw and processed NMR data, as well as the parameters used for processing. As NMRpy is primarily used for the analysis of time-course data, often for determining (enzyme) kinetics, the data model is designed for maximum compatibility with the [EnzymeML](https://enzymeml.github.io/services/) standard, which provides a standardised data exchange format for kinetics data from biocatalysis, enzymology, and beyond. Therefore, relevant fields that are mandatory in the EnzymeML standard are also mandatory in this NMRpy data model.
 
 ## Core objects
 
@@ -9,10 +9,10 @@ Python object model specifications based on the [software-driven-rdm](https://gi
 Root element of the NMRpy data model. Following the specifications of the EnzymeML standard, the `datetime_created` field is mandatory. Since each NMRpy instance is meant to hold a single experiment (e.g., one time-course), the data model reflects this by only allowing a single `experiment` object.
 
 - __datetime_created__
-  - Type: datetime
+  - Type: string
   - Description: Date and time this dataset has been created.
 - datetime_modified
-  - Type: datetime
+  - Type: string
   - Description: Date and time this dataset has last been modified.
 - experiment
   - Type: [Experiment](#experiment)
@@ -39,7 +39,7 @@ Container for a single NMR spectrum, containing both raw data with relevant inst
   - Description: Complex spectral data from numpy array as string of format `{array.real}+{array.imag}j`.
   - Multiple: True
 - processed_data
-  - Type: string,float
+  - Type: string, float
   - Description: Processed data array.
   - Multiple: True
 - nmr_parameters
@@ -146,13 +146,13 @@ Container for processing steps performed, as well as parameter for them. Process
 Container for a single peak in the NMR spectrum, associated with a species from an EnzymeML document. To ensure unambiguity of every peak, the `peak_index` field (counted from left to right in the NMR spectrum) is mandatory. Species from EnzymeML are identified by their `species_id` as found in the EnzymeML document.
 
 - __peak_index__
-  - Type: int
+  - Type: integer
   - Description: Index of the peak in the NMR spectrum, counted from left to right.
 - peak_position
   - Type: float
   - Description: Position of the peak in the NMR spectrum.
 - peak_range
-  - Type: {start: float, end: float}
+  - Type: [PeakRange](#peakrange)
   - Description: Range of the peak, given as a start and end value.
 - peak_integral
   - Type: float
@@ -160,6 +160,17 @@ Container for a single peak in the NMR spectrum, associated with a species from 
 - species_id
   - Type: string
   - Description: ID of an EnzymeML species.
+
+### PeakRange
+
+Container for the peak range of one peak.
+
+- __start__
+  - Type: float
+  - Description: Start value of the peak range.
+- __end__
+  - Type: float
+  - Description: End value of the peak range.
 
 ## Enumerations
 

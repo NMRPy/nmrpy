@@ -2,6 +2,7 @@ import asyncio
 import logging
 import traceback
 from datetime import datetime
+from typing import List, Union
 
 import numpy
 import sympy as sp
@@ -24,6 +25,8 @@ from matplotlib.figure import Figure
 from matplotlib.patches import Rectangle
 from matplotlib.transforms import blended_transform_factory
 from matplotlib.widgets import Cursor
+
+from pyenzyme.model import EnzymeMLDocument
 
 import nmrpy.data_objects
 
@@ -1379,150 +1382,90 @@ class SpanDataSelector(DataSelector, SpanSelectorMixin, AssignMixin):
 
 
 class PeakAssigner:
-    def __init__(self, fid, title):
+    """Interactive widget for assigning species to peaks in a FID."""
+
+    def __init__(self, fid, species_list=None, title="Assign species"):
+        """
+        Initialize peak assigner widget.
+
+        Parameters
+        ----------
+        fid : Fid
+            The FID object to assign peaks for
+        species_source : Union[List[str], EnzymeMLDocument], optional
+            Either a list of species names or an EnzymeML document.
+            If None, will try to use fid.enzymeml_document
+        title : str, optional
+            Title for the widget
+        """
         self.fid = fid
         self.title = title
-        self.available_peaks = [str(peak) for peak in self.fid.peaks]
         self.selected_values = {}
-        self._validate_and_update_fid(self.fid)
 
-        # Create the label widget for the title
-        title_label = Label(value=title)
+        # Determine species source and mode
+        self._setup_species_source(species_list)
 
-        # Create the dropdown widget for the peaks
-        peak_dropdown = Dropdown(
-            options=self.available_peaks,
-            description="Select a peak:",
-            layout={"width": "max-content"},
-            style={"description_width": "initial"},
-        )
+        # Validate and initialize
+        self._validate_fid(self.fid)
+        self._setup_fid(self.fid)
+        self.available_peaks = [str(peak) for peak in self.fid.peaks]
 
-        # Create the dropdown widget for the species
-        species_dropdown = Dropdown(
-            options=[
-                format_species_string(species) for species in self.fid.enzymeml_species
-            ],
-            description="Select a species:",
-            layout={"width": "max-content"},
-            style={"description_width": "initial"},
-        )
+        # Create and layout widgets
+        self._create_widgets()
+        self._setup_callbacks()
+        self._layout_widgets()
 
-        # Create the button to save selection to dict
-        save_button = Button(
-            description="Save selection",
-            icon="file-arrow-down",
-        )
-
-        # Create a reset button
-        reset_button = Button(description="Reset selection", disabled=True)
-
-        # Create an output widget to display the selection
-        selection_output = Output()
-
-        # Define a function to handle the save button click event
-        def on_save_button_click(b):
-            with selection_output:
-                selection_output.clear_output(wait=True)
-                # Fetch the values from the species dropdown and peak
-                # dropdown and add them to a dictionary with species as
-                # keys
-                if species_dropdown.value not in self.selected_values:
-                    self.selected_values[species_dropdown.value] = []
-                self.selected_values[species_dropdown.value].append(
-                    float(peak_dropdown.value)
+    def _setup_species_source(self, species_source):
+        # Configure species source and create list of available species
+        # Check for default case first
+        if species_source is None:
+            if not hasattr(self.fid, "enzymeml_species"):
+                raise ValueError(
+                    "No species list provided and FID has no enzymeml_species"
                 )
-                # Remove the assigned peaks from the options of the peak
-                # dropdown, as they cannot belong to two species at once
-                # and disable the peak dropdown if all are assigned
-                self.available_peaks.remove(peak_dropdown.value)
-                peak_dropdown.options = self.available_peaks
-                if not self.available_peaks:
-                    peak_dropdown.disabled = True
-                    save_button.disabled = True
-                # Iterate over the dictionary of assigned peaks and
-                # print the saved selections.
-                print("\nSaved selections:")
-                for key, value in self.selected_values.items():
-                    print(f"{key}: {value}")
-                    # Iterate over every FID, find the peak in the dict
-                    # of selected values, and assign the species ID to
-                    # the peak object
-                    for peak in self.fid.fid_object.peaks:
-                        if peak.peak_position not in value:
-                            continue
-                        peak.species_id = key.split(" ")[0]
-                        self.fid.species[peak.peak_index] = peak.species_id
-                self.fid._flags["assigned"] = True
-            reset_button.disabled = False
+            self.available_species = self.fid.enzymeml_species
+            return
+        # Check for EnzymeML document
+        elif isinstance(species_source, EnzymeMLDocument):
+            self.available_species = get_species_from_enzymeml(species_source)
+            return
+        # Check for list of strings
+        elif isinstance(species_source, list):
+            self.available_species = species_source
+            return
+        # If we get here, the input was invalid
+        else:
+            raise ValueError(
+                "species_list must be a list of species names, "
+                "an EnzymeML document, or None if FID has enzymeml_species"
+            )
 
-        # Attach the function to the save button's click event
-        save_button.on_click(on_save_button_click)
-
-        # Define a function to handle the reset event
-        def on_reset_button_click(b):
-            with selection_output:
-                selection_output.clear_output(wait=True)
-                # Clear the Peaks in the data model and reset the
-                # selection dict
-                print("\nCleared selections!")
-                for peak_object in self.fid.fid_object.peaks:
-                    peak_object.species_id = None
-                self.selected_values = {}
-                # Refill the list of available peaks as before,
-                # re-enable the peak dropdown, and disable the reset
-                # button again
-                self.available_peaks = [str(peak) for peak in self.fid.peaks]
-                peak_dropdown.options = self.available_peaks
-                peak_dropdown.disabled = False
-                save_button.disabled = False
-                self.fid._flags["assigned"] = False
-                reset_button.disabled = True
-
-        # Attach the function to the reset click event
-        reset_button.on_click(on_reset_button_click)
-
-        # Create a container for both the title and the dropdown
-        container = VBox(
-            [
-                title_label,
-                peak_dropdown,
-                species_dropdown,
-                save_button,
-                reset_button,
-                selection_output,
-            ]
-        )
-
-        # Display the container
-        display(container)
-
-    def _validate_and_update_fid(self, fid):
-        """
-        Ensures fid has valid peaks and ranges,
-        initializes its .species array, and
-        syncs up with the data model if needed.
-        """
-        if fid.peaks is [] or fid.peaks is None:
+    def _validate_fid(self, fid):
+        # Validates FID has peaks and ranges and len(peaks) == len(ranges)
+        if fid.peaks is None or len(fid.peaks) == 0:
             raise RuntimeError(
                 "`fid.peaks` is required but still empty. "
                 "Please assign them manually or with the `peakpicker` method."
             )
-
-        if fid.ranges is [] or fid.ranges is None:
+        if fid.ranges is None or len(fid.ranges) == 0:
             raise RuntimeError(
                 "`fid.ranges` is required but still empty. "
-                "Please assign them manually or with the `peakpicker` method."
+                "Please assign them manually or with the `rangepicker` method."
             )
-
         if len(fid.peaks) != len(fid.ranges):
             raise RuntimeError(
-                "To assign peaks, `fid.peaks` and `fid.ranges` must be of the same length."
+                "`fid.peaks` and `fid.ranges` must have the same length, as "
+                "each peak must have a range assigned to it."
             )
 
-        # Prepare a numpy array to store species
+    def _setup_fid(self, fid):
+        # Initialize species array and creates or updates Peak objects
+        # in data model if species from EnyzmeML are used.
+
+        # Initialize empty species array
         fid.species = numpy.empty(len(fid.peaks), dtype=object)
 
-        # Sync data model: update existing peak objects or create new ones
+        # Create or update Peak objects in data model
         for i, (peak_val, range_val) in enumerate(zip(fid.peaks, fid.ranges)):
             if i < len(fid.fid_object.peaks):
                 # Peak already exists, update it
@@ -1532,7 +1475,7 @@ class PeakAssigner:
                     "end": float(range_val[1]),
                 }
             else:
-                # Create a new peak in the data model
+                # Peak does not yet exist, create it
                 fid.fid_object.add_to_peaks(
                     peak_index=i,
                     peak_position=float(peak_val),
@@ -1542,187 +1485,176 @@ class PeakAssigner:
                     },
                 )
 
-
-class PeakRangeAssigner:
-    """Wow, such documentation.
-    for fid in [self.fids[i] for i in self.fid_number]:
-    """
-
-    def __init__(self, fid_array, index_list):
-        self.fid_array = fid_array
-        self.fids = self._build_fids(index_list)
-        self.available_peaks = []
-        self.available_species = get_species_from_enzymeml(
-            self.fid_array.enzymeml_document
-        )
-        self.selected_fid = None
-        self.selected_values = {}
-        # Validate and/or update each Fid
-        for fid in self.fids:
-            self._validate_and_update_fid(fid)
-
-        # Create the label widget for the title
-        title_label = Label(value="Assign peaks for all FIDs")
-
-        # Create the combobox for the selection of the FID ID
-        combobox = Combobox(
-            options=[fid.id for fid in self.fids],
-            description="Select FID to base entire array on:",
-            layout={"width": "max-content"},
-            style={"description_width": "initial"},
-        )
-
-        # Create the dropdown widget for the peaks
-        peak_dropdown = Dropdown(
-            options=[],
+    def _create_widgets(self):
+        # Create all widget components
+        self.title_label = Label(value=self.title)
+        self.peak_dropdown = Dropdown(
+            options=self.available_peaks,
             description="Select a peak:",
             layout={"width": "max-content"},
             style={"description_width": "initial"},
-            disabled=True,
         )
-
-        # Create the dropdown widget for the species
-        species_dropdown = Dropdown(
-            options=[],
+        self.species_dropdown = Dropdown(
+            options=[
+                format_species_string(species) for species in self.available_species
+            ],
             description="Select a species:",
             layout={"width": "max-content"},
             style={"description_width": "initial"},
-            disabled=True,
         )
-
-        # Create the button to save selection to dict
-        save_button = Button(
-            description="Save selection", icon="file-arrow-down", disabled=True
+        self.save_button = Button(
+            description="Save selection",
+            icon="file-arrow-down",
         )
+        self.reset_button = Button(description="Reset selection", disabled=True)
+        self.selection_output = Output()
 
-        # Create a reset button
-        reset_button = Button(description="Reset selection", disabled=True)
+    def _setup_callbacks(self):
+        # Set up all widget callbacks
+        self.save_button.on_click(self._handle_save)
+        self.reset_button.on_click(self._handle_reset)
 
-        # Create an output widget to display the selection
-        selection_output = Output()
-
-        # Define a method to handle selection in combobox
-        def on_combobox_change(event):
-            if event["type"] == "change" and event["name"] == "value":
-                selected_option = event["new"]
-                if selected_option in combobox.options:
-                    peak_dropdown.disabled = False
-                    self.selected_fid = self.fid_array.get_fid(selected_option)
-                    self.available_peaks = [
-                        str(peak) for peak in self.selected_fid.peaks
-                    ]
-                    peak_dropdown.options = self.available_peaks
-
-        # Attach the method to the combobox's change event:
-        combobox.observe(on_combobox_change)
-
-        # Define a method to handle the peak dropdown's change event
-        def on_peak_dropdown_change(event):
-            if event["type"] == "change" and event["name"] == "value":
-                species_dropdown.options = [
-                    format_species_string(species) for species in self.available_species
-                ]
-                species_dropdown.disabled = False
-
-        # Attach the method to the dropdown's change event
-        peak_dropdown.observe(on_peak_dropdown_change)
-
-        # Define a method to handle the peak dropdown's change event
-        def on_species_dropdown_change(event):
-            if event["type"] == "change" and event["name"] == "value":
-                save_button.disabled = False
-
-        # Attach the method to the dropdown's change event
-        species_dropdown.observe(on_species_dropdown_change)
-
-        # Define a function to handle the save button click event
-        def on_save_button_click(b):
-            with selection_output:
-                selection_output.clear_output(wait=True)
-                # Fetch the values from the species dropdown and peak
-                # dropdown and add them to a dictionary with species as
-                # keys
-                if species_dropdown.value not in self.selected_values:
-                    self.selected_values[species_dropdown.value] = []
-                self.selected_values[species_dropdown.value].append(
-                    float(peak_dropdown.value)
-                )
-                # Remove the assigned peaks from the options of the peak
-                # dropdown, as they cannot belong to two species at once
-                # and disable the peak dropdown if all are assigned
-                self.available_peaks.remove(peak_dropdown.value)
-                peak_dropdown.options = self.available_peaks
-                if not self.available_peaks:
-                    peak_dropdown.disabled = True
-                # Iterate over the dictionary of assigned peaks and
-                # print the saved selections.
-                print("\nSaved selections:")
-                for key, value in self.selected_values.items():
-                    print(f"{key}: {value}")
-                    # Iterate over every FID, find the peak in the dict
-                    # of selected values, and assign the species ID to
-                    # the peak object
-                    for fid in self.fids:
-                        for peak in fid.fid_object.peaks:
-                            if peak.peak_position not in value:
-                                continue
-                            peak.species_id = key.split(" ")[0]
-                            fid.species[peak.peak_index] = peak.species_id
-                        fid._flags["assigned"] = True
-            reset_button.disabled = False
-
-        # Attach the function to the save button's click event
-        save_button.on_click(on_save_button_click)
-
-        # Define a function to handle the reset event
-        def on_reset_button_click(b):
-            with selection_output:
-                selection_output.clear_output(wait=True)
-                # Iterate over every FID and clear the Peaks in the
-                # respective data model and reset the selection dict
-                print("\nCleared selections!")
-                for fid in self.fids:
-                    fid._flags["assigned"] = False
-                    for peak_object in fid.fid_object.peaks:
-                        peak_object.species_id = None
-                self.selected_values = {}
-                # Refill the list of available peaks as before,
-                # re-enable the peak dropdown, and disable the reset
-                # button again
-                self.available_peaks = [str(peak) for peak in self.selected_fid.peaks]
-                peak_dropdown.options = self.available_peaks
-                peak_dropdown.disabled = False
-                reset_button.disabled = True
-
-        # Attach the function to the reset click event
-        reset_button.on_click(on_reset_button_click)
-
-        # Create a container for both the title and the dropdown
-        container = VBox(
+    def _layout_widgets(self):
+        # Create widget layout and display
+        self.container = VBox(
             [
-                title_label,
-                combobox,
-                peak_dropdown,
-                species_dropdown,
-                save_button,
-                reset_button,
-                selection_output,
+                self.title_label,
+                self.peak_dropdown,
+                self.species_dropdown,
+                self.save_button,
+                self.reset_button,
+                self.selection_output,
             ]
         )
+        display(self.container)
 
-        # Display the container
-        display(container)
+    def _handle_save(self, b):
+        # Handle save button click
+        with self.selection_output:
+            self.selection_output.clear_output(wait=True)
 
-    def _build_fids(self, index_list) -> list:
-        """
-        Returns a list of FIDs from fid_array:
-          - If index_list is empty, returns all FIDs.
-          - Otherwise, does bounds checks and builds IDs with correct formatting.
-        """
+            species = self.species_dropdown.value
+            peak_value = float(self.peak_dropdown.value)
+
+            # Update selected values
+            if species not in self.selected_values:
+                self.selected_values[species] = []
+            self.selected_values[species].append(peak_value)
+
+            # Update available peaks
+            self.available_peaks.remove(str(peak_value))
+            self.peak_dropdown.options = self.available_peaks
+
+            if not self.available_peaks:
+                self.peak_dropdown.disabled = True
+                self.save_button.disabled = True
+
+            # Update species array in FID
+            for species_id, peak_position in self.selected_values.items():
+                self._update_fid(peak_position, species_id)
+            self._display_selections()
+
+            # Re-enable the reset button
+            self.reset_button.disabled = False
+
+    def _handle_reset(self, b):
+        # Handle reset button click
+        with self.selection_output:
+            self.selection_output.clear_output(wait=True)
+            print("\nCleared selections!")
+
+            # Reset state
+            self.fid._flags["assigned"] = False
+            self.fid.species = numpy.empty(len(self.fid.peaks), dtype=object)
+            for peak_object in self.fid.fid_object.peaks:
+                peak_object.species_id = None
+            self.selected_values = {}
+            self.available_peaks = [str(peak) for peak in self.fid.peaks]
+
+            # Reset widgets
+            self.peak_dropdown.options = self.available_peaks
+            self.peak_dropdown.disabled = False
+            self.save_button.disabled = False
+            self.reset_button.disabled = True
+
+    def _update_fid(self, peak_position, species_id):
+        # Assign the species ID to the peak object and set the assigned
+        # flag to True.
+        for peak in self.fid.fid_object.peaks:
+            if peak.peak_position not in peak_position:
+                continue
+            peak.species_id = species_id.split(" ")[0]
+            self.fid.species[peak.peak_index] = peak.species_id
+        self.fid._flags["assigned"] = True
+
+    def _display_selections(self):
+        # Display current selections
+        print("\nSaved selections:")
+        for key, value in self.selected_values.items():
+            print(f"{key}: {value}")
+
+
+class PeakRangeAssigner:
+    """Interactive widget for assigning species to peaks for all FIDs in
+    a FidArray based on one selected FID.
+    """
+
+    def __init__(self, fid_array, species_list=None, index_list=None):
+        self.fid_array = fid_array
+        self.selected_fid = None
+        self.selected_values = {}
+
+        # Determine species source and mode
+        self._setup_species_source(species_list)
+
+        # Validate and initialize
+        self.fids = self._build_fids(index_list)
+        for fid in self.fids:
+            self._validate_fid(fid)
+            self._setup_fid(fid)
+
+        # Create and layout widgets
+        self._create_widgets()
+        self._setup_callbacks()
+        self._layout_widgets()
+
+    def _setup_species_source(self, species_source):
+        # Configure species source and create list of available species
+
+        # Check for default case first
+        if species_source is None:
+            if not hasattr(self.fid_array, "enzymeml_document"):
+                raise ValueError(
+                    "No species list provided and FIDArray has no enzymeml_document"
+                )
+            self.available_species = get_species_from_enzymeml(
+                self.fid_array.enzymeml_document
+            )
+            return
+        # Check for EnzymeML document
+        elif isinstance(species_source, EnzymeMLDocument):
+            self.available_species = get_species_from_enzymeml(species_source)
+            return
+        # Check for list of strings
+        elif isinstance(species_source, list):
+            self.available_species = species_source
+            return
+        # If we get here, the input was invalid
+        else:
+            raise ValueError(
+                "species_list must be a list of species names, an EnzymeML "
+                "document, or None if FIDArray has enzymeml_document"
+            )
+
+    def _build_fids(self, index_list):
+        # Create the list of FIDs available to the widget based on
+        # the index_list. As the formatting of the FID IDs is
+        # dependent on the number of FIDs available,
+        # If no specific indices are provided, grab all FIDs
         if not index_list:
-            # No specific indices, grab all FIDs
             return self.fid_array.get_fids()
 
+        # Hand
         # 1) Basic bounds check
         total_fids = len(self.fid_array.get_fids())
         for i in index_list:
@@ -1746,33 +1678,32 @@ class PeakRangeAssigner:
 
         return fids
 
-    def _validate_and_update_fid(self, fid):
-        """
-        Ensures fid has valid peaks and ranges,
-        initializes its .species array, and
-        syncs up with the data model if needed.
-        """
-        if fid.peaks is [] or fid.peaks is None:
+    def _validate_fid(self, fid):
+        # Validate that FID has peaks and ranges and that their
+        # lengths are the same
+        if fid.peaks is None or len(fid.peaks) == 0:
             raise RuntimeError(
                 "`fid.peaks` is required but still empty. "
                 "Please assign them manually or with the `peakpicker` method."
             )
-
-        if fid.ranges is [] or fid.ranges is None:
+        if fid.ranges is None or len(fid.ranges) == 0:
             raise RuntimeError(
                 "`fid.ranges` is required but still empty. "
-                "Please assign them manually or with the `peakpicker` method."
+                "Please assign them manually or with the `rangepicker` method."
             )
-
         if len(fid.peaks) != len(fid.ranges):
             raise RuntimeError(
-                "To assign peaks, `fid.peaks` and `fid.ranges` must be of the same length."
+                "`fid.peaks` and `fid.ranges` must have the same length, as "
+                "each peak must have a range assigned to it."
             )
 
-        # Prepare a numpy array to store species
-        fid.species = numpy.empty(len(fid.peaks), dtype=object)
+    def _setup_fid(self, fid):
+        # Initialize species array and create or update Peak objects in
+        # data model
 
-        # Sync data model: update existing peak objects or create new ones
+        # Initialize empty species array
+        fid.species = numpy.empty(len(fid.peaks), dtype=object)
+        # Create or update Peak objects in data model
         for i, (peak_val, range_val) in enumerate(zip(fid.peaks, fid.ranges)):
             if i < len(fid.fid_object.peaks):
                 # Peak already exists, update it
@@ -1782,7 +1713,7 @@ class PeakRangeAssigner:
                     "end": float(range_val[1]),
                 }
             else:
-                # Create a new peak in the data model
+                # Peak does not yet exist, create it
                 fid.fid_object.add_to_peaks(
                     peak_index=i,
                     peak_position=float(peak_val),
@@ -1792,181 +1723,15 @@ class PeakRangeAssigner:
                     },
                 )
 
-
-class PeakIndexer:
-    """Interactive widget for assigning species names to peaks in a FID."""
-
-    def __init__(self, fid, species_list, title="Assign peaks"):
-        self.fid = fid
-        self.title = title
-        self.species_list = species_list
-        self.selected_values = {}
-
-        # Validate and initialize
-        self._validate_fid(self.fid)
-        self.available_peaks = [str(peak) for peak in self.fid.peaks]
-
-        # Create and layout widgets
-        self._create_widgets()
-        self._setup_callbacks()
-        self._layout_widgets()
-
     def _create_widgets(self):
-        """Create all widget components"""
-        self.title_label = Label(value=self.title)
-
-        self.peak_dropdown = Dropdown(
-            options=self.available_peaks,
-            description="Select a peak:",
-            layout={"width": "max-content"},
-            style={"description_width": "initial"},
-        )
-
-        self.species_dropdown = Dropdown(
-            options=self.species_list,
-            description="Select a species:",
-            layout={"width": "max-content"},
-            style={"description_width": "initial"},
-        )
-
-        self.save_button = Button(
-            description="Save selection",
-            icon="file-arrow-down",
-        )
-
-        self.reset_button = Button(description="Reset selection", disabled=True)
-
-        self.selection_output = Output()
-
-    def _setup_callbacks(self):
-        """Set up all widget callbacks"""
-        self.save_button.on_click(self._handle_save)
-        self.reset_button.on_click(self._handle_reset)
-
-    def _layout_widgets(self):
-        """Create widget layout and display"""
-        self.container = VBox(
-            [
-                self.title_label,
-                self.peak_dropdown,
-                self.species_dropdown,
-                self.save_button,
-                self.reset_button,
-                self.selection_output,
-            ]
-        )
-        display(self.container)
-
-    def _handle_save(self, b):
-        """Handle save button click"""
-        with self.selection_output:
-            self.selection_output.clear_output(wait=True)
-
-            species = self.species_dropdown.value
-            peak_value = float(self.peak_dropdown.value)
-
-            # Update selected values
-            if species not in self.selected_values:
-                self.selected_values[species] = []
-            self.selected_values[species].append(peak_value)
-
-            # Update available peaks
-            self.available_peaks.remove(str(peak_value))
-            self.peak_dropdown.options = self.available_peaks
-
-            if not self.available_peaks:
-                self.peak_dropdown.disabled = True
-                self.save_button.disabled = True
-
-            # Update species array in FID
-            peak_idx = self.fid.peaks.tolist().index(peak_value)
-            self.fid.species[peak_idx] = species
-
-            self._display_selections()
-            self.reset_button.disabled = False
-
-    def _handle_reset(self, b):
-        """Handle reset button click"""
-        with self.selection_output:
-            self.selection_output.clear_output(wait=True)
-            print("\nCleared selections!")
-
-            # Reset state
-            self.fid.species = numpy.empty(len(self.fid.peaks), dtype=object)
-            self.selected_values = {}
-            self.available_peaks = [str(peak) for peak in self.fid.peaks]
-
-            # Reset widgets
-            self.peak_dropdown.options = self.available_peaks
-            self.peak_dropdown.disabled = False
-            self.save_button.disabled = False
-            self.reset_button.disabled = True
-
-    def _display_selections(self):
-        """Display current selections"""
-        print("\nSaved selections:")
-        for key, value in self.selected_values.items():
-            print(f"{key}: {value}")
-
-    def _validate_fid(self, fid):
-        """Validates FID has peaks and initializes species array"""
-        if fid.peaks is None or len(fid.peaks) == 0:
-            raise RuntimeError(
-                "`fid.peaks` is required but still empty. "
-                "Please assign them manually or with the `peakpicker` method."
-            )
-
-        # Initialize empty species array
-        fid.species = numpy.empty(len(fid.peaks), dtype=object)
-
-
-class PeakRangeIndexer:
-    """Interactive widget for assigning species names to peaks across all FIDs in a FidArray."""
-
-    def __init__(self, fid_array, species_list, index_list=None):
-        self.fid_array = fid_array
-        self.fids = self._build_fids(index_list)
-        self.species_list = species_list
-        self.available_peaks = []
-        self.selected_fid = None
-        self.selected_values = {}
-
-        # Validate and/or update each Fid
-        for fid in self.fids:
-            self._validate_and_update_fid(fid)
-
-        # Create and layout widgets
-        self._create_widgets()
-        self._setup_callbacks()
-        self._layout_widgets()
-
-    def _build_fids(self, index_list):
-        """Build list of FIDs to work with based on optional index_list."""
-        if index_list is None:
-            return self.fid_array.get_fids()
-        return [self.fid_array.get_fids()[i] for i in index_list]
-
-    def _validate_and_update_fid(self, fid):
-        """Validate FID has peaks and initialize species array if needed."""
-        if fid.peaks is None or len(fid.peaks) == 0:
-            raise RuntimeError(
-                f"FID {fid.id} requires peaks but they are empty. "
-                "Please assign them manually or with the `peakpicker` method."
-            )
-        if fid.species is None:
-            fid.species = numpy.empty(len(fid.peaks), dtype=object)
-
-    def _create_widgets(self):
-        """Create all widget components"""
+        # Create all widget components
         self.title_label = Label(value="Assign peaks for all FIDs")
-
         self.combobox = Combobox(
             options=[fid.id for fid in self.fids],
             description="Select FID to base entire array on:",
             layout={"width": "max-content"},
             style={"description_width": "initial"},
         )
-
         self.peak_dropdown = Dropdown(
             options=[],
             description="Select a peak:",
@@ -1974,36 +1739,29 @@ class PeakRangeIndexer:
             style={"description_width": "initial"},
             disabled=True,
         )
-
         self.species_dropdown = Dropdown(
-            options=self.species_list,  # Now using the species_list
+            options=[],
             description="Select a species:",
             layout={"width": "max-content"},
             style={"description_width": "initial"},
             disabled=True,
         )
-
         self.save_button = Button(
-            description="Save selection",
-            icon="file-arrow-down",
-            disabled=True,
+            description="Save selection", icon="file-arrow-down", disabled=True
         )
-
-        self.reset_button = Button(
-            description="Reset selection",
-            disabled=True,
-        )
-
+        self.reset_button = Button(description="Reset selection", disabled=True)
         self.selection_output = Output()
 
     def _setup_callbacks(self):
-        """Set up all widget callbacks"""
-        self.combobox.observe(self._handle_fid_selection, names="value")
+        # Set up all widget callbacks
+        self.combobox.observe(self._handle_combobox_change)
+        self.peak_dropdown.observe(self._handle_peak_change)
+        self.species_dropdown.observe(self._handle_species_change)
         self.save_button.on_click(self._handle_save)
         self.reset_button.on_click(self._handle_reset)
 
     def _layout_widgets(self):
-        """Create widget layout and display"""
+        # Create widget layout and display
         self.container = VBox(
             [
                 self.title_label,
@@ -2017,25 +1775,35 @@ class PeakRangeIndexer:
         )
         display(self.container)
 
-    def _handle_fid_selection(self, change):
-        """Handle FID selection from combobox"""
-        if change["type"] == "change" and change["name"] == "value":
-            # Find selected FID
-            self.selected_fid = next(
-                fid for fid in self.fids if fid.id == change["new"]
-            )
+    def _handle_combobox_change(self, event):
+        # Enable the peak dropdown when a FID is selected
+        if event["type"] == "change" and event["name"] == "value":
+            selected_option = event["new"]
+            if selected_option in self.combobox.options:
+                self.peak_dropdown.disabled = False
+                self.selected_fid = self.fid_array.get_fid(selected_option)
+                self.available_peaks = [str(peak) for peak in self.selected_fid.peaks]
+                self.peak_dropdown.options = self.available_peaks
+                if self.peak_dropdown.options:
+                    self.peak_dropdown.value = self.peak_dropdown.options[0]
 
-            # Update available peaks
-            self.available_peaks = [str(peak) for peak in self.selected_fid.peaks]
-            self.peak_dropdown.options = self.available_peaks
-
-            # Enable dropdowns
-            self.peak_dropdown.disabled = False
+    def _handle_peak_change(self, event):
+        # Format the species options for disply and enable the species
+        # dropdown when a peak is selected
+        if event["type"] == "change" and event["name"] == "value":
             self.species_dropdown.disabled = False
+            self.species_dropdown.options = [
+                format_species_string(species) for species in self.available_species
+            ]
+            if self.species_dropdown.options:
+                self.species_dropdown.value = self.species_dropdown.options[0]
+
+    def _handle_species_change(self, event):
+        # Enable the save button when a species is selected
+        if event["type"] == "change" and event["name"] == "value":
             self.save_button.disabled = False
 
     def _handle_save(self, b):
-        """Handle save button click"""
         with self.selection_output:
             self.selection_output.clear_output(wait=True)
 
@@ -2048,46 +1816,54 @@ class PeakRangeIndexer:
             self.selected_values[species].append(peak_value)
 
             # Update available peaks
-            self.available_peaks.remove(str(peak_value))
+            self.available_peaks.remove(self.peak_dropdown.value)
             self.peak_dropdown.options = self.available_peaks
 
             if not self.available_peaks:
                 self.peak_dropdown.disabled = True
-                self.save_button.disabled = True
 
-            # Update species array in all FIDs
-            for fid in self.fids:
-                try:
-                    peak_idx = fid.peaks.tolist().index(peak_value)
-                    fid.species[peak_idx] = species
-                except ValueError:
-                    continue  # Skip if peak not found in this FID
+            # Update FIDs
+            for species_id, peak_position in self.selected_values.items():
+                for fid in self.fids:
+                    self._update_fid(fid, peak_position, species_id)
 
+            # Print the selected values
             self._display_selections()
+
+            # Re-enable the reset button
             self.reset_button.disabled = False
 
     def _handle_reset(self, b):
-        """Handle reset button click"""
+        # Reset the widget state
         with self.selection_output:
             self.selection_output.clear_output(wait=True)
             print("\nCleared selections!")
-
-            # Reset state for all FIDs
+            # Reset FIDs' state
             for fid in self.fids:
+                fid._flags["assigned"] = False
                 fid.species = numpy.empty(len(fid.peaks), dtype=object)
-
+                for peak_object in fid.fid_object.peaks:
+                    peak_object.species_id = None
             self.selected_values = {}
+            self.available_peaks = [str(peak) for peak in self.selected_fid.peaks]
 
-            if self.selected_fid:
-                self.available_peaks = [str(peak) for peak in self.selected_fid.peaks]
-                self.peak_dropdown.options = self.available_peaks
-                self.peak_dropdown.disabled = False
-                self.save_button.disabled = False
-
+            # Reset widgets
+            self.peak_dropdown.options = self.available_peaks
+            self.peak_dropdown.disabled = False
             self.reset_button.disabled = True
 
+    def _update_fid(self, fid, peak_position, species_id):
+        # Assign the species ID to the peak object and set the assigned
+        # flag to True.
+        for peak in fid.fid_object.peaks:
+            if peak.peak_position not in peak_position:
+                continue
+            peak.species_id = species_id.split(" ")[0]
+            fid.species[peak.peak_index] = peak.species_id
+        fid._flags["assigned"] = True
+
     def _display_selections(self):
-        """Display current selections"""
+        # Display current selections
         print("\nSaved selections:")
         for key, value in self.selected_values.items():
             print(f"{key}: {value}")
