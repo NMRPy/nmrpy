@@ -1,19 +1,42 @@
-import nmrpy.data_objects
-import logging, traceback
-import numpy
-from matplotlib import pyplot as plt
+import asyncio
+import logging
+import traceback
 from datetime import datetime
-from matplotlib.figure import Figure
-from matplotlib.collections import PolyCollection
+from typing import List, Union
 
+import numpy
+import sympy as sp
+from IPython.display import display
+from ipywidgets import (
+    HTML,
+    Button,
+    Combobox,
+    Dropdown,
+    FloatText,
+    Label,
+    Output,
+    Text,
+    VBox,
+)
+from matplotlib import pyplot as plt
+from matplotlib.backend_bases import Event, NavigationToolbar2
+from matplotlib.collections import PolyCollection
+from matplotlib.figure import Figure
 from matplotlib.patches import Rectangle
 from matplotlib.transforms import blended_transform_factory
 from matplotlib.widgets import Cursor
-from matplotlib.backend_bases import NavigationToolbar2, Event
 
-from ipywidgets import FloatText, Output, VBox
-from IPython.display import display
-import asyncio
+from pyenzyme.model import EnzymeMLDocument
+
+import nmrpy.data_objects
+
+from .utils import (
+    format_species_string,
+    get_initial_concentration_by_species_id,
+    get_ordered_list_of_species_names,
+    get_species_from_enzymeml,
+    get_species_name_by_id,
+)
 
 
 class Plot:
@@ -109,9 +132,7 @@ class Plot:
         if not Plot._is_flat_iter(data):
             raise AttributeError("data must be flat iterable.")
 
-        peakshapes = fid._f_pks_list(
-            fid._deconvoluted_peaks, numpy.arange(len(data))
-        )
+        peakshapes = fid._f_pks_list(fid._deconvoluted_peaks, numpy.arange(len(data)))
 
         if not Plot._is_iter_of_iters(peakshapes):
             raise AttributeError("data must be flat iterable.")
@@ -153,6 +174,7 @@ class Plot:
         summed_peak_colour="r",
         residual_colour="g",
         lw=1,
+        show_labels=False,
     ):
         # validation takes place in self._deconv_generator
         (
@@ -163,9 +185,7 @@ class Plot:
             residual,
             upper_ppm,
             lower_ppm,
-        ) = self._deconv_generator(
-            fid, upper_ppm=upper_ppm, lower_ppm=lower_ppm
-        )
+        ) = self._deconv_generator(fid, upper_ppm=upper_ppm, lower_ppm=lower_ppm)
 
         self.fig = plt.figure(figsize=[9, 5])
         ax = self.fig.add_subplot(111)
@@ -176,12 +196,17 @@ class Plot:
         for n in range(len(peakshapes)):
             peak = peakshapes[n]
             ax.plot(ppm, peak, "-", color=peak_colour, lw=lw)
-            ax.text(
-                ppm[numpy.argmax(peak)],
-                label_pad + peak.max(),
-                str(n),
-                ha="center",
-            )
+            if (fid._flags["assigned"]) and (show_labels):
+                ax.text(
+                    ppm[numpy.argmax(peak)],
+                    label_pad + peak.max(),
+                    (
+                        get_ordered_list_of_species_names(fid)[n]
+                        if fid.fid_object.peaks
+                        else str(n)
+                    ),
+                    ha="center",
+                )
         ax.invert_xaxis()
         ax.set_xlim([upper_ppm, lower_ppm])
         ax.grid()
@@ -216,9 +241,7 @@ class Plot:
         generated_deconvs = []
         for fid in fids:
             generated_deconvs.append(
-                self._deconv_generator(
-                    fid, upper_ppm=upper_ppm, lower_ppm=lower_ppm
-                )
+                self._deconv_generator(fid, upper_ppm=upper_ppm, lower_ppm=lower_ppm)
             )
 
         params = fids[0]._params
@@ -480,12 +503,8 @@ class Phaser:
         xtcks[-1] = xtcks[-1] - 1
         self.ax.set_xticks(xtcks)
         self.ax.set_xlabel("PPM (%.2f MHz)" % (self.fid._params["reffrq"]))
-        self.ax.set_xticklabels(
-            [numpy.round(self.fid._ppm[int(i)], 1) for i in xtcks]
-        )
-        ylims = numpy.array([-1.6, 1.6]) * max(
-            abs(numpy.array(self.ax.get_ylim()))
-        )
+        self.ax.set_xticklabels([numpy.round(self.fid._ppm[int(i)], 1) for i in xtcks])
+        ylims = numpy.array([-1.6, 1.6]) * max(abs(numpy.array(self.ax.get_ylim())))
         self.ax.set_ylim(ylims)
         self.ax.grid()
         self.visible = True
@@ -666,9 +685,7 @@ class PolySelectorMixin(BaseSelectorMixin):
                 self.psm.line.set_data(self.psm.xs, self.psm.ys)
                 if self.show_tracedata:
                     self.psm._yline.set_data(self.psm._xs, self.psm._ys)
-        elif (
-            event.button == self.psm.btn_del and event.key == self.psm.key_mod
-        ):
+        elif event.button == self.psm.btn_del and event.key == self.psm.key_mod:
             if len(self.psm._visual_lines) > 0:
                 x = event.xdata
                 y = event.ydata
@@ -889,19 +906,15 @@ class LineSelectorMixin(BaseSelectorMixin):
                 self.lsm.peaks = sorted(self.lsm.peaks)[::-1]
                 # self.ax.draw_artist(self.lsm.peaklines[x])
         # Ctrl+left
-        elif (
-            event.button == self.lsm.btn_del and event.key == self.lsm.key_mod
-        ):
+        elif event.button == self.lsm.btn_del and event.key == self.lsm.key_mod:
             # find and delete nearest peakline
             if len(self.lsm.peaks) > 0:
-                delete_peak = numpy.argmin(
-                    [abs(i - x) for i in self.lsm.peaks]
-                )
+                delete_peak = numpy.argmin([abs(i - x) for i in self.lsm.peaks])
                 old_peak = self.lsm.peaks.pop(delete_peak)
                 try:
                     peakline = self.lsm.peaklines.pop(old_peak)
                     peakline.remove()
-                except:
+                except Exception:
                     with self.out:
                         print("Could not remove peakline")
             self.canvas.draw()
@@ -942,7 +955,7 @@ class SpanSelectorMixin(BaseSelectorMixin):
             transform=trans,
             visible=False,
             animated=True,
-            **self.ssm.rectprops
+            **self.ssm.rectprops,
         )
         self.ax.add_patch(self.ssm.rect)
 
@@ -957,7 +970,7 @@ class SpanSelectorMixin(BaseSelectorMixin):
             transform=trans,
             visible=True,
             # animated=True,
-            **self.ssm.rectprops
+            **self.ssm.rectprops,
         )
         self.ax.add_patch(rect)
         return rect
@@ -981,9 +994,7 @@ class SpanSelectorMixin(BaseSelectorMixin):
         if event.button == self.ssm.btn_add and event.key != self.ssm.key_mod:
             self.buttonDown = True
             self.pressv = event.xdata
-        elif (
-            event.button == self.ssm.btn_add and event.key == self.ssm.key_mod
-        ):
+        elif event.button == self.ssm.btn_add and event.key == self.ssm.key_mod:
             # find and delete range
             if len(self.ssm.ranges) > 0:
                 x = event.xdata
@@ -1017,9 +1028,7 @@ class SpanSelectorMixin(BaseSelectorMixin):
         #        if (vmax >= i[1]) and (vmax <= i[0]):
         #            spantest = True
         if span > self.ssm.minspan and spantest is False:
-            self.ssm.ranges.append(
-                [numpy.round(vmin, 2), numpy.round(vmax, 2)]
-            )
+            self.ssm.ranges.append([numpy.round(vmin, 2), numpy.round(vmax, 2)])
             self.ssm.rangespans.append(self.makespan(vmin, span))
             with self.out:
                 print("range {} -> {}".format(vmax, vmin))
@@ -1164,15 +1173,9 @@ class DataSelector:
         super().__init__()  # calling parent init
         # self.canvas.blit(self.ax.bbox)
 
-        self.cidmotion = self.canvas.mpl_connect(
-            "motion_notify_event", self.onmove
-        )
-        self.cidpress = self.canvas.mpl_connect(
-            "button_press_event", self.press
-        )
-        self.cidrelease = self.canvas.mpl_connect(
-            "button_release_event", self.release
-        )
+        self.cidmotion = self.canvas.mpl_connect("motion_notify_event", self.onmove)
+        self.cidpress = self.canvas.mpl_connect("button_press_event", self.press)
+        self.cidrelease = self.canvas.mpl_connect("button_release_event", self.release)
         self.ciddraw = self.canvas.mpl_connect("draw_event", self.on_draw)
         # cursor = Cursor(self.ax, useblit=True, color='k', linewidth=0.5)
         # cursor.horizOn = False
@@ -1232,9 +1235,7 @@ class DataSelector:
                     self.data.shape[1]
                 )
             ]
-            self.y_indices = (
-                numpy.arange(len(self.data)) * self.voff * self.data.max()
-            )
+            self.y_indices = numpy.arange(len(self.data)) * self.voff * self.data.max()
             # this is reversed for zorder
             # extra_data
             if self.extra_data is not None:
@@ -1249,9 +1250,7 @@ class DataSelector:
                     )
             # data
             for i, j in zip(range(len(self.data))[::-1], self.data[::-1]):
-                self.ax.plot(
-                    self.ppm[::-1], j + self.y_indices[i], color=cl[i], lw=1
-                )
+                self.ax.plot(self.ppm[::-1], j + self.y_indices[i], color=cl[i], lw=1)
         self.ax.set_xlabel("ppm")
         self.ylims = numpy.array(self.ax.get_ylim())
         # numpy.array([self.ax.get_ylim()[0], self.data.max() + abs(self.ax.get_ylim()[0])])
@@ -1376,6 +1375,494 @@ class SpanDataSelector(DataSelector, SpanSelectorMixin, AssignMixin):
     pass
 
 
+class PeakAssigner:
+    """Interactive widget for assigning species to peaks in a FID."""
+
+    def __init__(self, fid, species_list=None, title="Assign species"):
+        """
+        Initialize peak assigner widget.
+
+        Parameters
+        ----------
+        fid : Fid
+            The FID object to assign peaks for
+        species_source : Union[List[str], EnzymeMLDocument], optional
+            Either a list of species names or an EnzymeML document.
+            If None, will try to use fid.enzymeml_document
+        title : str, optional
+            Title for the widget
+        """
+        self.fid = fid
+        self.title = title
+        self.selected_values = {}
+
+        # Determine species source and mode
+        self._setup_species_source(species_list)
+
+        # Validate and initialize
+        self._validate_fid(self.fid)
+        self._setup_fid(self.fid)
+        self.available_peaks = [str(peak) for peak in self.fid.peaks]
+
+        # Create and layout widgets
+        self._create_widgets()
+        self._setup_callbacks()
+        self._layout_widgets()
+
+    def _setup_species_source(self, species_source):
+        # Configure species source and create list of available species
+        # Check for default case first
+        if species_source is None:
+            if not hasattr(self.fid, "enzymeml_species"):
+                raise ValueError(
+                    "No species list provided and FID has no enzymeml_species"
+                )
+            self.available_species = self.fid.enzymeml_species
+            return
+        # Check for EnzymeML document
+        elif isinstance(species_source, EnzymeMLDocument):
+            self.available_species = get_species_from_enzymeml(species_source)
+            return
+        # Check for list of strings
+        elif isinstance(species_source, list):
+            self.available_species = species_source
+            return
+        # If we get here, the input was invalid
+        else:
+            raise ValueError(
+                "species_list must be a list of species names, "
+                "an EnzymeML document, or None if FID has enzymeml_species"
+            )
+
+    def _validate_fid(self, fid):
+        # Validates FID has peaks and ranges and len(peaks) == len(ranges)
+        if fid.peaks is None or len(fid.peaks) == 0:
+            raise RuntimeError(
+                "`fid.peaks` is required but still empty. "
+                "Please assign them manually or with the `peakpicker` method."
+            )
+        if fid.ranges is None or len(fid.ranges) == 0:
+            raise RuntimeError(
+                "`fid.ranges` is required but still empty. "
+                "Please assign them manually or with the `rangepicker` method."
+            )
+        if len(fid.peaks) != len(fid.ranges):
+            raise RuntimeError(
+                "`fid.peaks` and `fid.ranges` must have the same length, as "
+                "each peak must have a range assigned to it."
+            )
+
+    def _setup_fid(self, fid):
+        # Initialize species array and creates or updates Peak objects
+        # in data model if species from EnyzmeML are used.
+
+        # Initialize empty species array
+        fid.species = numpy.empty(len(fid.peaks), dtype=object)
+
+        # Create or update Peak objects in data model
+        for i, (peak_val, range_val) in enumerate(zip(fid.peaks, fid.ranges)):
+            if i < len(fid.fid_object.peaks):
+                # Peak already exists, update it
+                fid.fid_object.peaks[i].peak_position = float(peak_val)
+                fid.fid_object.peaks[i].peak_range = {
+                    "start": float(range_val[0]),
+                    "end": float(range_val[1]),
+                }
+            else:
+                # Peak does not yet exist, create it
+                fid.fid_object.add_to_peaks(
+                    peak_index=i,
+                    peak_position=float(peak_val),
+                    peak_range={
+                        "start": float(range_val[0]),
+                        "end": float(range_val[1]),
+                    },
+                )
+
+    def _create_widgets(self):
+        # Create all widget components
+        self.title_label = Label(value=self.title)
+        self.peak_dropdown = Dropdown(
+            options=self.available_peaks,
+            description="Select a peak:",
+            layout={"width": "max-content"},
+            style={"description_width": "initial"},
+        )
+        self.species_dropdown = Dropdown(
+            options=[
+                format_species_string(species) for species in self.available_species
+            ],
+            description="Select a species:",
+            layout={"width": "max-content"},
+            style={"description_width": "initial"},
+        )
+        self.save_button = Button(
+            description="Save selection",
+            icon="file-arrow-down",
+        )
+        self.reset_button = Button(description="Reset selection", disabled=True)
+        self.selection_output = Output()
+
+    def _setup_callbacks(self):
+        # Set up all widget callbacks
+        self.save_button.on_click(self._handle_save)
+        self.reset_button.on_click(self._handle_reset)
+
+    def _layout_widgets(self):
+        # Create widget layout and display
+        self.container = VBox(
+            [
+                self.title_label,
+                self.peak_dropdown,
+                self.species_dropdown,
+                self.save_button,
+                self.reset_button,
+                self.selection_output,
+            ]
+        )
+        display(self.container)
+
+    def _handle_save(self, b):
+        # Handle save button click
+        with self.selection_output:
+            self.selection_output.clear_output(wait=True)
+
+            species = self.species_dropdown.value
+            peak_value = float(self.peak_dropdown.value)
+
+            # Update selected values
+            if species not in self.selected_values:
+                self.selected_values[species] = []
+            self.selected_values[species].append(peak_value)
+
+            # Update available peaks
+            self.available_peaks.remove(str(peak_value))
+            self.peak_dropdown.options = self.available_peaks
+
+            if not self.available_peaks:
+                self.peak_dropdown.disabled = True
+                self.save_button.disabled = True
+
+            # Update species array in FID
+            for species_id, peak_position in self.selected_values.items():
+                self._update_fid(peak_position, species_id)
+            self._display_selections()
+
+            # Re-enable the reset button
+            self.reset_button.disabled = False
+
+    def _handle_reset(self, b):
+        # Handle reset button click
+        with self.selection_output:
+            self.selection_output.clear_output(wait=True)
+            print("\nCleared selections!")
+
+            # Reset state
+            self.fid._flags["assigned"] = False
+            self.fid.species = numpy.empty(len(self.fid.peaks), dtype=object)
+            for peak_object in self.fid.fid_object.peaks:
+                peak_object.species_id = None
+            self.selected_values = {}
+            self.available_peaks = [str(peak) for peak in self.fid.peaks]
+
+            # Reset widgets
+            self.peak_dropdown.options = self.available_peaks
+            self.peak_dropdown.disabled = False
+            self.save_button.disabled = False
+            self.reset_button.disabled = True
+
+    def _update_fid(self, peak_position, species_id):
+        # Assign the species ID to the peak object and set the assigned
+        # flag to True.
+        for peak in self.fid.fid_object.peaks:
+            if peak.peak_position not in peak_position:
+                continue
+            peak.species_id = species_id.split(" ")[0]
+            self.fid.species[peak.peak_index] = peak.species_id
+        self.fid._flags["assigned"] = True
+
+    def _display_selections(self):
+        # Display current selections
+        print("\nSaved selections:")
+        for key, value in self.selected_values.items():
+            print(f"{key}: {value}")
+
+
+class PeakRangeAssigner:
+    """Interactive widget for assigning species to peaks for all FIDs in
+    a FidArray based on one selected FID.
+    """
+
+    def __init__(self, fid_array, species_list=None, index_list=None):
+        self.fid_array = fid_array
+        self.selected_fid = None
+        self.selected_values = {}
+
+        # Determine species source and mode
+        self._setup_species_source(species_list)
+
+        # Validate and initialize
+        self.fids = self._build_fids(index_list)
+        for fid in self.fids:
+            self._validate_fid(fid)
+            self._setup_fid(fid)
+
+        # Create and layout widgets
+        self._create_widgets()
+        self._setup_callbacks()
+        self._layout_widgets()
+
+    def _setup_species_source(self, species_source):
+        # Configure species source and create list of available species
+
+        # Check for default case first
+        if species_source is None:
+            if not hasattr(self.fid_array, "enzymeml_document"):
+                raise ValueError(
+                    "No species list provided and FIDArray has no enzymeml_document"
+                )
+            self.available_species = get_species_from_enzymeml(
+                self.fid_array.enzymeml_document
+            )
+            return
+        # Check for EnzymeML document
+        elif isinstance(species_source, EnzymeMLDocument):
+            self.available_species = get_species_from_enzymeml(species_source)
+            return
+        # Check for list of strings
+        elif isinstance(species_source, list):
+            self.available_species = species_source
+            return
+        # If we get here, the input was invalid
+        else:
+            raise ValueError(
+                "species_list must be a list of species names, an EnzymeML "
+                "document, or None if FIDArray has enzymeml_document"
+            )
+
+    def _build_fids(self, index_list):
+        # Create the list of FIDs available to the widget based on
+        # the index_list. As the formatting of the FID IDs is
+        # dependent on the number of FIDs available,
+        # If no specific indices are provided, grab all FIDs
+        if not index_list:
+            return self.fid_array.get_fids()
+
+        # Hand
+        # 1) Basic bounds check
+        total_fids = len(self.fid_array.get_fids())
+        for i in index_list:
+            if i >= total_fids:
+                raise IndexError(
+                    f"Index {i} is out of bounds (there are {total_fids} FIDs)."
+                )
+
+        # 2) Determine how many digits for the ID
+        n_digits = len(str(total_fids - 1))  # e.g., 2 if up to 99, 3 if up to 999
+        if n_digits == 1:
+            fid_format = "fid{}"
+        else:
+            fid_format = f"fid{{:0{n_digits}d}}"
+
+        # 3) Build the list of FIDs
+        fids = []
+        for i in index_list:
+            fid_id = fid_format.format(i)
+            fids.append(self.fid_array.get_fid(fid_id))
+
+        return fids
+
+    def _validate_fid(self, fid):
+        # Validate that FID has peaks and ranges and that their
+        # lengths are the same
+        if fid.peaks is None or len(fid.peaks) == 0:
+            raise RuntimeError(
+                "`fid.peaks` is required but still empty. "
+                "Please assign them manually or with the `peakpicker` method."
+            )
+        if fid.ranges is None or len(fid.ranges) == 0:
+            raise RuntimeError(
+                "`fid.ranges` is required but still empty. "
+                "Please assign them manually or with the `rangepicker` method."
+            )
+        if len(fid.peaks) != len(fid.ranges):
+            raise RuntimeError(
+                "`fid.peaks` and `fid.ranges` must have the same length, as "
+                "each peak must have a range assigned to it."
+            )
+
+    def _setup_fid(self, fid):
+        # Initialize species array and create or update Peak objects in
+        # data model
+
+        # Initialize empty species array
+        fid.species = numpy.empty(len(fid.peaks), dtype=object)
+        # Create or update Peak objects in data model
+        for i, (peak_val, range_val) in enumerate(zip(fid.peaks, fid.ranges)):
+            if i < len(fid.fid_object.peaks):
+                # Peak already exists, update it
+                fid.fid_object.peaks[i].peak_position = float(peak_val)
+                fid.fid_object.peaks[i].peak_range = {
+                    "start": float(range_val[0]),
+                    "end": float(range_val[1]),
+                }
+            else:
+                # Peak does not yet exist, create it
+                fid.fid_object.add_to_peaks(
+                    peak_index=i,
+                    peak_position=float(peak_val),
+                    peak_range={
+                        "start": float(range_val[0]),
+                        "end": float(range_val[1]),
+                    },
+                )
+
+    def _create_widgets(self):
+        # Create all widget components
+        self.title_label = Label(value="Assign peaks for all FIDs")
+        self.combobox = Combobox(
+            options=[fid.id for fid in self.fids],
+            description="Select FID to base entire array on:",
+            layout={"width": "max-content"},
+            style={"description_width": "initial"},
+        )
+        self.peak_dropdown = Dropdown(
+            options=[],
+            description="Select a peak:",
+            layout={"width": "max-content"},
+            style={"description_width": "initial"},
+            disabled=True,
+        )
+        self.species_dropdown = Dropdown(
+            options=[],
+            description="Select a species:",
+            layout={"width": "max-content"},
+            style={"description_width": "initial"},
+            disabled=True,
+        )
+        self.save_button = Button(
+            description="Save selection", icon="file-arrow-down", disabled=True
+        )
+        self.reset_button = Button(description="Reset selection", disabled=True)
+        self.selection_output = Output()
+
+    def _setup_callbacks(self):
+        # Set up all widget callbacks
+        self.combobox.observe(self._handle_combobox_change)
+        self.peak_dropdown.observe(self._handle_peak_change)
+        self.species_dropdown.observe(self._handle_species_change)
+        self.save_button.on_click(self._handle_save)
+        self.reset_button.on_click(self._handle_reset)
+
+    def _layout_widgets(self):
+        # Create widget layout and display
+        self.container = VBox(
+            [
+                self.title_label,
+                self.combobox,
+                self.peak_dropdown,
+                self.species_dropdown,
+                self.save_button,
+                self.reset_button,
+                self.selection_output,
+            ]
+        )
+        display(self.container)
+
+    def _handle_combobox_change(self, event):
+        # Enable the peak dropdown when a FID is selected
+        if event["type"] == "change" and event["name"] == "value":
+            selected_option = event["new"]
+            if selected_option in self.combobox.options:
+                self.peak_dropdown.disabled = False
+                self.selected_fid = self.fid_array.get_fid(selected_option)
+                self.available_peaks = [str(peak) for peak in self.selected_fid.peaks]
+                self.peak_dropdown.options = self.available_peaks
+                if self.peak_dropdown.options:
+                    self.peak_dropdown.value = self.peak_dropdown.options[0]
+
+    def _handle_peak_change(self, event):
+        # Format the species options for disply and enable the species
+        # dropdown when a peak is selected
+        if event["type"] == "change" and event["name"] == "value":
+            self.species_dropdown.disabled = False
+            self.species_dropdown.options = [
+                format_species_string(species) for species in self.available_species
+            ]
+            if self.species_dropdown.options:
+                self.species_dropdown.value = self.species_dropdown.options[0]
+
+    def _handle_species_change(self, event):
+        # Enable the save button when a species is selected
+        if event["type"] == "change" and event["name"] == "value":
+            self.save_button.disabled = False
+
+    def _handle_save(self, b):
+        with self.selection_output:
+            self.selection_output.clear_output(wait=True)
+
+            species = self.species_dropdown.value
+            peak_value = float(self.peak_dropdown.value)
+
+            # Update selected values
+            if species not in self.selected_values:
+                self.selected_values[species] = []
+            self.selected_values[species].append(peak_value)
+
+            # Update available peaks
+            self.available_peaks.remove(self.peak_dropdown.value)
+            self.peak_dropdown.options = self.available_peaks
+
+            if not self.available_peaks:
+                self.peak_dropdown.disabled = True
+
+            # Update FIDs
+            for species_id, peak_position in self.selected_values.items():
+                for fid in self.fids:
+                    self._update_fid(fid, peak_position, species_id)
+
+            # Print the selected values
+            self._display_selections()
+
+            # Re-enable the reset button
+            self.reset_button.disabled = False
+
+    def _handle_reset(self, b):
+        # Reset the widget state
+        with self.selection_output:
+            self.selection_output.clear_output(wait=True)
+            print("\nCleared selections!")
+            # Reset FIDs' state
+            for fid in self.fids:
+                fid._flags["assigned"] = False
+                fid.species = numpy.empty(len(fid.peaks), dtype=object)
+                for peak_object in fid.fid_object.peaks:
+                    peak_object.species_id = None
+            self.selected_values = {}
+            self.available_peaks = [str(peak) for peak in self.selected_fid.peaks]
+
+            # Reset widgets
+            self.peak_dropdown.options = self.available_peaks
+            self.peak_dropdown.disabled = False
+            self.reset_button.disabled = True
+
+    def _update_fid(self, fid, peak_position, species_id):
+        # Assign the species ID to the peak object and set the assigned
+        # flag to True.
+        for peak in fid.fid_object.peaks:
+            if peak.peak_position not in peak_position:
+                continue
+            peak.species_id = species_id.split(" ")[0]
+            fid.species[peak.peak_index] = peak.species_id
+        fid._flags["assigned"] = True
+
+    def _display_selections(self):
+        # Display current selections
+        print("\nSaved selections:")
+        for key, value in self.selected_values.items():
+            print(f"{key}: {value}")
+
+
 class DataTraceSelector:
     """
     Interactive data-selection widget with traces and ranges. Traces are saved
@@ -1418,12 +1905,8 @@ class DataTraceSelector:
         data_traces = self.integral_selector.psm.data_lines
         index_traces = self.integral_selector.psm.index_lines
 
-        self.fid_array._data_traces = [
-            dict(zip(i[1], i[0])) for i in data_traces
-        ]
-        self.fid_array._index_traces = [
-            dict(zip(i[1], i[0])) for i in index_traces
-        ]
+        self.fid_array._data_traces = [dict(zip(i[1], i[0])) for i in data_traces]
+        self.fid_array._index_traces = [dict(zip(i[1], i[0])) for i in index_traces]
 
         decon_peaks = []
         for i in self.fid_array._deconvoluted_peaks:
@@ -1439,7 +1922,7 @@ class DataTraceSelector:
             for fid, indx in trace.items():
                 try:
                     integrals[fid] = numpy.argmin(abs(decon_peaks[fid] - indx))
-                except:
+                except Exception:
                     integrals[fid] = None
             trace_dict[t] = integrals
         last_fid = len(self.fid_array.get_fids()) - 1
@@ -1503,13 +1986,9 @@ class DataTraceRangeSelector:
         traces = [[i[0], j[1]] for i, j in zip(data_traces, index_traces)]
 
         self.fid_array.traces = traces
-        self.fid_array._trace_mask = self.fid_array._generate_trace_mask(
-            traces
-        )
+        self.fid_array._trace_mask = self.fid_array._generate_trace_mask(traces)
 
-        self.fid_array._set_all_peaks_ranges_from_traces_and_spans(
-            traces, spans
-        )
+        self.fid_array._set_all_peaks_ranges_from_traces_and_spans(traces, spans)
         plt.close(self.peak_selector.fig)
 
 
@@ -1659,9 +2138,7 @@ class Calibrator:
         if fid.data is [] or fid.data is None:
             raise ValueError("data must exist.")
         if not fid._flags["ft"]:
-            raise ValueError(
-                "Only Fourier-transformed data can be calibrated."
-            )
+            raise ValueError("Only Fourier-transformed data can be calibrated.")
 
         data = fid.data
         params = fid._params
@@ -1670,9 +2147,7 @@ class Calibrator:
         sw = params["sw"]
         ppm = numpy.linspace(sw_left - sw, sw_left, len(data))[::-1]
 
-        self.peak_selector = PeakDataSelector(
-            data, params, title=title, label=label
-        )
+        self.peak_selector = PeakDataSelector(data, params, title=title, label=label)
         self.peak_selector.process = self.process
 
         self.textinput = FloatText(
@@ -1738,9 +2213,7 @@ class RangeCalibrator:
         if fid_array.data is [] or fid_array.data is None:
             raise ValueError("data must exist.")
         if any(not fid._flags["ft"] for fid in self.fids):
-            raise ValueError(
-                "Only Fourier-transformed data can be calibrated."
-            )
+            raise ValueError("Only Fourier-transformed data can be calibrated.")
         data = fid_array.data
         if y_indices is not None:
             data = fid_array.data[numpy.array(self.fid_number)]
@@ -1885,6 +2358,13 @@ class FidRangeSelector:
         bl_ppm = numpy.array([j for i in bl_ppm for j in i])
         self.fid._bl_ppm = bl_ppm
         plt.close(self.span_selector.fig)
+
+
+class ConcentrationCalculator:
+    def __init__(self):
+        raise NotImplementedError(
+            "Widget for calculating concentrations is currently under heavy construction. Please calculate and assign concentrations manually."
+        )
 
 
 if __name__ == "__main__":
