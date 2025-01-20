@@ -2422,9 +2422,9 @@ Ctrl+Alt+Right - assign
         for fid in self.get_fids():
             fid.species = None
 
-    def calculate_concentrations(self):  # TODO: Write docstring
-        self._concentration_widget = ConcentrationCalculator(
-            fid_array=self, enzymeml_document=self.enzymeml_document
+    def calculate_concentrations(self):
+        raise NotImplementedError(
+            "Widget for calculating concentrations is currently under heavy construction. Please calculate and assign concentrations manually."
         )
 
 
