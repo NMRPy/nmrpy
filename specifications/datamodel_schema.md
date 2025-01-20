@@ -5,10 +5,11 @@ classDiagram
     FIDObject *-- Parameters
     FIDObject *-- ProcessingSteps
     FIDObject *-- Peak
-    
+    Peak *-- PeakRange
+
     class NMRpy {
-        +datetime datetime_created*
-        +datetime datetime_modified
+        +string datetime_created*
+        +string datetime_modified
         +Experiment experiment
     }
     
@@ -60,6 +61,11 @@ classDiagram
         +PeakRange peak_range
         +float peak_integral
         +string species_id
+    }
+
+    class PeakRange {
+        +float start
+        +float end
     }
     
     class FileFormats {

@@ -11,20 +11,20 @@ from nmrpy.plotting import *
 import os
 import pickle
 from ipywidgets import SelectMultiple
-from sdRDM import DataModel
-from sdRDM.base.importedmodules import ImportedModules
-from nmrpy.datamodel.core import (
+from nmrpy.nmrpy_model import (
     NMRpy,
     Experiment,
     FIDObject,
     Parameters,
     ProcessingSteps,
     Peak,
+    PeakRange,
 )
 from nmrpy.utils import create_enzymeml
 import pyenzyme as pe
 import pyenzyme.equations as peq
 from pyenzyme.model import EnzymeMLDocument
+from typing import List, Union
 
 
 class Base:
@@ -253,7 +253,7 @@ class Fid(Base):
 
     @fid_object.setter
     def fid_object(self, fid_object):
-        if isinstance(fid_object, DataModel):
+        if isinstance(fid_object, FIDObject):
             self.__fid_object = fid_object
 
     @property
@@ -1389,7 +1389,7 @@ Ctrl+Alt+Right - assign
         setattr(self, plt.id, plt)
         pyplot.show()
 
-    def assign_peaks(self):
+    def assign_peaks(self, species_list: list[str] | EnzymeMLDocument = None):
         """
         Instantiate a species-assignment GUI widget. Select peaks from
         dropdown menu containing :attr:`~nmrpy.data_objects.Fid.peaks`.
@@ -1397,17 +1397,10 @@ Ctrl+Alt+Right - assign
         containing species defined in EnzymeML. When satisfied with
         assignment, press Assign button to apply.
         """
-        # raise NotImplementedError
-        widget_title = "Assign species for {}".format(self.id)
-        self._assigner_widget = PeakAssigner(fid=self, title=widget_title)
-
-    def index_peaks(self, list_of_species: list[str]):
-        """
-        Index peaks based on species.
-        """
-        widget_title = "Index peaks for {}".format(self.id)
-        self._indexer_widget = PeakIndexer(
-            fid=self, species_list=list_of_species, title=widget_title
+        self._assigner_widget = PeakAssigner(
+            fid=self,
+            species_list=species_list,
+            title="Assign species for {}".format(self.id),
         )
 
     def clear_peaks(self):
@@ -1442,13 +1435,15 @@ class FidArray(Base):
 
     @property
     def data_model(self):
+        for fid in self.get_fids():
+            self.__data_model.experiment.fid_array.append(fid.fid_object)
         return self.__data_model
 
     @data_model.setter
-    def data_model(self, data_model: DataModel):
-        if not isinstance(data_model, DataModel):
+    def data_model(self, data_model: NMRpy):
+        if not isinstance(data_model, NMRpy):
             raise AttributeError(
-                f"Parameter `data_model` has to be of type `sdrdm.DataModel`, got {type(data_model)} instead."
+                f"Parameter `data_model` has to be of type `NMRpy`, got {type(data_model)} instead."
             )
         self.__data_model = data_model
         self.__data_model.datetime_modified = str(datetime.now())
@@ -2350,7 +2345,7 @@ Ctrl+Alt+Right - assign
             enzymeml_document = self.enzymeml_document
         return create_enzymeml(self, enzymeml_document)
 
-    def assign_peaks(self, index_list=None):
+    def assign_peaks(self, species_list=None, index_list=None):
         """
         Instantiate a peak-assignment GUI widget. Select a FID by
         its ID from the combobox. Select peaks from dropdown menu
@@ -2359,32 +2354,7 @@ Ctrl+Alt+Right - assign
         containing species defined in EnzymeML. When satisfied with
         assignment, press Assign button to apply.
         """
-
-        self._assigner_widget = PeakRangeAssigner(fid_array=self, index_list=index_list)
-
-    def index_peaks(self, species_list, index_list=None):
-        """
-        Instantiate a peak-indexing GUI widget. Select a FID by ID to base the peak
-        assignments on, then assign species names to peaks. The assignments will be
-        applied to all FIDs in the array.
-
-        Parameters
-        ----------
-        species_list : list
-            List of species names to assign to peaks
-        index_list : list, optional
-            List of indices to select FIDs from the array. If None, all FIDs
-            will be included.
-
-        Example
-        -------
-        >>> species = ['ATP', 'ADP', 'Pi', 'Glucose']
-        >>> fid_array.index_peaks(species)  # Use all FIDs
-        >>> fid_array.index_peaks(species, [0, 1, 2])  # Use only first three FIDs
-        """
-        from nmrpy.plotting import PeakRangeIndexer
-
-        self._indexer_widget = PeakRangeIndexer(
+        self._assigner_widget = PeakRangeAssigner(
             fid_array=self, species_list=species_list, index_list=index_list
         )
 

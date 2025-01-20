@@ -125,7 +125,9 @@ def format_species_string(enzymeml_species) -> str:
     Returns:
         str: The formatted species string.
     """
-    if enzymeml_species.name:
+    if isinstance(enzymeml_species, str):
+        return enzymeml_species
+    elif enzymeml_species.name:
         return f"{enzymeml_species.id} ({enzymeml_species.name})"
     else:
         return f"{enzymeml_species.id}"
