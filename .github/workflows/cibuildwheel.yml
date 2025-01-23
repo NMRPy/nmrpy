@@ -40,7 +40,7 @@ jobs:
     # to publish when a GitHub Release is created:
     if: github.event_name == 'release' && github.event.action == 'released'
     steps:
-      - uses: actions/download-artifact@v2
+      - uses: actions/download-artifact@v4.1.7
         with:
           name: wheel_and_tarball
           path: dist

@@ -706,7 +706,7 @@ class Fid(Base):
             return int(numpy.ceil(indices))
         return numpy.array(numpy.ceil(indices), dtype=int)
 
-    def phase_correct(self, method="leastsq"):
+    def phase_correct(self, method="leastsq", verbose=True):
         """
 
         Automatically phase-correct :attr:`~nmrpy.data_objects.Fid.data` by minimising
@@ -722,14 +722,17 @@ class Fid(Base):
 
                 Powell (powell)
 
-                Newton-CG  (newton)
+                    Newton-CG  (newton)
+
+            :keyword verbose: prints out phase angles if True (default)
         """
         if self.data.dtype not in self._complex_dtypes:
             raise TypeError("Only complex data can be phase-corrected.")
         if not self._flags["ft"]:
             raise ValueError("Only Fourier-transformed data can be phase-corrected.")
-        print("phasing: %s" % self.id)
-        self.data = Fid._phase_correct((self.data, method))
+        if verbose:
+            print("phasing: %s" % self.id)
+        self.data = Fid._phase_correct((self.data, method, verbose))
         self.fid_object.processed_data = [str(datum) for datum in self.data]
         self.fid_object.processing_steps.is_phased = True
 
@@ -737,9 +740,9 @@ class Fid(Base):
     def _phase_correct(cls, list_params):
         """
         Class method for phase-correction using multiprocessing.
-        list_params is a tuple of (<data>, <fitting method>).
+        list_params is a tuple of (<data>, <fitting method>, <verbose>).
         """
-        data, method = list_params
+        data, method, verbose = list_params
         p = lmfit.Parameters()
         p.add_many(
             ("p0", 1.0, True),
@@ -747,12 +750,15 @@ class Fid(Base):
         )
         mz = lmfit.minimize(Fid._phased_data_sum, p, args=([data]), method=method)
         phased_data = Fid._ps(data, p0=mz.params["p0"].value, p1=mz.params["p1"].value)
-        # data model
         if abs(phased_data.min()) > abs(phased_data.max()):
             phased_data *= -1
         if sum(phased_data) < 0.0:
             phased_data *= -1
-        print("%d\t%d" % (mz.params["p0"].value, mz.params["p1"].value))
+        if verbose:
+            print(
+                "Zero order: %d\tFirst order: %d\t (In degrees)"
+                % (mz.params["p0"].value, mz.params["p1"].value)
+            )
         return phased_data
 
     @classmethod
@@ -1789,7 +1795,7 @@ class FidArray(Base):
             fid.fid_object.processing_steps.is_normalised = True
             fid.fid_object.processing_steps.max_value = float(dmax)
 
-    def phase_correct_fids(self, method="leastsq", mp=True, cpus=None):
+    def phase_correct_fids(self, method="leastsq", mp=True, cpus=None, verbose=True):
         """
         Apply automatic phase-correction to all :class:`~nmrpy.data_objects.Fid` objects owned by this :class:`~nmrpy.data_objects.FidArray`
 
@@ -1798,6 +1804,8 @@ class FidArray(Base):
         :keyword mp: parallelise the phasing process over multiple processors, significantly reducing computation time
 
         :keyword cpus: defines number of CPUs to utilise if 'mp' is set to True
+
+        :keyword verbose: prints out phase angles if True (default)
         """
         if mp:
             fids = self.get_fids()
@@ -1807,7 +1815,7 @@ class FidArray(Base):
                 raise ValueError(
                     "Only Fourier-transformed data can be phase-corrected."
                 )
-            list_params = [[fid.data, method] for fid in fids]
+            list_params = [[fid.data, method, verbose] for fid in fids]
             phased_data = self._generic_mp(Fid._phase_correct, list_params, cpus)
             for fid, datum in zip(fids, phased_data):
                 fid.data = datum
@@ -1815,7 +1823,7 @@ class FidArray(Base):
                 fid.fid_object.processing_steps.is_phased = True
         else:
             for fid in self.get_fids():
-                fid.phase_correct(method=method)
+                fid.phase_correct(method=method, verbose=verbose)
         print("phase-correction completed")
 
     def baseliner_fids(self):
