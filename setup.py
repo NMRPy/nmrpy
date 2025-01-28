@@ -43,10 +43,11 @@ NMRPy features a set of easy-to-use tools for:
 
 NMRPy is developed by Johann Eicher and Johann Rohwer from the Laboratory for
 Molecular Systems Biology, Dept. of Biochemistry, Stellenbosch University, 
-South Africa.
+South Africa, as well as Torsten Giess from the Insitute of Biochemistry and
+Technical Biochemistry, University of Stuttgart, Germany.
 """,
-    'author': 'Johann Eicher <johanneicher@gmail.com>, Johann Rohwer <j.m.rohwer@gmail.com>',
-    'author_email': 'johanneicher@gmail.com, j.m.rohwer@gmail.com',
+    'author': 'Johann Eicher <johanneicher@gmail.com>, Johann Rohwer <j.m.rohwer@gmail.com>, Torsten Giess <torsten.giess@ibtb.uni-stuttgart.de>',
+    'author_email': 'johanneicher@gmail.com, j.m.rohwer@gmail.com, torsten.giess@ibtb.uni-stuttgart.de',
     'maintainer': 'Johann Rohwer',
     'maintainer_email': 'j.m.rohwer@gmail.com',
     'url': 'https://github.com/NMRPy/nmrpy',
@@ -56,7 +57,13 @@ South Africa.
     'packages': ['nmrpy', 'nmrpy.tests'],
     'package_data': {'nmrpy.tests': mydata_nmrpy_test, 'nmrpy': mydata_nmrpy},
     'license': 'New BSD',
-    'name': 'nmrpy'
+    'name': 'nmrpy',
+    'extras_require': {
+        'pyenzyme': [
+            'pyenzyme @ git+https://github.com/EnzymeML/PyEnzyme.git@v2-migration#egg=pyenzyme',
+            'sympy'
+        ]
+    }
 }
 
 setup(**config)
