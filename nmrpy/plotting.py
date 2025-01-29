@@ -15,12 +15,15 @@ from ipywidgets import FloatText, Output, VBox, Button, Combobox, Dropdown, Labe
 from IPython.display import display
 import asyncio
 
-from pyenzyme.model import EnzymeMLDocument
-from nmrpy.utils import (
-    format_species_string,
-    get_ordered_list_of_species_names,
-    get_species_from_enzymeml,
-)
+from nmrpy.utils import format_species_string
+try:
+    from pyenzyme.model import EnzymeMLDocument
+    from nmrpy.utils import (
+        get_ordered_list_of_species_names,
+        get_species_from_enzymeml,
+    )
+except ImportError:
+    pyenzyme = None
 
 class Plot():
     """

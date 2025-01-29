@@ -19,9 +19,12 @@ from nmrpy.nmrpy_model import (
     Peak,
     PeakRange,
 )
-from nmrpy.utils import create_enzymeml, get_species_from_enzymeml
-import pyenzyme as pe
-from pyenzyme.model import EnzymeMLDocument
+try:
+    import pyenzyme
+    from pyenzyme.model import EnzymeMLDocument
+    from nmrpy.utils import create_enzymeml, get_species_from_enzymeml
+except ImportError:
+    pyenzyme = None
 
 
 class Base():
@@ -1301,7 +1304,17 @@ Ctrl+Alt+Right - assign
         Attach a species to the selected peak from second dropdown menu
         containing species defined in EnzymeML. When satisfied with
         assignment, press Assign button to apply.
+
+        Args:
+            species_list (list[str] | EnzymeMLDocument): The list of species to assign to the peaks.
+
+        Raises:
+            RuntimeError: If EnzymeML document is provided but the `pyenzyme` package is not installed.
         """
+        if (pyenzyme is None) and (isinstance(species_list, EnzymeMLDocument)):
+            raise RuntimeError(
+                "The `pyenzyme` package is required to use NMRpy with an EnzymeML document. Please install it via `pip install nmrpy[pyenzyme]`."
+            )
         self._assigner_widget = PeakAssigner(
             fid=self,
             species_list=species_list,
@@ -1372,6 +1385,10 @@ class FidArray(Base):
 
     @enzymeml_document.setter
     def enzymeml_document(self, enzymeml_document):
+        if (pyenzyme is None):
+            raise RuntimeError(
+                "The `pyenzyme` package is required to use NMRpy with an EnzymeML document. Please install it via `pip install nmrpy[pyenzyme]`."
+            )
         if not isinstance(enzymeml_document, EnzymeMLDocument):
             raise AttributeError(
                 f'Parameter `enzymeml_document` has to be of type `EnzymeMLDocument`, got {type(enzymeml_document)} instead.'
@@ -1616,9 +1633,16 @@ class FidArray(Base):
 
         Args:
             path_to_enzymeml_document (str): Path to file containing an EnzymeML document
+
+        Raises:
+            RuntimeError: If the `pyenzyme` package is not installed.
         """
-        self.enzymeml_document = pe.read_enzymeml(
-            cls=pe.EnzymeMLDocument, path=path_to_enzymeml_document
+        if (pyenzyme is None):
+            raise RuntimeError(
+                "The `pyenzyme` package is required to use NMRpy with an EnzymeML document. Please install it via `pip install nmrpy[pyenzyme]`."
+            )
+        self.enzymeml_document = pyenzyme.read_enzymeml(
+            cls=pyenzyme.EnzymeMLDocument, path=path_to_enzymeml_document
         )    
 
     @classmethod
@@ -2304,7 +2328,20 @@ Ctrl+Alt+Right - assign
     def apply_to_enzymeml(self, enzymeml_document = None) -> EnzymeMLDocument:
         """
         Apply the calculated concentrations from the FidArray to an EnzymeMLDocument.
+
+        Args:
+            enzymeml_document (EnzymeMLDocument): The EnzymeML document to apply the concentrations to.
+
+        Returns:
+            EnzymeMLDocument: The EnzymeML document with the concentrations applied.
+
+        Raises:
+            RuntimeError: If the `pyenzyme` package is not installed.
         """
+        if (pyenzyme is None):
+            raise RuntimeError(
+                "The `pyenzyme` package is required to use NMRpy with an EnzymeML document. Please install it via `pip install nmrpy[pyenzyme]`."
+            )
         if not enzymeml_document:
             enzymeml_document = self.enzymeml_document
         return create_enzymeml(self, enzymeml_document)
