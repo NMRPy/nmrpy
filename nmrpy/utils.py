@@ -1,7 +1,10 @@
-import sympy as sp
-
-import pyenzyme as pe
-from pyenzyme.model import EnzymeMLDocument
+try:
+    import sympy
+    import pyenzyme
+    from pyenzyme.model import EnzymeMLDocument
+except ImportError:
+    sympy = None
+    pyenzyme = None
 
 
 def get_species_from_enzymeml(enzymeml_document: EnzymeMLDocument) -> list:
@@ -17,6 +20,10 @@ def get_species_from_enzymeml(enzymeml_document: EnzymeMLDocument) -> list:
     Returns:
         list: Available species in EnzymeML document.
     """
+    if (pyenzyme is None):
+        raise RuntimeError(
+            "The `pyenzyme` package is required to use NMRpy with an EnzymeML document. Please install it via `pip install nmrpy[pyenzyme]`."
+        )
     if not isinstance(enzymeml_document, EnzymeMLDocument):
         raise AttributeError(
             f"Parameter `enzymeml_document` has to be of type `EnzymeMLDocument`, got {type(enzymeml_document)} instead."
@@ -42,6 +49,10 @@ def get_ordered_list_of_species_names(fid: "Fid") -> list:
     Returns:
         list: List of species names in desecending order by peak index.
     """
+    if (pyenzyme is None):
+        raise RuntimeError(
+            "The `pyenzyme` package is required to use NMRpy with an EnzymeML document. Please install it via `pip install nmrpy[pyenzyme]`."
+        )
     list_of_tuples = []
     # Iterate over the peak objects and then over their associated peaks
     # of a given FID object and append a tuple of the identity's name and
@@ -71,6 +82,10 @@ def get_initial_concentration_by_species_id(
     Returns:
         float: The initial concentration of the species.
     """
+    if (pyenzyme is None):
+        raise RuntimeError(
+            "The `pyenzyme` package is required to use NMRpy with an EnzymeML document. Please install it via `pip install nmrpy[pyenzyme]`."
+        )
     intial_concentration = float("nan")
     for measurement in enzymeml_document.measurements:
         for measurement_datum in measurement.species:
@@ -91,6 +106,10 @@ def get_species_id_by_name(
     Returns:
         str: The `species_id` of the species.
     """
+    if (pyenzyme is None):
+        raise RuntimeError(
+            "The `pyenzyme` package is required to use NMRpy with an EnzymeML document. Please install it via `pip install nmrpy[pyenzyme]`."
+        )
     species_id = None
     for species in get_species_from_enzymeml(enzymeml_document):
         if species.name == species_name:
@@ -108,6 +127,10 @@ def get_species_name_by_id(enzymeml_document: EnzymeMLDocument, species_id: str)
     Returns:
         str: The name of the species.
     """
+    if (pyenzyme is None):
+        raise RuntimeError(
+            "The `pyenzyme` package is required to use NMRpy with an EnzymeML document. Please install it via `pip install nmrpy[pyenzyme]`."
+        )
     species_name = None
     for species in get_species_from_enzymeml(enzymeml_document):
         if species.id == species_id:
@@ -145,12 +168,14 @@ def create_enzymeml(
     Returns:
         EnzymeMLDocument: The EnzymeML document with the added data.
     """
-
+    if (pyenzyme is None):
+        raise RuntimeError(
+            "The `pyenzyme` package is required to use NMRpy with an EnzymeML document. Please install it via `pip install nmrpy[pyenzyme]`."
+        )
     if not enzymeml_document.measurements:
         raise AttributeError(
             "EnzymeML document does not contain measurement metadata. Please add a measurement to the document first."
         )
-
     global_time = (fid_array.t.tolist(),)
     for measured_species in fid_array.concentrations.items():
         for available_species in enzymeml_document.measurements[0].species:
