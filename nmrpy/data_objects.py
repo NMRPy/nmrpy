@@ -1389,11 +1389,14 @@ class FidArray(Base):
 
     @enzymeml_document.setter
     def enzymeml_document(self, enzymeml_document):
+        if enzymeml_document is None:
+            self.__enzymeml_document = None
+            return
         if (pyenzyme is None):
             raise RuntimeError(
                 "The `pyenzyme` package is required to use NMRpy with an EnzymeML document. Please install it via `pip install nmrpy[enzymeml]`."
             )
-        if not isinstance(enzymeml_document, EnzymeMLDocument):
+        if isinstance(enzymeml_document, EnzymeMLDocument):
             raise AttributeError(
                 f'Parameter `enzymeml_document` has to be of type `EnzymeMLDocument`, got {type(enzymeml_document)} instead.'
             )
@@ -1414,6 +1417,9 @@ class FidArray(Base):
 
     @concentrations.setter
     def concentrations(self, concentrations):
+        if concentrations is None:
+            self.__concentrations = None
+            return
         if not isinstance(concentrations, dict):
             raise TypeError('concentrations must be a dictionary.')        
         for fid in self.get_fids():
