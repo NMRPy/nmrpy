@@ -59,7 +59,7 @@ Technical Biochemistry, University of Stuttgart, Germany.
     'license': 'New BSD',
     'name': 'nmrpy',
     'extras_require': {
-        'pyenzyme': [
+        'enzymeml': [
             'pyenzyme @ git+https://github.com/EnzymeML/PyEnzyme.git@v2-migration#egg=pyenzyme',
             'sympy'
         ]
