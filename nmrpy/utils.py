@@ -178,7 +178,7 @@ def create_enzymeml(
         )
     global_time = (fid_array.t.tolist(),)
     for measured_species in fid_array.concentrations.items():
-        for available_species in enzymeml_document.measurements[0].species:
+        for available_species in enzymeml_document.measurements[0].species_data:
             if not available_species.species_id == get_species_id_by_name(
                 enzymeml_document, measured_species[0]
             ):
