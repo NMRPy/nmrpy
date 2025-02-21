@@ -1253,6 +1253,7 @@ Ctrl+Alt+Right - assign
             raise AttributeError('peaks must be picked.')
         if self.ranges is None:
             raise AttributeError('ranges must be specified.')
+        self._setup_peak_objects()
         print('deconvoluting {}'.format(self.id))
         list_parameters = [self.data, self._grouped_index_peaklist, self._index_ranges, frac_gauss, method]
         self._deconvoluted_peaks = numpy.array([j for i in Fid._deconv_datum(list_parameters) for j in i])
@@ -1300,6 +1301,48 @@ Ctrl+Alt+Right - assign
         plt._plot_deconv(self, **kwargs)
         setattr(self, plt.id, plt)
         pyplot.show()
+
+
+    def _setup_peak_objects(self):
+        # Create or update Peak objects in data model after validation
+        # of Fid.peaks and Fid.ranges.
+
+        # Validates FID has peaks and ranges and len(peaks) == len(ranges)
+        if self.peaks is None or len(self.peaks) == 0:
+            raise RuntimeError(
+                "`fid.peaks` is required but still empty. "
+                "Please assign them manually or with the `peakpicker` method."
+            )
+        if self.ranges is None or len(self.ranges) == 0:
+            raise RuntimeError(
+                "`fid.ranges` is required but still empty. "
+                "Please assign them manually or with the `rangepicker` method."
+            )
+        if len(self.peaks) != len(self.ranges):
+            raise RuntimeError(
+                "`fid.peaks` and `fid.ranges` must have the same length, as "
+                "each peak must have a range assigned to it."
+            )
+        
+        # Create or update Peak objects in data model
+        for i, (peak_val, range_val) in enumerate(zip(self.peaks, self.ranges)):
+            if i < len(self.fid_object.peaks):
+                # Peak already exists, update it
+                self.fid_object.peaks[i].peak_position = float(peak_val)
+                self.fid_object.peaks[i].peak_range = {
+                    "start": float(range_val[0]),
+                    "end": float(range_val[1]),
+                }
+            else:
+                # Peak does not yet exist, create it
+                self.fid_object.add_to_peaks(
+                    peak_index=i,
+                    peak_position=float(peak_val),
+                    peak_range={
+                        "start": float(range_val[0]),
+                        "end": float(range_val[1]),
+                    },
+                )
 
     def assign_peaks(self, species_list: list[str] | EnzymeMLDocument = None):
         """
@@ -1423,7 +1466,7 @@ class FidArray(Base):
         if not isinstance(concentrations, dict):
             raise TypeError('concentrations must be a dictionary.')        
         for fid in self.get_fids():
-            if not fid.species:
+            if not len(fid.species):
                 raise ValueError('All FIDs must have species assigned to peaks.')
             if not all(species in fid.species for species in concentrations.keys()):
                 raise ValueError('Keys of concentrations must be species assigned to peaks.')
@@ -1527,7 +1570,18 @@ class FidArray(Base):
         for fid in self.get_fids():
             deconvoluted_integrals.append(fid.deconvoluted_integrals)
         return numpy.array(deconvoluted_integrals)
-
+    
+    @property
+    def species(self):
+        """
+        Collected :class:`~nmrpy.data_objects.Fid.species`
+        """
+        for i, fid in enumerate(self.get_fids()):
+            species = [s for s in fid.species]
+            if i>0:
+                break
+        return numpy.array(species)
+    
     @property
     def _deconvoluted_peaks(self):
         """
@@ -1752,7 +1806,6 @@ class FidArray(Base):
                 fid.data = datum
                 fid.fid_object.processed_data = [str(data) for data in datum]
                 fid.fid_object.processing_steps.is_phased = True
-                fid.fid_object.processing_steps.phase_correction_method = method
         else:
             for fid in self.get_fids():
                 fid.phase_correct(method=method, verbose=verbose)
@@ -1853,6 +1906,7 @@ Ctrl+Alt+Right - assign
             deconv_datum = self._generic_mp(Fid._deconv_datum, list_params, cpus)
             for fid, datum in zip(fids, deconv_datum):
                 fid._deconvoluted_peaks = numpy.array([j for i in datum for j in i])
+                fid._setup_peak_objects()
                 integrals = []
                 for i, peak in enumerate(fid._deconvoluted_peaks):
                     int_gauss = peak[-1] * Fid._f_gauss_int(peak[3], peak[1])
@@ -1860,7 +1914,7 @@ Ctrl+Alt+Right - assign
                     integral = int_gauss + int_lorentz
                     integrals.append(integral)
                     # Update data model
-                    peak_object = self.fid_object.peaks[i]
+                    peak_object = fid.fid_object.peaks[i]
                     if peak_object.peak_integral != integral:
                         peak_object.peak_integral = float(integral)
                 fid.fid_object.processing_steps.is_deconvoluted = True

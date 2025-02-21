@@ -1728,8 +1728,8 @@ class PeakAssigner:
         self._setup_species_source(species_list)
 
         # Validate and initialize
-        self._validate_fid(self.fid)
-        self._setup_fid(self.fid)
+        self.fid._setup_peak_objects()
+        self.fid.species = numpy.empty(len(fid.peaks), dtype=object)
         self.available_peaks = [str(peak) for peak in self.fid.peaks]
 
         # Create and layout widgets
@@ -1761,51 +1761,6 @@ class PeakAssigner:
                 "species_list must be a list of species names, "
                 "an EnzymeML document, or None if FID has enzymeml_species"
             )
-
-    def _validate_fid(self, fid):
-        # Validates FID has peaks and ranges and len(peaks) == len(ranges)
-        if fid.peaks is None or len(fid.peaks) == 0:
-            raise RuntimeError(
-                "`fid.peaks` is required but still empty. "
-                "Please assign them manually or with the `peakpicker` method."
-            )
-        if fid.ranges is None or len(fid.ranges) == 0:
-            raise RuntimeError(
-                "`fid.ranges` is required but still empty. "
-                "Please assign them manually or with the `rangepicker` method."
-            )
-        if len(fid.peaks) != len(fid.ranges):
-            raise RuntimeError(
-                "`fid.peaks` and `fid.ranges` must have the same length, as "
-                "each peak must have a range assigned to it."
-            )
-
-    def _setup_fid(self, fid):
-        # Initialize species array and creates or updates Peak objects
-        # in data model if species from EnyzmeML are used.
-
-        # Initialize empty species array
-        fid.species = numpy.empty(len(fid.peaks), dtype=object)
-
-        # Create or update Peak objects in data model
-        for i, (peak_val, range_val) in enumerate(zip(fid.peaks, fid.ranges)):
-            if i < len(fid.fid_object.peaks):
-                # Peak already exists, update it
-                fid.fid_object.peaks[i].peak_position = float(peak_val)
-                fid.fid_object.peaks[i].peak_range = {
-                    "start": float(range_val[0]),
-                    "end": float(range_val[1]),
-                }
-            else:
-                # Peak does not yet exist, create it
-                fid.fid_object.add_to_peaks(
-                    peak_index=i,
-                    peak_position=float(peak_val),
-                    peak_range={
-                        "start": float(range_val[0]),
-                        "end": float(range_val[1]),
-                    },
-                )
 
     def _create_widgets(self):
         # Create all widget components
@@ -1940,8 +1895,8 @@ class PeakRangeAssigner:
         # Validate and initialize
         self.fids = self._build_fids(index_list)
         for fid in self.fids:
-            self._validate_fid(fid)
-            self._setup_fid(fid)
+            fid._setup_peak_objects()
+            fid.species = numpy.empty(len(fid.peaks), dtype=object)
 
         # Create and layout widgets
         self._create_widgets()
@@ -2007,51 +1962,6 @@ class PeakRangeAssigner:
             fids.append(self.fid_array.get_fid(fid_id))
 
         return fids
-
-    def _validate_fid(self, fid):
-        # Validate that FID has peaks and ranges and that their
-        # lengths are the same
-        if fid.peaks is None or len(fid.peaks) == 0:
-            raise RuntimeError(
-                "`fid.peaks` is required but still empty. "
-                "Please assign them manually or with the `peakpicker` method."
-            )
-        if fid.ranges is None or len(fid.ranges) == 0:
-            raise RuntimeError(
-                "`fid.ranges` is required but still empty. "
-                "Please assign them manually or with the `rangepicker` method."
-            )
-        if len(fid.peaks) != len(fid.ranges):
-            raise RuntimeError(
-                "`fid.peaks` and `fid.ranges` must have the same length, as "
-                "each peak must have a range assigned to it."
-            )
-
-    def _setup_fid(self, fid):
-        # Initialize species array and create or update Peak objects in
-        # data model
-
-        # Initialize empty species array
-        fid.species = numpy.empty(len(fid.peaks), dtype=object)
-        # Create or update Peak objects in data model
-        for i, (peak_val, range_val) in enumerate(zip(fid.peaks, fid.ranges)):
-            if i < len(fid.fid_object.peaks):
-                # Peak already exists, update it
-                fid.fid_object.peaks[i].peak_position = float(peak_val)
-                fid.fid_object.peaks[i].peak_range = {
-                    "start": float(range_val[0]),
-                    "end": float(range_val[1]),
-                }
-            else:
-                # Peak does not yet exist, create it
-                fid.fid_object.add_to_peaks(
-                    peak_index=i,
-                    peak_position=float(peak_val),
-                    peak_range={
-                        "start": float(range_val[0]),
-                        "end": float(range_val[1]),
-                    },
-                )
 
     def _create_widgets(self):
         # Create all widget components
