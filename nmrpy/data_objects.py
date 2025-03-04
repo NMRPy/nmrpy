@@ -1439,7 +1439,7 @@ class FidArray(Base):
             raise RuntimeError(
                 "The `pyenzyme` package is required to use NMRpy with an EnzymeML document. Please install it via `pip install nmrpy[enzymeml]`."
             )
-        if isinstance(enzymeml_document, EnzymeMLDocument):
+        if not isinstance(enzymeml_document, EnzymeMLDocument):
             raise AttributeError(
                 f'Parameter `enzymeml_document` has to be of type `EnzymeMLDocument`, got {type(enzymeml_document)} instead.'
             )
