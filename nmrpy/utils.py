@@ -1,7 +1,7 @@
 try:
     import sympy
     import pyenzyme
-    from pyenzyme.model import EnzymeMLDocument
+    from pyenzyme.model import EnzymeMLDocument, Measurement
 except ImportError:
     sympy = None
     pyenzyme = None
@@ -154,6 +154,216 @@ def format_species_string(enzymeml_species) -> str:
         return f"{enzymeml_species.id} ({enzymeml_species.name})"
     else:
         return f"{enzymeml_species.id}"
+
+
+def create_enzymeml_measurement(
+    enzymeml_document: EnzymeMLDocument, **kwargs
+) -> Measurement:
+    """Create a new EnzymeML Measurement object from a template within an
+    EnzymeML document or from scratch.
+
+    Args:
+        enzymeml_document (EnzymeMLDocument): An EnzymeML document.
+        **kwargs: Keyword arguments:
+            template_measurement (bool): Whether to use a template measurement.
+            template_id (str | None): The ID of the template measurement to
+              use. Defaults to the first measurement in the EnzymeML document.
+
+    Raises:
+        ValueError: If the provided template ID is not found in the EnzymeML
+          document.
+
+    Returns:
+        Measurement: A new EnzymeML Measurement object.
+    """
+    if kwargs["template_measurement"]:
+        if kwargs["template_id"]:
+            for measurement in enzymeml_document.measurements:
+                if measurement.id == kwargs["template_id"]:
+                    new_measurement = measurement.model_copy()
+                    new_measurement.id = (
+                        f"measurement{len(enzymeml_document.measurements) + 1}"
+                    )
+                    new_measurement.name = (
+                        f"Measurement no. {len(enzymeml_document.measurements) + 1}"
+                    )
+                    break
+            else:
+                raise ValueError(
+                    f"Measurement with ID {kwargs['template_id']} not found."
+                )
+        else:
+            new_measurement = enzymeml_document.measurements[-1].model_copy()
+            new_measurement.id = f"measurement{len(enzymeml_document.measurements) + 1}"
+            new_measurement.name = (
+                f"Measurement no. {len(enzymeml_document.measurements) + 1}"
+            )
+    else:
+        new_measurement = Measurement(
+            id=f"measurement{len(enzymeml_document.measurements) + 1}",
+            name=f"Measurement no. {len(enzymeml_document.measurements) + 1}",
+        )
+
+    return new_measurement
+
+
+def fill_enzymeml_measurement(
+    enzymeml_document: EnzymeMLDocument, measurement: Measurement, **kwargs
+) -> Measurement:
+    """Fill a new EnzymeML Measurement object with data.
+
+    Args:
+        enzymeml_document (EnzymeMLDocument): An EnzymeML document.
+        measurement (Measurement): The EnzymeML Measurement object to fill.
+        **kwargs: Keyword arguments:
+            template_measurement (bool): Whether to use a template measurement.
+            template_id (str | None): The ID of the template measurement to
+              use. Defaults to the first measurement in the EnzymeML document.
+            keep_ph (bool): Whether to keep the pH of the template measurement.
+            keep_temperature (bool): Whether to keep the temperature of the
+              template measurement.
+            keep_initial (bool): Whether to keep the initial concentrations of
+              the template measurement.
+            id (str): The ID of the measurement.
+            name (str): The name of the measurement.
+            ph (float): The pH of the measurement.
+            temperature (float): The temperature of the measurement.
+            temperature_unit (str): The unit of the temperature of the
+              measurement.
+            initial (dict): A dictionary with species IDs (as they are defined
+              in the EnzymeML document) as keys and initial values as values.
+            data_type (str): The type of data to be stored in the measurement.
+            data_unit (str): The unit of the data to be stored in the
+              measurement.
+            time_unit (str): The unit of the time to be stored in the
+              measurement.
+
+    Raises:
+        ValueError: If no value for `ph`, `temperature`, or `initial` is
+          provided but `keep_ph`, `keep_temperature`, or `keep_initial` is set
+          to `False`.
+        ValueError: If a temperature value is provided but no
+          `temperature_unit`.
+        ValueError: If the provided `temperature_unit` is not a valid unit.
+        ValueError: If the value for `initial` is not a dictionary.
+        ValueError: If `data_type`, `data_unit`, or `time_unit` is provided but
+          is not a valid EnzymeML data type, data unit, or time unit.
+        ValueError: If no template measurement is provided but no value for
+          `data_type`, `data_unit`, or `time_unit` is provided.
+
+    Returns:
+        Measurement: The filled EnzymeML Measurement object.
+    """
+
+    # ID and name
+    if "id" in kwargs:
+        measurement.id = kwargs["id"]
+    if "name" in kwargs:
+        measurement.name = kwargs["name"]
+
+    # pH
+    if "ph" in kwargs:
+        measurement.ph = float(kwargs["ph"])
+    elif kwargs["keep_ph"] and kwargs["template_measurement"]:
+        pass
+    else:
+        raise ValueError(
+            "The `measurement.ph` field is required in the EnzymeML standard. Please provide a pH value using the `ph` keyword argument."
+        )
+
+    # Temperature and unit
+    if "temperature" in kwargs:
+        measurement.temperature = float(kwargs["temperature"])
+        if "temperature_unit" in kwargs:
+            if hasattr(pyenzyme.units.predefined, kwargs["temperature_unit"]):
+                measurement.temperature_unit = getattr(
+                    pyenzyme.units.predefined, kwargs["temperature_unit"]
+                )
+            else:
+                raise ValueError(
+                    "The `temperature_unit` keyword argument must be a valid EnzymeML temperature unit."
+                )
+        else:
+            raise ValueError(
+                "The `temperature_unit` keyword argument is required when setting a new temperature value."
+            )
+    elif kwargs["keep_temperature"] and kwargs["template_measurement"]:
+        pass
+    else:
+        raise ValueError(
+            "The `measurement.temperature` field is required in the EnzymeML standard. Please provide a temperature value using the `temperature` keyword argument."
+        )
+
+    # Initial
+    if "initial" in kwargs:
+        if not isinstance(kwargs["initial"], dict):
+            raise ValueError(
+                "The `initial` keyword argument must be a dictionary with species IDs (as they are defined in the EnzymeML document) as keys and initial values as values."
+            )
+        _data_type = None
+        _data_unit = None
+        _time_unit = None
+        if "data_type" in kwargs:
+            try:
+                _data_type = pyenzyme.DataTypes[kwargs["data_type"].upper()]
+            except ValueError:
+                raise ValueError(
+                    f"The `data_type` keyword argument must be a valid EnzymeML data type. Valid types are: {', '.join([data_type.name for data_type in pyenzyme.DataTypes])}."
+                )
+        if "data_unit" in kwargs:
+            if hasattr(pyenzyme.units.predefined, kwargs["data_unit"]):
+                _data_unit = getattr(pyenzyme.units.predefined, kwargs["data_unit"])
+            else:
+                raise ValueError(
+                    "The `data_unit` keyword argument must be a valid EnzymeML data unit."
+                )
+        if "time_unit" in kwargs:
+            if hasattr(pyenzyme.units.predefined, kwargs["time_unit"]):
+                _time_unit = getattr(pyenzyme.units.predefined, kwargs["time_unit"])
+            else:
+                raise ValueError(
+                    "The `time_unit` keyword argument must be a valid EnzymeML time unit."
+                )
+        if kwargs["template_measurement"]:
+            for species_datum in measurement.species_data:
+                if species_datum.species_id in kwargs["initial"]:
+                    species_datum.initial = kwargs["initial"][species_datum.species_id]
+                    if _data_type:
+                        species_datum.data_type = _data_type
+                    if _data_unit:
+                        species_datum.data_unit = _data_unit
+                    if _time_unit:
+                        species_datum.time_unit = _time_unit
+        else:
+            if not _data_type:
+                raise ValueError(
+                    "The `data_type` keyword argument is required when creating a new measurement without a template measurement."
+                )
+            if not _data_unit:
+                raise ValueError(
+                    "The `data_unit` keyword argument is required when creating a new measurement without a template measurement."
+                )
+            if not _time_unit:
+                raise ValueError(
+                    "The `timec_unit` keyword argument is required when creating a new measurement without a template measurement."
+                )
+            for species_type in ["small_molecules", "proteins", "complexes"]:
+                for species in getattr(enzymeml_document, species_type):
+                    measurement.add_to_species_data(
+                        species_id=species.id,
+                        initial=kwargs["initial"][species.id],
+                        data_type=_data_type,
+                        data_unit=_data_unit,
+                        time_unit=_time_unit,
+                    )
+    elif kwargs["keep_initial"] and kwargs["template_measurement"]:
+        pass
+    else:
+        raise ValueError(
+            "The `measurement.species_data.initial` field is required in the EnzymeML standard. Please provide a dictionary with species IDs (as they are defined in the EnzymeML document) as keys and initial values as values using the `initial` keyword argument."
+        )
+
+    return measurement
 
 
 def create_enzymeml(

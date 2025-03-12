@@ -21,6 +21,7 @@ try:
     from nmrpy.utils import (
         get_ordered_list_of_species_names,
         get_species_from_enzymeml,
+        fill_enzymeml_measurement,
     )
 except ImportError:
     pyenzyme = None
@@ -2116,6 +2117,14 @@ class ConcentrationCalculator:
         raise NotImplementedError(
             "Widget for calculating concentrations is currently under heavy construction. Please calculate and assign concentrations manually."
         )
+    
+class MeasurementCreator:
+    """
+    Widget for creating a new measurement.
+    """
+    def __init__(self):
+        pass
+
 
 if __name__ == '__main__':
     pass

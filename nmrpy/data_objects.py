@@ -21,8 +21,8 @@ from nmrpy.nmrpy_model import (
 )
 try:
     import pyenzyme
-    from pyenzyme.model import EnzymeMLDocument
-    from nmrpy.utils import create_enzymeml, get_species_from_enzymeml
+    from pyenzyme.model import EnzymeMLDocument, Measurement
+    from nmrpy.utils import create_enzymeml, create_enzymeml_measurement, fill_enzymeml_measurement, get_species_from_enzymeml
 except ImportError:
     pyenzyme = None
 
@@ -1443,6 +1443,10 @@ class FidArray(Base):
             raise AttributeError(
                 f'Parameter `enzymeml_document` has to be of type `EnzymeMLDocument`, got {type(enzymeml_document)} instead.'
             )
+        if not enzymeml_document.measurements:
+            raise AttributeError(
+                'EnzymeML document must contain at least one measurement.'
+            )
         self.__enzymeml_document = enzymeml_document
         self.__enzymeml_document.modified = str(datetime.now())
         self.__data_model.experiment.name = self.__enzymeml_document.name
@@ -2344,13 +2348,62 @@ Ctrl+Alt+Right - assign
             fid._del_widgets()
         with open(filename, 'wb') as f:
             pickle.dump(self, f)
-    
+
+    def create_new_enzymeml_measurement(
+            self,
+            gui: bool = True,
+            template_measurement: bool = True,
+            template_id: str = None,
+            keep_ph: bool = True,
+            keep_temperature: bool = True,
+            keep_initial: bool = False,
+            **kwargs
+        ) -> None:
+
+        if (pyenzyme is None):
+            raise RuntimeError(
+                "The `pyenzyme` package is required to use NMRpy with an EnzymeML document. Please install it via `pip install nmrpy[enzymeml]`."
+            )
+        if not self.enzymeml_document:
+            raise AttributeError(
+                "No EnzymeML document found. Please add one using `parse_enzymeml_document()`."
+            )
+        if not template_measurement and (keep_ph or keep_temperature or keep_initial):
+            print("Warning: Without a template measurement, there are no pH, temperature, or initial values to keep.")
+
+        new_measurement = create_enzymeml_measurement(
+            self.enzymeml_document,
+            template_measurement=template_measurement,
+            template_id=template_id,
+        )
+
+        if gui:
+            # TODO: Implement GUI for creating a new measurement
+            new_measurement = MeasurementCreator(
+                fid_array=self,
+                measurement=new_measurement
+            )
+        else:
+            new_measurement = fill_enzymeml_measurement(
+                self.enzymeml_document,
+                new_measurement,
+                template_measurement=template_measurement,
+                template_id=template_id,                
+                keep_ph=keep_ph,
+                keep_temperature=keep_temperature,
+                keep_initial=keep_initial,
+                **kwargs
+            )
+
+        self.enzymeml_document.measurements.append(new_measurement)
+
+
     def apply_to_enzymeml(self, enzymeml_document = None) -> EnzymeMLDocument:
         """
         Apply the calculated concentrations from the FidArray to an EnzymeMLDocument.
 
         Args:
-            enzymeml_document (EnzymeMLDocument): The EnzymeML document to apply the concentrations to.
+            enzymeml_document (EnzymeMLDocument, optional): The EnzymeML document to apply the concentrations to.
 
         Returns:
             EnzymeMLDocument: The EnzymeML document with the concentrations applied.
