@@ -1662,7 +1662,7 @@ class FidArrayRangeSelector:
                 cur_peaks = fid._ppm[peak_ind]
                 bl_ppm.append(cur_peaks)
             bl_ppm = numpy.array([j for i in bl_ppm for j in i])
-            fid._bl_ppm = bl_ppm
+            fid._bl_ppm = bl_ppm.copy()
         plt.close(self.span_selector.fig)
 
 class FidRangeSelector:
@@ -1705,7 +1705,7 @@ class FidRangeSelector:
             cur_peaks = self.ppm[peak_ind]
             bl_ppm.append(cur_peaks)
         bl_ppm = numpy.array([j for i in bl_ppm for j in i])
-        self.fid._bl_ppm = bl_ppm
+        self.fid._bl_ppm = bl_ppm.copy()
         plt.close(self.span_selector.fig)
 
 class PeakAssigner:
