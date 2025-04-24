@@ -9,6 +9,8 @@ from multiprocessing import Pool, cpu_count
 from nmrpy.plotting import *
 import os
 import pickle
+from ipywidgets import Output
+from IPython.display import display
 
 from nmrpy.nmrpy_model import (
     NMRpy,
@@ -373,7 +375,7 @@ class Fid(Base):
 
     @property
     def _bl_indices(self):
-        if self._bl_ppm is not None:
+        if hasattr(self, '_bl_ppm'):
             return self._conv_to_index(self.data, self._bl_ppm, self._params['sw_left'], self._params['sw'])
         else:
             return None
@@ -391,7 +393,7 @@ class Fid(Base):
                 raise AttributeError('baseline polynomial must be numbers')
             self.__bl_poly = numpy.array(bl_poly)
         else:
-            self.__bl_ppm = bl_poly
+            self.__bl_poly = bl_poly
 
     @property
     def _index_peaks(self):
@@ -791,13 +793,13 @@ Left - select peak
         """
 
         if self._bl_indices is None:
-            raise AttributeError('No points selected for baseline correction. Run fid.baseliner()')
+            raise AttributeError('No points selected for baseline correction. Run fid.baseliner() or fidarray.baseliner_fids()')
         if not len(self.data):
-            raise AttributeError('data does not exist.')
+            raise AttributeError('Data does not exist.')
         if self.data.dtype in self._complex_dtypes:
-            raise TypeError('data must not be complex.')
+            raise TypeError('Data must not be complex.')
         if not Fid._is_flat_iter(self.data):
-            raise AttributeError('data must be 1 dimensional.')
+            raise AttributeError('Data must be 1 dimensional.')
         
         data = self.data
         x = numpy.arange(len(data))
@@ -1884,12 +1886,18 @@ Ctrl+Alt+Right - assign
 
         :keyword deg: degree of the baseline polynomial (see :meth:`~nmrpy.data_objects.Fid.baseline_correct`)
         """
+        okay = True
         for fid in self.get_fids():
             try:
                 fid.baseline_correct(deg=deg)
-            except:
-                print('failed for {}. Perhaps first run baseliner_fids()'.format(fid.id))
-        print('baseline-correction completed')
+            except TypeError as te:
+                okay = False
+                print(f'Failed for {fid.id}. {te}')
+            except AttributeError as ae:
+                okay = False
+                print(f'Failed for {fid.id}. {ae}')
+        if okay:
+            print('baseline-correction completed')
 
     @property
     def _data_traces(self):
