@@ -2324,7 +2324,7 @@ Ctrl+Alt+Right - assign
             "Widget for calculating concentrations is currently under heavy construction. Please calculate and assign concentrations manually."
         )
 
-    def save_to_file(self, filename=None, overwrite=False, keep_data_model=True, keep_enzymeml=True):
+    def save_to_file(self, filename=None, overwrite=False, keep_data_model=False, keep_enzymeml=True):
         """
         Save :class:`~nmrpy.data_objects.FidArray` object to file, including all objects owned.
 
