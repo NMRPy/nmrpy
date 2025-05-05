@@ -1,3 +1,7 @@
+from dataclasses import dataclass
+
+from ipywidgets import BoundedFloatText, Button, Dropdown, HTML, VBox
+
 try:
     import sympy
     import pyenzyme
@@ -6,6 +10,8 @@ except ImportError:
     sympy = None
     pyenzyme = None
 
+
+##### Getters #####
 
 def get_species_from_enzymeml(enzymeml_document: EnzymeMLDocument) -> list:
     """Iterate over various species elements in EnzymeML document,
@@ -37,7 +43,6 @@ def get_species_from_enzymeml(enzymeml_document: EnzymeMLDocument) -> list:
         available_species.append(small_molecule)
     return available_species
 
-
 def get_ordered_list_of_species_names(fid: "Fid") -> list:
     """Iterate over the identites in a given FID object and extract a
     list of species names ordered by peak index, multiple occurences
@@ -68,7 +73,6 @@ def get_ordered_list_of_species_names(fid: "Fid") -> list:
     ordered_list_of_species_names = [t[0] for t in list_of_tuples]
     return ordered_list_of_species_names
 
-
 def get_initial_concentration_by_species_id(
     enzymeml_document: EnzymeMLDocument, species_id: str
 ) -> float:
@@ -93,7 +97,6 @@ def get_initial_concentration_by_species_id(
                 intial_concentration = measurement_datum.init_conc
     return intial_concentration
 
-
 def get_species_id_by_name(
     enzymeml_document: EnzymeMLDocument, species_name: str
 ) -> str:
@@ -116,7 +119,6 @@ def get_species_id_by_name(
             species_id = species.id
     return species_id
 
-
 def get_species_name_by_id(enzymeml_document: EnzymeMLDocument, species_id: str) -> str:
     """Get the name of a species in an EnzymeML document by its `species_id`.
 
@@ -138,6 +140,8 @@ def get_species_name_by_id(enzymeml_document: EnzymeMLDocument, species_id: str)
     return species_name
 
 
+##### Formatters #####
+
 def format_species_string(enzymeml_species) -> str:
     """Format a species object from an EnzymeML document as a string
     for display in widgets.
@@ -155,6 +159,28 @@ def format_species_string(enzymeml_species) -> str:
     else:
         return f"{enzymeml_species.id}"
 
+def format_measurement_string(measurement: Measurement) -> str:
+    """Format a measurement object from an EnzymeML document as a string
+    for display in widgets.
+
+    Args:
+        measurement (Measurement): A measurement object from an EnzymeML
+          document.
+
+    Returns:
+        str: The formatted measurement string.
+    """
+    if not isinstance(measurement, Measurement):
+        raise ValueError(
+            f"Parameter `measurement` has to be of type `Measurement`, got {type(measurement)} instead."
+        )
+    if measurement.name:
+        return f"{measurement.id} ({measurement.name})"
+    else:
+        return f"{measurement.id}"
+
+
+##### Measurement creation helpers #####
 
 def create_enzymeml_measurement(
     enzymeml_document: EnzymeMLDocument, **kwargs
@@ -205,7 +231,6 @@ def create_enzymeml_measurement(
         )
 
     return new_measurement
-
 
 def fill_enzymeml_measurement(
     enzymeml_document: EnzymeMLDocument, measurement: Measurement, **kwargs
@@ -365,9 +390,30 @@ def fill_enzymeml_measurement(
 
     return measurement
 
+@dataclass
+class InitialConditionTab:
+    species_id: str
+    title: str
+    header: HTML
+    textbox: BoundedFloatText
+    data_type_dropdown: Dropdown
+    data_unit_dropdown: Dropdown
+    time_unit_dropdown: Dropdown
+
+    def as_vbox(self):
+        return VBox([
+            self.header,
+            self.textbox,
+            self.data_type_dropdown,
+            self.data_unit_dropdown,
+            self.time_unit_dropdown,
+        ])
+
+
+##### Serialization #####
 
 def create_enzymeml(
-    fid_array: "FidArray", enzymeml_document: EnzymeMLDocument
+    fid_array: "FidArray", enzymeml_document: EnzymeMLDocument, measurement_id: str
 ) -> EnzymeMLDocument:
     """Create an EnzymeML document from a given FidArray object.
 
@@ -386,14 +432,22 @@ def create_enzymeml(
         raise AttributeError(
             "EnzymeML document does not contain measurement metadata. Please add a measurement to the document first."
         )
+    if not measurement_id:
+        raise ValueError(
+            "A measurement ID is required to create an EnzymeML document. Please provide a measurement ID using the `measurement_id` keyword argument."
+        )
     global_time = (fid_array.t.tolist(),)
-    for measured_species in fid_array.concentrations.items():
-        for available_species in enzymeml_document.measurements[0].species_data:
-            if not available_species.species_id == get_species_id_by_name(
-                enzymeml_document, measured_species[0]
-            ):
+    measurement = next(
+        measurement for measurement in enzymeml_document.measurements
+            if measurement.id == measurement_id
+    )
+    print(f"Selected measurement: {measurement}")
+    for measured_species, concentrations in fid_array.concentrations.items():
+        for available_species in measurement.species_data:
+            if not available_species.species_id == measured_species:
                 pass
-            available_species.time = [float(x) for x in global_time[0]]
-            available_species.data = [float(x) for x in measured_species[1]]
-
+            else:
+                available_species.time = [float(x) for x in global_time[0]]
+                available_species.data = [float(x) for x in concentrations]
+    
     return enzymeml_document
