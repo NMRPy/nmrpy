@@ -11,16 +11,22 @@ from matplotlib.transforms import blended_transform_factory
 from matplotlib.widgets import Cursor
 from matplotlib.backend_bases import NavigationToolbar2, Event
 
-from ipywidgets import FloatText, Output, VBox, Button, Combobox, Dropdown, Label
+from ipywidgets import FloatText, Output, VBox, Button, Combobox, Dropdown, Label, Checkbox, HTML, Tab, BoundedFloatText, Text
 from IPython.display import display
 import asyncio
 
 from nmrpy.utils import format_species_string
 try:
-    from pyenzyme.model import EnzymeMLDocument
+    import pyenzyme
+    import pyenzyme.units.predefined as predefined
+    from pyenzyme.model import EnzymeMLDocument, Measurement
     from nmrpy.utils import (
         get_ordered_list_of_species_names,
         get_species_from_enzymeml,
+        format_measurement_string,        
+        create_enzymeml_measurement,
+        fill_enzymeml_measurement,
+        InitialConditionTab,
     )
 except ImportError:
     pyenzyme = None
@@ -2125,6 +2131,554 @@ class ConcentrationCalculator:
         raise NotImplementedError(
             "Widget for calculating concentrations is currently under heavy construction. Please calculate and assign concentrations manually."
         )
+    
+class MeasurementCreator:
+    """
+    Widget for creating a new measurement.
+    """
+    def __init__(self, fid_array):
+        self.fid_array = fid_array
+        self.measurements = self.fid_array.enzymeml_document.measurements.copy()
+        self.template_measurement = None
+        self.new_measurement = None
+        self.initialized = False
+
+        self.unit_options_dict = {
+            name: getattr(predefined, name)
+            for name in dir(predefined)
+            if not name.startswith("_") and isinstance(getattr(predefined, name), predefined.UnitDefinition)
+        }
+        self.c_units = ["M", "mM", "uM", "nM", "mol", "mmol", "umol", "nmol"]
+        self.m_units = ["g", "mg", "ug", "ng", "kg"]
+        self.v_units = ["l", "ml", "ul", "nl"]
+        self.t_units = ["s", "min", "h", "d"]
+        self.T_units = ["K", "C"]
+
+        self._initial_name = None
+        self._initial_id = None
+        self._current_temp_unit = pyenzyme.units.predefined.K
+        self._missing_initial_conditions = []
+
+        self.create_widgets()
+        self.setup_callbacks()
+        self.initialize_measurement()
+        self.layout_widgets()
+
+    def create_widgets(self):
+        # Create all widget components
+        self.spacer = HTML(value="&nbsp;")
+
+        self.title_html = HTML(value="<b>Create new EnzymeML Measurement</b>")
+
+        self.name_textbox = Text(
+            value="",
+            description="Enter name of new measurement:",
+            layout={"width": "max-content"},
+            style={"description_width": "initial"},
+        )
+
+        self.id_checkbox = Checkbox(
+            value=False,
+            description="Assign a custom ID?",
+            indent=False,
+        )
+        self.id_textbox = Text(
+            value="",
+            description="Enter custom ID:",
+            layout={"width": "max-content"},
+            style={"description_width": "initial"},
+            disabled=True,
+        )
+            
+        self.template_checkbox = Checkbox(
+            value=False,
+            description="Use a template measurement?",
+            indent=False,
+        )
+        self.template_dropdown = Dropdown(
+            options=[],
+            description="Select a template measurement:",
+            layout={"width": "max-content"},
+            style={"description_width": "initial"},
+            disabled=True,
+        )
+
+        self.ph_checkbox = Checkbox(
+            value=True,
+            description="Keep pH?",
+            indent=False,
+            disabled=True,
+        )
+        self.ph_textbox = BoundedFloatText(
+            value=7.0,
+            min=0.0,
+            max=14.0,
+            step=0.1,
+            description="Select new pH:",
+            layout={"width": "max-content"},
+            style={"description_width": "initial"},
+        )
+
+        self.temperature_checkbox = Checkbox(
+            value=True,
+            description="Keep temperature?",
+            indent=False,
+            disabled=True,
+        )
+        self.temperature_textbox = BoundedFloatText(
+            value=298.15,
+            min=0.0,
+            max=1000.0,
+            step=0.1,
+            description="Select new temperature:",
+            layout={"width": "max-content"},
+            style={"description_width": "initial"},
+        )
+        self.temperature_unit_dropdown = Dropdown(
+            options=[
+                (unit_name, self.unit_options_dict[unit_name])
+                for unit_name in self.T_units
+                if unit_name in self.unit_options_dict
+            ],
+            value=pyenzyme.units.predefined.K,
+            description="Select temperature unit:",
+            layout={"width": "max-content"},
+            style={"description_width": "initial"},
+        )
+
+        self.initial_checkbox = Checkbox(
+            value=False,
+            description="Keep initial conditions?",
+            indent=False,
+            disabled=True,
+        )
+        self.initial_tabs = self._create_initial_tabs()
+
+        self.warning_html = HTML(value="")
+
+        self.general_tab = VBox(
+            [
+                self.name_textbox,
+                self.spacer,
+                self.id_checkbox,
+                self.id_textbox,
+                self.spacer,
+                self.template_checkbox,
+                self.template_dropdown,
+                self.spacer,
+                self.ph_checkbox,
+                self.ph_textbox,
+                self.spacer,
+                self.temperature_checkbox,
+                self.temperature_textbox,
+                self.temperature_unit_dropdown,
+                self.spacer,
+                self.initial_checkbox,
+                self.spacer,
+                self.spacer,
+                self.warning_html,
+            ]
+        )
+
+    def _create_initial_tabs(self):
+        initial_tabs = {}
+        if self.template_measurement:
+            selected_measurement = self.template_measurement.model_copy(deep=True)
+        else:
+            selected_measurement = self.measurements[-1].model_copy(deep=True)
+        for species_datum in selected_measurement.species_data:
+            for species in get_species_from_enzymeml(self.fid_array.enzymeml_document):
+                if species.id == species_datum.species_id:
+                    enzymeml_species = species
+                    break
+            
+            initial_condition_tab = InitialConditionTab(
+                species_id = enzymeml_species.id,
+                title = str(enzymeml_species.id),
+                header = HTML(value=f"<b>Set initial conditions for {format_species_string(enzymeml_species)}</b>"),
+                textbox = BoundedFloatText(
+                    value=0.0,
+                    min=0.0,
+                    max=1000.0,
+                    step=0.01,
+                    description="Initial condition:",
+                    layout={"width": "max-content"},
+                    style={"description_width": "initial"},
+                ),
+                data_type_dropdown = Dropdown(
+                    options=[(data_type.name.capitalize().replace("_", " "), data_type) for data_type in pyenzyme.DataTypes],
+                    description="Data type of initial condition:",
+                    value=pyenzyme.DataTypes.CONCENTRATION,
+                    layout={"width": "max-content"},
+                    style={"description_width": "initial"},
+                ),
+               data_unit_dropdown = Dropdown(
+                    options=[
+                        (unit_name, self.unit_options_dict[unit_name])
+                        for unit_name in self.c_units
+                        if unit_name in self.unit_options_dict
+                    ],
+                    description="Unit of initial condition:",
+                    value=pyenzyme.units.predefined.mM,
+                    layout={"width": "max-content"},
+                    style={"description_width": "initial"},
+                ),
+                time_unit_dropdown = Dropdown(
+                    options=[
+                        (unit_name, self.unit_options_dict[unit_name])
+                        for unit_name in self.t_units
+                        if unit_name in self.unit_options_dict
+                    ],
+                    description="Unit of time course:",
+                    value=pyenzyme.units.predefined.s,
+                    layout={"width": "max-content"},
+                    style={"description_width": "initial"},
+                )
+            )
+            initial_tabs[initial_condition_tab.species_id] = initial_condition_tab
+        return initial_tabs
+
+    def setup_callbacks(self):
+        # Set up all widget callbacks
+        self.name_textbox.observe(self._handle_name_change)
+
+        self.id_checkbox.observe(self._handle_id_check)
+        self.id_textbox.observe(self._handle_id_change)
+
+        self.template_checkbox.observe(self._handle_template_check)
+        self.template_dropdown.observe(self._handle_template_change)
+
+        self.ph_checkbox.observe(self._handle_ph_check)
+        self.ph_textbox.observe(self._handle_ph_change)
+
+        self.temperature_checkbox.observe(self._handle_temperature_check)
+        self.temperature_textbox.observe(self._handle_temperature_change)
+        self.temperature_unit_dropdown.observe(self._handle_temperature_unit_change)
+
+        self.initial_checkbox.observe(self._handle_initial_check)
+        for initial_tab in self.initial_tabs.values():
+            initial_tab.textbox.observe(lambda event, initial_tab=initial_tab: self._handle_initial_condition_change(event, initial_tab))
+            initial_tab.data_type_dropdown.observe(lambda event, initial_tab=initial_tab: self._handle_data_type_change(event, initial_tab))
+            initial_tab.data_unit_dropdown.observe(lambda event, initial_tab=initial_tab: self._handle_data_unit_change(event, initial_tab))
+            initial_tab.time_unit_dropdown.observe(lambda event, initial_tab=initial_tab: self._handle_time_unit_change(event, initial_tab))
+
+    def initialize_measurement(self):
+        # Initialize the new measurement
+        if self.initialized:
+            self.fid_array.enzymeml_document.measurements.pop()
+
+        self.new_measurement = create_enzymeml_measurement(
+            self.fid_array.enzymeml_document,
+            template_measurement=self.template_measurement,
+        )
+        self.new_measurement.ph = self.ph_textbox.value
+        self.new_measurement.temperature = self.temperature_textbox.value
+        self.new_measurement.temperature_unit = self.temperature_unit_dropdown.value
+        self._initial_name = self.new_measurement.name
+        self._initial_id = self.new_measurement.id
+        self.fid_array.enzymeml_document.measurements.append(self.new_measurement)
+        self._initialize_missing_initial_conditions()
+        self.initialized = True
+
+    def clear_species_data(self, measurement):
+        # Clear the template species data
+        measurement.ph = None
+        measurement.temperature = None
+        measurement.temperature_unit = None
+        for species_datum in measurement.species_data:
+            species_datum.initial = None
+            species_datum.data_type = None  
+            species_datum.data_unit = None
+            species_datum.time_unit = None
+     
+    def layout_widgets(self):
+        # Create widget layout and display
+        tab_children = [self.general_tab]
+        tab_children.extend(initial_tab.as_vbox() for initial_tab in self.initial_tabs.values())
+        tab_titles = ["General"]
+        tab_titles.extend(initial_tab.title for initial_tab in self.initial_tabs.values())
+        self.tab = Tab(
+            children=tab_children,
+            titles=tab_titles,
+        )
+        self.container = VBox(
+            [
+                self.title_html,
+                self.tab,
+            ]
+        )
+        display(self.container)
+
+    def _initialize_missing_initial_conditions(self):
+        self._missing_initial_conditions = []
+        for species in get_species_from_enzymeml(self.fid_array.enzymeml_document):
+            enzymeml_species = species
+            self._missing_initial_conditions.append(format_species_string(enzymeml_species))
+        self.warning_html.value = f"<b>WARNING:</b> Initial conditions for {', '.join(self._missing_initial_conditions)} are still missing!"
+
+    def _handle_name_change(self, event):
+        # Enable the name_textbox when the name_checkbox is checked
+        if event["type"] == "change" and event["name"] == "value":
+            if event["new"]:
+                self.new_measurement.name = self.name_textbox.value
+            else:
+                self.new_measurement.name = self._initial_name
+
+    def _handle_id_check(self, event):
+        # Enable the id_textbox when the id_checkbox is checked
+        if event["type"] == "change" and event["name"] == "value":
+            if event["new"]:
+                self.id_textbox.disabled = False
+            else:
+                self.id_textbox.disabled = True
+                self.id_textbox.value = ""
+                self.new_measurement.id = self._initial_id
+
+    def _handle_id_change(self, event):
+        # Enable the id_textbox when the id_checkbox is checked
+        if event["type"] == "change" and event["name"] == "value":
+            if event["new"]:
+                self.new_measurement.id = self.id_textbox.value
+            else:
+                self.new_measurement.id = self._initial_id
+
+    def _handle_template_check(self, event):
+        # Enable the template dropdown when the template checkbox is
+        # checked
+        if event["type"] == "change" and event["name"] == "value":
+            if event["new"]:               
+                self.template_dropdown.options = [
+                    (format_measurement_string(measurement), measurement.id)
+                    for measurement in self.measurements
+                ]
+                self.template_dropdown.value = self.template_dropdown.options[0][1]
+                self.template_dropdown.disabled = False
+                self.ph_checkbox.disabled = False
+                self.ph_textbox.disabled = True
+                self.temperature_checkbox.disabled = False
+                self.temperature_textbox.disabled = True
+                self.temperature_unit_dropdown.disabled = True
+                self.initial_checkbox.disabled = False
+            else:
+                self.template_dropdown.options = []
+                self.template_dropdown.disabled = True
+                self.ph_checkbox.disabled = True
+                self.ph_textbox.disabled = False
+                self.temperature_checkbox.disabled = True
+                self.temperature_textbox.disabled = False
+                self.temperature_unit_dropdown.disabled = False
+                self.initial_checkbox.disabled = True
+                self.template_measurement = None
+                current_name = self.new_measurement.name
+                current_id = self.new_measurement.id
+                self.initialize_measurement()
+                self.new_measurement.name = current_name
+                self.new_measurement.id = current_id
+    
+    def _handle_template_change(self, event):
+        # Populate template_measurement attribute with measurement of
+        # selected ID if template_checkbox is checked.
+        if event["type"] == "change" and event["name"] == "value":
+            selected_option = event["new"]
+            for measurement in self.measurements:
+                if measurement.id == selected_option:
+                    self.template_measurement = measurement.model_copy(deep=True)
+                    if self.new_measurement:
+                        # Preserve current name and ID settings
+                        current_name = self.new_measurement.name
+                        current_id = self.new_measurement.id
+
+                        # Create new measurement from template
+                        new_measurement = self.template_measurement.model_copy(deep=True)
+                        self.clear_species_data(new_measurement)
+                        
+                        # Update measurement with preserved values
+                        new_measurement.name = current_name
+                        new_measurement.id = current_id
+                        
+                        # Update both references to point to the same object
+                        self.fid_array.enzymeml_document.measurements[-1] = new_measurement
+                        self.new_measurement = self.fid_array.enzymeml_document.measurements[-1]
+                    break
+
+    def _handle_ph_check(self, event):
+        # Enable the ph_checkbox when the template checkbox is checked
+        if event["type"] == "change" and event["name"] == "value":
+            if event["new"]:
+                self.ph_textbox.disabled = True
+                self.new_measurement.ph = self.template_measurement.ph
+            else:
+                self.ph_textbox.disabled = False
+                self.new_measurement.ph = self.ph_textbox.value
+
+    def _handle_ph_change(self, event):
+        # Enable the ph_textbox when the ph_checkbox is checked
+        if event["type"] == "change" and event["name"] == "value":
+            if event["new"]:
+                self.new_measurement.ph = self.ph_textbox.value
+
+    def _handle_temperature_check(self, event):
+        # Enable the temperature_checkbox when the template checkbox is
+        # checked
+        if event["type"] == "change" and event["name"] == "value":
+            if event["new"]:
+                self.temperature_textbox.disabled = True
+                self.temperature_unit_dropdown.disabled = True
+                self.new_measurement.temperature = self.template_measurement.temperature
+                self.new_measurement.temperature_unit = self.template_measurement.temperature_unit
+            else:
+                self.temperature_textbox.disabled = False
+                self.temperature_unit_dropdown.disabled = False
+                self.new_measurement.temperature = self.temperature_textbox.value
+                self.new_measurement.temperature_unit = self.temperature_unit_dropdown.value
+    
+    def _handle_temperature_change(self, event):
+        # Enable the temperature_textbox when the temperature_checkbox is
+        # checked
+        if event["type"] == "change" and event["name"] == "value":
+            if event["new"]:
+                self.new_measurement.temperature = self.temperature_textbox.value
+                self.new_measurement.temperature_unit = self.temperature_unit_dropdown.value
+
+    def _handle_temperature_unit_change(self, event):
+        # Enable the temperature_unit_dropdown when the template
+        # checkbox is checked. T_max of 2500 ˚C (2773.15 K) has been
+        # chosen according to Hodkinson P., Modern Methods in Solid-
+        # state NMR: A Practitioner's Guide (2018), pp. 262, as the
+        # highest temperature yet reported for NMR experiments.
+        if event["type"] == "change" and event["name"] == "value":
+            if event["new"]:
+                current_value = self.temperature_textbox.value
+                new_unit = self.temperature_unit_dropdown.value
+                old_unit = self._current_temp_unit
+
+                if old_unit == new_unit:
+                    return  # No conversion needed
+
+                if new_unit == pyenzyme.units.predefined.K:
+                    # Converting from °C to K
+                    converted_value = current_value + 273.15
+                    self.temperature_textbox.min = 0.0
+                    self.temperature_textbox.max = 2773.15
+                    self.temperature_textbox.value = converted_value
+                    self.new_measurement.temperature = converted_value
+                    self.new_measurement.temperature_unit = new_unit
+
+                elif new_unit == pyenzyme.units.predefined.C:
+                    # Converting from K to °C
+                    converted_value = current_value - 273.15
+                    self.temperature_textbox.min = -273.15
+                    self.temperature_textbox.max = 2500.0
+                    self.temperature_textbox.value = converted_value
+                    self.new_measurement.temperature = converted_value
+                    self.new_measurement.temperature_unit = new_unit
+
+                else:
+                    raise ValueError(
+                        f"Invalid temperature unit. Valid units are K and C, "
+                        f"got {new_unit} instead."
+                    )
+                    
+                self._current_temp_unit = new_unit
+
+    def _handle_initial_check(self, event):
+        # Enable the initial_checkbox when the template checkbox is
+        # checked
+        if event["type"] == "change" and event["name"] == "value":
+            if event["new"]:
+                for new_datum, template_datum, initial_tab in zip(self.new_measurement.species_data, self.template_measurement.species_data, self.initial_tabs.values()):
+                    initial_tab.textbox.value = template_datum.initial
+                    initial_tab.data_type_dropdown.options = [(template_datum.data_type.name.capitalize().replace("_", " "), template_datum.data_type)]
+                    initial_tab.data_type_dropdown.value = template_datum.data_type
+                    initial_tab.data_unit_dropdown.options = [
+                        (template_datum.data_unit.name, template_datum.data_unit)
+                    ]
+                    initial_tab.data_unit_dropdown.value = template_datum.data_unit
+                    initial_tab.time_unit_dropdown.options = [
+                        (template_datum.time_unit.name, template_datum.time_unit)
+                    ]
+                    initial_tab.time_unit_dropdown.value = template_datum.time_unit
+                    new_datum.initial = template_datum.initial
+                    new_datum.data_type = template_datum.data_type
+                    new_datum.data_unit = template_datum.data_unit
+                    new_datum.time_unit = template_datum.time_unit
+            else:
+                for new_datum, initial_tab in zip(self.new_measurement.species_data, self.initial_tabs.values()):
+                    initial_tab.textbox.value = 0.0
+                    initial_tab.data_type_dropdown.options = [(data_type.name.capitalize().replace("_", " "), data_type) for data_type in pyenzyme.DataTypes]
+                    initial_tab.data_type_dropdown.value = pyenzyme.DataTypes.CONCENTRATION
+                    initial_tab.data_unit_dropdown.options = [
+                        (unit_name, self.unit_options_dict[unit_name])
+                        for unit_name in self.c_units
+                        if unit_name in self.unit_options_dict
+                    ]
+                    initial_tab.data_unit_dropdown.value = pyenzyme.units.predefined.mM
+                    initial_tab.time_unit_dropdown.options = [
+                        (unit_name, self.unit_options_dict[unit_name])
+                        for unit_name in self.t_units
+                        if unit_name in self.unit_options_dict
+                    ]
+                    initial_tab.time_unit_dropdown.value = pyenzyme.units.predefined.s
+                    new_datum.initial = None
+                    new_datum.data_type = None
+                    new_datum.data_unit = None
+                    new_datum.time_unit = None
+                self._initialize_missing_initial_conditions()
+
+    def _handle_initial_condition_change(self, event, initial_tab):
+        # Enable the initial_checkbox when the template checkbox is
+        # checked
+        if event["type"] == "change" and event["name"] == "value":
+            if event["new"]:
+                if not self.new_measurement.species_data:
+                    self.new_measurement.add_to_species_data(
+                            species_id=initial_tab.species_id,
+                            initial=event["new"],
+                            data_type=initial_tab.data_type_dropdown.value,
+                            data_unit=initial_tab.data_unit_dropdown.value,
+                            time_unit=initial_tab.time_unit_dropdown.value
+                        )
+                for species_datum in self.new_measurement.species_data:
+                    if species_datum.species_id == initial_tab.species_id:
+                        species_datum.initial = event["new"]
+                    for species in get_species_from_enzymeml(self.fid_array.enzymeml_document):
+                        if species.id == species_datum.species_id:
+                            enzymeml_species = species
+                            if format_species_string(enzymeml_species) in self._missing_initial_conditions:
+                                self._missing_initial_conditions.remove(format_species_string(enzymeml_species))
+                            break
+                    if len(self._missing_initial_conditions) == 0:
+                        self.warning_html.value = "All initial conditions have been set!"
+                    else:
+                        self.warning_html.value = f"<b>WARNING:</b> Initial conditions for {', '.join(self._missing_initial_conditions)} are still missing!"
+
+    def _handle_data_type_change(self, event, initial_tab):
+        # Enable the data_type_dropdown when the data_type_checkbox is
+        # checked
+        if event["type"] == "change" and event["name"] == "value":
+            if event["new"]:
+                for species_datum in self.new_measurement.species_data:
+                    if species_datum.species_id == initial_tab.species_id:
+                        species_datum.data_type = event["new"]
+    
+    def _handle_data_unit_change(self, event, initial_tab):
+        # Enable the data_unit_dropdown when the data_unit_checkbox is
+        # checked
+        if event["type"] == "change" and event["name"] == "value":
+            if event["new"]:
+                for species_datum in self.new_measurement.species_data:
+                    if species_datum.species_id == initial_tab.species_id:
+                        species_datum.data_unit = event["new"]
+
+    def _handle_time_unit_change(self, event, initial_tab):
+        # Enable the time_unit_dropdown when the time_unit_checkbox is
+        # checked
+        if event["type"] == "change" and event["name"] == "value":
+            if event["new"]:
+                for species_datum in self.new_measurement.species_data:
+                    if species_datum.species_id == initial_tab.species_id:
+                        species_datum.time_unit = event["new"]
+
 
 if __name__ == '__main__':
     pass
