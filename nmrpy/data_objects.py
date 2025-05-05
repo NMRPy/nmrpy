@@ -2328,7 +2328,7 @@ Ctrl+Alt+Right - assign
             "Widget for calculating concentrations is currently under heavy construction. Please calculate and assign concentrations manually."
         )
 
-    def save_to_file(self, filename=None, overwrite=False):
+    def save_to_file(self, filename=None, overwrite=False, keep_data_model=True, keep_enzymeml=True):
         """
         Save :class:`~nmrpy.data_objects.FidArray` object to file, including all objects owned.
 
@@ -2336,6 +2336,9 @@ Ctrl+Alt+Right - assign
 
         :keyword overwrite: if True, overwrite existing file
 
+        :keyword keep_data_model: if True, keep the NMRpy data model (default is True)
+
+        :keyword keep_enzymeml: if True, keep the EnzymeML document (default is True)
         """
         if filename is None:
             basename = os.path.split(os.path.splitext(self.fid_path)[0])[-1]
@@ -2355,6 +2358,14 @@ Ctrl+Alt+Right - assign
         self._del_widgets()
         for fid in self.get_fids():
             fid._del_widgets()
+        if not keep_data_model:
+            self.data_model = None
+            for fid in self.get_fids():
+                fid.fid_object = None
+        if not keep_enzymeml:
+            self.enzymeml_document = None
+            for fid in self.get_fids():
+                fid.enzymeml_species = None
         with open(filename, 'wb') as f:
             pickle.dump(self, f)
 
