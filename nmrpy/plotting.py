@@ -1764,7 +1764,12 @@ class PeakAssigner:
             return
         # Check for EnzymeML document
         elif isinstance(species_source, EnzymeMLDocument):
-            self.available_species = get_species_from_enzymeml(species_source)
+            self.available_species = get_species_from_enzymeml(
+                species_source,
+                proteins=False,
+                complexes=True,
+                small_molecules=True
+            )
             return
         # Check for list of strings
         elif isinstance(species_source, list):
@@ -1928,12 +1933,20 @@ class PeakRangeAssigner:
                     "No species list provided and FIDArray has no enzymeml_document"
                 )
             self.available_species = get_species_from_enzymeml(
-                self.fid_array.enzymeml_document
+                self.fid_array.enzymeml_document,
+                proteins=False,
+                complexes=True,
+                small_molecules=True
             )
             return
         # Check for EnzymeML document
         elif isinstance(species_source, EnzymeMLDocument):
-            self.available_species = get_species_from_enzymeml(species_source)
+            self.available_species = get_species_from_enzymeml(
+                species_source,
+                proteins=False,
+                complexes=True,
+                small_molecules=True
+            )
             return
         # Check for list of strings
         elif isinstance(species_source, list):
