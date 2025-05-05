@@ -10,6 +10,7 @@ import pickle
 import re
 from ipywidgets import Output
 from IPython.display import display
+from datetime import datetime
 
 from nmrpy.nmrpy_model import (
     NMRpy,
@@ -280,11 +281,12 @@ class Fid(Base):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.data = kwargs.get('data', [])
+        self.raw_data = self.data.copy()
         self.peaks = None
         self.ranges = None
         self.species = None
         self.fid_object = FIDObject(
-            raw_data=[(str(datum)) for datum in self.data],
+            raw_data=[],
             processed_data=[],
             nmr_parameters=Parameters(),
             processing_steps=ProcessingSteps(),
@@ -597,7 +599,6 @@ class Fid(Base):
         """
         self.data = numpy.append(self.data, 0*self.data)
         # Update data model
-        self.fid_object.processed_data = [str(datum) for datum in self.data]
         self.fid_object.processing_steps.is_zero_filled = True
 
     def emhz(self, lb=5.0):
@@ -611,7 +612,6 @@ class Fid(Base):
         """
         self.data = numpy.exp(-numpy.pi*numpy.arange(len(self.data)) * (lb/self._params['sw_hz'])) * self.data
         # Update data model
-        self.fid_object.processed_data = [str(datum) for datum in self.data]
         self.fid_object.processing_steps.is_apodised = True
         self.fid_object.processing_steps.apodisation_frequency = lb
 
@@ -621,7 +621,7 @@ class Fid(Base):
         """
         self.data = numpy.real(self.data)
         # Update data model
-        self.fid_object.processed_data = [float(datum) for datum in self.data]
+
         self.fid_object.processing_steps.is_only_real = True
  
     # GENERAL FUNCTIONS
@@ -642,7 +642,6 @@ class Fid(Base):
             self.data = Fid._ft(list_params)
             self._flags['ft'] = True
         # Update data model
-        self.fid_object.processed_data = [str(datum) for datum in self.data]
         self.fid_object.processing_steps.is_fourier_transformed = True
         self.fid_object.processing_steps.fourier_transform_type = 'FFT'
 
@@ -792,7 +791,6 @@ class Fid(Base):
         ph = numpy.exp(1.0j*(p0+(p1*numpy.arange(size)/size)))
         self.data = ph*self.data
         # Update data model
-        self.fid_object.processed_data = [str(datum) for datum in self.data]
         self.fid_object.processing_steps.is_phased = True
         self.fid_object.processing_steps.zero_order_phase = p0
         self.fid_object.processing_steps.first_order_phase = p1
@@ -860,7 +858,6 @@ Left - select peak
         data_bl = data-yp
         self.data = numpy.array(data_bl)
         # Update data model
-        self.fid_object.processed_data = [str(datum) for datum in self.data]
         self.fid_object.processing_steps.is_baseline_corrected = True
 
     def peakpick(self, thresh=0.1):
@@ -2425,7 +2422,7 @@ Ctrl+Alt+Right - assign
             "Widget for calculating concentrations is currently under heavy construction. Please calculate and assign concentrations manually."
         )
 
-    def save_to_file(self, filename=None, overwrite=False):
+    def save_to_file(self, filename=None, overwrite=False, keep_data_model=False, keep_enzymeml=True):
         """
         Save :class:`~nmrpy.data_objects.FidArray` object to file, including all objects owned.
 
@@ -2433,6 +2430,9 @@ Ctrl+Alt+Right - assign
 
         :keyword overwrite: if True, overwrite existing file
 
+        :keyword keep_data_model: if True, keep the NMRpy data model (default is True)
+
+        :keyword keep_enzymeml: if True, keep the EnzymeML document (default is True)
         """
         if filename is None:
             basename = os.path.split(os.path.splitext(self.fid_path)[0])[-1]
@@ -2452,8 +2452,64 @@ Ctrl+Alt+Right - assign
         self._del_widgets()
         for fid in self.get_fids():
             fid._del_widgets()
+        if not keep_data_model:
+            self.data_model = None
+            for fid in self.get_fids():
+                fid.fid_object = None
+        if not keep_enzymeml:
+            self.enzymeml_document = None
+            for fid in self.get_fids():
+                fid.enzymeml_species = None
         with open(filename, 'wb') as f:
             pickle.dump(self, f)
+
+    def save_data_model(self, format: str = 'json', filename=None, overwrite=False):
+        """
+        Save the NMRpy data model to a file.
+
+        :keyword format: format of the file to save the data model to (default is 'json')
+
+        :keyword filename: filename to save the data model to
+
+        :keyword overwrite: if True, overwrite existing file
+        """
+        if filename is None:
+            basename = os.path.split(os.path.splitext(self.fid_path)[0])[-1]
+            filename = basename+'.'+format
+        if not isinstance(filename, str):
+            raise TypeError('filename must be a string.')
+        if filename[-len(format):] != format:
+            filename += '.'+format
+        if not overwrite and os.path.exists(filename):
+            raise FileExistsError(f'File {filename} already exists. Set overwrite=True to force.')
+        
+        # Convert raw_data and processed_data to lists for serialisation
+        for fid in self.get_fids():
+            # Raw data is always complex, convert to a list of strings
+            fid.fid_object.raw_data = [str(datum) for datum in fid.raw_data.copy()]
+            # If the processed data is still complex, also convert to a
+            # list of strings
+            if isinstance(fid.data.flat[0], numpy.complexfloating):
+                fid.fid_object.processed_data = [str(datum) for datum in fid.data.copy()]
+            # If the processed data is already real, convert to a list
+            # of floats instead
+            else:
+                fid.fid_object.processed_data = fid.data.tolist()
+        self.data_model.datetime_modified = datetime.now().isoformat()
+
+        # Save the data model
+        if format == 'json':
+            with open(filename, 'w') as f:
+                json_string = self.data_model.model_dump_json(
+                    indent=2,
+                    by_alias=True,
+                    exclude_none=True
+                )
+                f.write(json_string)
+            print(f'Data model saved to "{filename}".')
+        else:
+            raise ValueError(f'Unsupported format: {format}')
+
 
     def create_new_enzymeml_measurement(
             self,

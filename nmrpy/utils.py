@@ -13,7 +13,12 @@ except ImportError:
 
 ##### Getters #####
 
-def get_species_from_enzymeml(enzymeml_document: EnzymeMLDocument) -> list:
+def get_species_from_enzymeml(
+    enzymeml_document: EnzymeMLDocument,
+    proteins: bool = True,
+    complexes: bool = True,
+    small_molecules: bool = True
+) -> list:
     """Iterate over various species elements in EnzymeML document,
     extract them, and return them as a list.
 
@@ -34,13 +39,20 @@ def get_species_from_enzymeml(enzymeml_document: EnzymeMLDocument) -> list:
         raise AttributeError(
             f"Parameter `enzymeml_document` has to be of type `EnzymeMLDocument`, got {type(enzymeml_document)} instead."
         )
+    if not proteins and not complexes and not small_molecules:
+        raise ValueError(
+            "At least one of the parameters `proteins`, `complexes`, or `small_molecules` must be `True`."
+        )
     available_species = []
-    for protein in enzymeml_document.proteins:
-        available_species.append(protein)
-    for complex in enzymeml_document.complexes:
-        available_species.append(complex)
-    for small_molecule in enzymeml_document.small_molecules:
-        available_species.append(small_molecule)
+    if proteins:
+        for protein in enzymeml_document.proteins:
+            available_species.append(protein)
+    if complexes:
+        for complex in enzymeml_document.complexes:
+            available_species.append(complex)
+    if small_molecules:
+        for small_molecule in enzymeml_document.small_molecules:
+            available_species.append(small_molecule)
     return available_species
 
 def get_ordered_list_of_species_names(fid: "Fid") -> list:
