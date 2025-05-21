@@ -590,7 +590,7 @@ class Fid(Base):
 
         """
         if self._flags['ft']:
-                raise ValueError('Data have already been Fourier Transformed.')
+            raise ValueError('Data have already been Fourier Transformed.')
         if Fid._is_valid_dataset(self.data):
             list_params = (self.data, self._file_format)
             self.data = Fid._ft(list_params)
@@ -606,17 +606,21 @@ class Fid(Base):
         list_params is a tuple of (<data>, <file_format>).
         """
         if len(list_params) != 2:
-            raise ValueError('Wrong number of parameters. list_params must contain [<data>, <file_format>]')
+            raise ValueError(
+                'Wrong number of parameters. list_params must contain [<data>, <file_format>]'
+            )
         data, file_format = list_params
         if Fid._is_valid_dataset(data) and file_format in Fid._file_formats:
             data = numpy.array(numpy.fft.fft(data), dtype=data.dtype)
             s = len(data)
             if file_format == 'varian' or file_format == None:
-                    ft_data = numpy.append(data[int(s / 2.0):], data[: int(s / 2.0)])
+                ft_data = numpy.append(data[int(s / 2.0) :], data[: int(s / 2.0)])
             if file_format == 'bruker':
-                    ft_data = numpy.append(data[int(s / 2.0):: -1], data[s: int(s / 2.0): -1])
+                ft_data = numpy.append(
+                    data[int(s / 2.0) :: -1], data[s : int(s / 2.0) : -1]
+                )
             return ft_data
-
+        return None
 
     @staticmethod
     def _conv_to_ppm(data, index, sw_left, sw):
@@ -1413,12 +1417,13 @@ class FidArray(Base):
 
     @data_model.setter
     def data_model(self, data_model):
-        if not isinstance(data_model, NMRpy):
+        if not isinstance(data_model, NMRpy) and data_model is not None:
             raise AttributeError(
                 f'Parameter `data_model` has to be of type `NMRpy`, got {type(data_model)} instead.'
             )
         self.__data_model = data_model
-        self.__data_model.datetime_modified = str(datetime.now())
+        if data_model is not None:
+            self.__data_model.datetime_modified = str(datetime.now())
 
     @data_model.deleter
     def data_model(self):
