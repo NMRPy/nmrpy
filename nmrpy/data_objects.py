@@ -341,6 +341,10 @@ class Fid(Base):
         if isinstance(fid_object, FIDObject):
             self.__fid_object = fid_object
 
+    @fid_object.deleter
+    def fid_object(self):
+        del self.__fid_object
+
     @property
     def enzymeml_species(self):
         return self.__enzymeml_species
@@ -2359,10 +2363,12 @@ Ctrl+Alt+Right - assign
         self._del_widgets()
         for fid in self.get_fids():
             fid._del_widgets()
+        # delete data model if required
         if not keep_data_model:
-            self.data_model = None
+            del self.data_model
             for fid in self.get_fids():
-                fid.fid_object = None
+                del fid.fid_object
+        # delete enzymeml document if required
         if not keep_enzymeml:
             self.enzymeml_document = None
             for fid in self.get_fids():
