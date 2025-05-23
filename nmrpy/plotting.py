@@ -9,11 +9,9 @@ from matplotlib.collections import PolyCollection
 from matplotlib.patches import Rectangle
 from matplotlib.transforms import blended_transform_factory
 from matplotlib.widgets import Cursor
-from matplotlib.backend_bases import NavigationToolbar2, Event
 
-from ipywidgets import FloatText, Output, VBox, Button, Combobox, Dropdown, Label, Checkbox, HTML, Tab, BoundedFloatText, Text
+from ipywidgets import FloatText, Output, VBox, HBox, Button, Combobox, Dropdown, Label, Checkbox, HTML, Tab, BoundedFloatText, Text
 from IPython.display import display
-import asyncio
 
 from nmrpy.utils import format_species_string
 try:
@@ -1522,30 +1520,25 @@ class Calibrator:
         
         self.textinput = FloatText(value=0.0, description='New PPM:',
             disabled=False, continuous_update=False)
-        
-    def _wait_for_change(self, widget, value):
-        future = asyncio.Future()
-        def getvalue(change):
-            # make the new value available
-            future.set_result(change.new)
-            widget.unobserve(getvalue, value)
-        widget.observe(getvalue, value)
-        return future
-        
+        self.button = Button(description='Apply!', disabled=False, button_style='')
+        self.button.on_click(self._applycalibration)
+
     def process(self):
-        peak = self.peak_selector.psm.peak
+        self.peak = self.peak_selector.psm.peak
         self.peak_selector.out.clear_output()
         with self.peak_selector.out:
-            print('current peak ppm:    {}'.format(peak))
-            display(self.textinput)
-        async def f():
-            newx = await self._wait_for_change(self.textinput, 'value')
-            offset = newx - peak
-            self.fid._params['sw_left'] = self.sw_left + offset
-            with self.peak_selector.out:
-                print('calibration done.')
-            plt.close(self.peak_selector.fig)
-        asyncio.ensure_future(f())
+            print('current peak ppm:    {}'.format(self.peak))
+            display(HBox([self.textinput, self.button]))
+
+    def _applycalibration(self, event):
+        newx = self.textinput.value
+        offset = newx - self.peak
+        self.fid._params['sw_left'] = self.sw_left + offset
+
+        with self.peak_selector.out:
+            print('calibration done.')
+        self.button.disabled = True
+        plt.close(self.peak_selector.fig)
 
 class RangeCalibrator:
     """
@@ -1591,40 +1584,32 @@ class RangeCalibrator:
         
         self.textinput = FloatText(value=0.0, description='New PPM:',
             disabled=False, continuous_update=False)
-        
-    def _wait_for_change(self, widget, value):
-        future = asyncio.Future()
-        def getvalue(change):
-            # make the new value available
-            future.set_result(change.new)
-            widget.unobserve(getvalue, value)
-        widget.observe(getvalue, value)
-        return future
+        self.button = Button(description='Apply!', disabled=False, button_style='')
+        self.button.on_click(self._applycalibration)
         
     def process(self):
-        peak = self.peak_selector.psm.peak
+        self.peak = self.peak_selector.psm.peak
         self.peak_selector.out.clear_output()
         with self.peak_selector.out:
-            print('current peak ppm:    {}'.format(peak))
-            display(self.textinput)
-        async def f():
-            newx = await self._wait_for_change(self.textinput, 'value')
-            offset = newx - peak
-            self._applycalibration(offset)
-            with self.peak_selector.out:
-                print('calibration done.')
-            plt.close(self.peak_selector.fig)
-        asyncio.ensure_future(f())
+            print('current peak ppm:    {}'.format(self.peak))
+            display(HBox([self.textinput, self.button]))
 
-    def _applycalibration(self, offset):
+    def _applycalibration(self, event):
+        newx = self.textinput.value
+        offset = newx - self.peak
         self.fid_array._params['sw_left'] = self.sw_left + offset
-        
+
         if self.assign_only_to_index:
             for fid in [self.fids[i] for i in self.fid_number]:
                 fid._params['sw_left'] = self.sw_left + offset
-        else:       
+        else:
             for fid in self.fids:
                 fid._params['sw_left'] = self.sw_left + offset
+
+        with self.peak_selector.out:
+            print('calibration done.')
+        self.button.disabled = True
+        plt.close(self.peak_selector.fig)
 
 class FidArrayRangeSelector:
     """Interactive data-selection widget with ranges. Spans are saved as self.ranges."""
