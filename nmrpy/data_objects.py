@@ -1420,13 +1420,12 @@ class FidArray(Base):
 
     @data_model.setter
     def data_model(self, data_model):
-        if not isinstance(data_model, NMRpy) and data_model is not None:
+        if not isinstance(data_model, NMRpy):
             raise AttributeError(
                 f'Parameter `data_model` has to be of type `NMRpy`, got {type(data_model)} instead.'
             )
         self.__data_model = data_model
-        if data_model is not None:
-            self.__data_model.datetime_modified = str(datetime.now())
+        self.__data_model.datetime_modified = str(datetime.now())
 
     @data_model.deleter
     def data_model(self):
