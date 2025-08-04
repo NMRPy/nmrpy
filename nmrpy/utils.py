@@ -5,8 +5,9 @@ from ipywidgets import BoundedFloatText, Button, Dropdown, HTML, VBox
 try:
     import sympy
     import pyenzyme
-    from pyenzyme.model import EnzymeMLDocument, Measurement
-except ImportError:
+    from pyenzyme import EnzymeMLDocument, Measurement
+except ImportError as ex:
+    print(ex)
     sympy = None
     pyenzyme = None
 

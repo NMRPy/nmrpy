@@ -24,7 +24,7 @@ from nmrpy.nmrpy_model import (
 )
 try:
     import pyenzyme
-    from pyenzyme.model import EnzymeMLDocument, Measurement
+    from pyenzyme import EnzymeMLDocument, Measurement
     from nmrpy.utils import create_enzymeml, create_enzymeml_measurement, fill_enzymeml_measurement, get_species_from_enzymeml
 except ImportError:
     pyenzyme = None
@@ -1718,7 +1718,7 @@ class FidArray(Base):
                 "The `pyenzyme` package is required to use NMRpy with an EnzymeML document. Please install it via `pip install nmrpy[enzymeml]`."
             )
         self.enzymeml_document = pyenzyme.read_enzymeml(
-            cls=pyenzyme.EnzymeMLDocument, path=path_to_enzymeml_document
+            path=path_to_enzymeml_document
         )    
 
     @classmethod
