@@ -60,7 +60,7 @@ Technical Biochemistry, University of Stuttgart, Germany.
     'name': 'nmrpy',
     'extras_require': {
         'enzymeml': [
-            'pyenzyme @ git+https://github.com/EnzymeML/PyEnzyme.git@v2-migration#egg=pyenzyme',
+            'pyenzyme>=2.1.0',
             'sympy'
         ]
     }
