@@ -16,8 +16,7 @@ from IPython.display import display
 from nmrpy.utils import format_species_string
 try:
     import pyenzyme
-    import pyenzyme.units.predefined as predefined
-    from pyenzyme.model import EnzymeMLDocument, Measurement
+    from pyenzyme import EnzymeMLDocument, Measurement
     from nmrpy.utils import (
         get_ordered_list_of_species_names,
         get_species_from_enzymeml,
@@ -26,7 +25,8 @@ try:
         fill_enzymeml_measurement,
         InitialConditionTab,
     )
-except ImportError:
+except ImportError as ex:
+    print(f"Optional dependency import failed for plotting.py: {ex}")
     pyenzyme = None
 
 class Plot():
@@ -2132,20 +2132,15 @@ class MeasurementCreator:
         self.new_measurement = None
         self.initialized = False
 
-        self.unit_options_dict = {
-            name: getattr(predefined, name)
-            for name in dir(predefined)
-            if not name.startswith("_") and isinstance(getattr(predefined, name), predefined.UnitDefinition)
-        }
-        self.c_units = ["M", "mM", "uM", "nM", "mol", "mmol", "umol", "nmol"]
-        self.m_units = ["g", "mg", "ug", "ng", "kg"]
+        self.c_units = ["mol/l", "mmol/l", "umol/l", "nmol/l", "mol", "mmol", "umol", "nmol"]
+        self.m_units = ["g", "mg", "ug"]
         self.v_units = ["l", "ml", "ul", "nl"]
         self.t_units = ["s", "min", "h", "d"]
         self.T_units = ["K", "C"]
 
         self._initial_name = None
         self._initial_id = None
-        self._current_temp_unit = pyenzyme.units.predefined.K
+        self._current_temp_unit = "K"
         self._missing_initial_conditions = []
 
         self.create_widgets()
@@ -2223,14 +2218,12 @@ class MeasurementCreator:
             layout={"width": "max-content"},
             style={"description_width": "initial"},
         )
-        self.temperature_unit_dropdown = Dropdown(
-            options=[
-                (unit_name, self.unit_options_dict[unit_name])
-                for unit_name in self.T_units
-                if unit_name in self.unit_options_dict
-            ],
-            value=pyenzyme.units.predefined.K,
+        self.temperature_unit_combobox = Combobox(
+            options=self.T_units,
+            value="K",
             description="Select temperature unit:",
+            ensure_option=False,
+            placeholder="Select or type unit",
             layout={"width": "max-content"},
             style={"description_width": "initial"},
         )
@@ -2260,7 +2253,7 @@ class MeasurementCreator:
                 self.spacer,
                 self.temperature_checkbox,
                 self.temperature_textbox,
-                self.temperature_unit_dropdown,
+                self.temperature_unit_combobox,
                 self.spacer,
                 self.initial_checkbox,
                 self.spacer,
@@ -2301,25 +2294,21 @@ class MeasurementCreator:
                     layout={"width": "max-content"},
                     style={"description_width": "initial"},
                 ),
-               data_unit_dropdown = Dropdown(
-                    options=[
-                        (unit_name, self.unit_options_dict[unit_name])
-                        for unit_name in self.c_units
-                        if unit_name in self.unit_options_dict
-                    ],
+                data_unit_combobox = Combobox(
+                    options=self.c_units,
                     description="Unit of initial condition:",
-                    value=pyenzyme.units.predefined.mM,
+                    value="mM",
+                    ensure_option=False,
+                    placeholder="Select or type unit",
                     layout={"width": "max-content"},
                     style={"description_width": "initial"},
                 ),
-                time_unit_dropdown = Dropdown(
-                    options=[
-                        (unit_name, self.unit_options_dict[unit_name])
-                        for unit_name in self.t_units
-                        if unit_name in self.unit_options_dict
-                    ],
+                time_unit_combobox = Combobox(
+                    options=self.t_units,
                     description="Unit of time course:",
-                    value=pyenzyme.units.predefined.s,
+                    value="s",
+                    ensure_option=False,
+                    placeholder="Select or type unit",
                     layout={"width": "max-content"},
                     style={"description_width": "initial"},
                 )
@@ -2342,14 +2331,14 @@ class MeasurementCreator:
 
         self.temperature_checkbox.observe(self._handle_temperature_check)
         self.temperature_textbox.observe(self._handle_temperature_change)
-        self.temperature_unit_dropdown.observe(self._handle_temperature_unit_change)
+        self.temperature_unit_combobox.observe(self._handle_temperature_unit_change)
 
         self.initial_checkbox.observe(self._handle_initial_check)
         for initial_tab in self.initial_tabs.values():
             initial_tab.textbox.observe(lambda event, initial_tab=initial_tab: self._handle_initial_condition_change(event, initial_tab))
             initial_tab.data_type_dropdown.observe(lambda event, initial_tab=initial_tab: self._handle_data_type_change(event, initial_tab))
-            initial_tab.data_unit_dropdown.observe(lambda event, initial_tab=initial_tab: self._handle_data_unit_change(event, initial_tab))
-            initial_tab.time_unit_dropdown.observe(lambda event, initial_tab=initial_tab: self._handle_time_unit_change(event, initial_tab))
+            initial_tab.data_unit_combobox.observe(lambda event, initial_tab=initial_tab: self._handle_data_unit_change(event, initial_tab))
+            initial_tab.time_unit_combobox.observe(lambda event, initial_tab=initial_tab: self._handle_time_unit_change(event, initial_tab))
 
     def initialize_measurement(self):
         # Initialize the new measurement
@@ -2362,7 +2351,7 @@ class MeasurementCreator:
         )
         self.new_measurement.ph = self.ph_textbox.value
         self.new_measurement.temperature = self.temperature_textbox.value
-        self.new_measurement.temperature_unit = self.temperature_unit_dropdown.value
+        self.new_measurement.temperature_unit = self.temperature_unit_combobox.value
         self._initial_name = self.new_measurement.name
         self._initial_id = self.new_measurement.id
         self.fid_array.enzymeml_document.measurements.append(self.new_measurement)
@@ -2375,10 +2364,10 @@ class MeasurementCreator:
         measurement.temperature = None
         measurement.temperature_unit = None
         for species_datum in measurement.species_data:
-            species_datum.initial = None
-            species_datum.data_type = None  
-            species_datum.data_unit = None
-            species_datum.time_unit = None
+            del species_datum.initial
+            del species_datum.data_type
+            del species_datum.data_unit
+            del species_datum.time_unit
      
     def layout_widgets(self):
         # Create widget layout and display
@@ -2446,7 +2435,7 @@ class MeasurementCreator:
                 self.ph_textbox.disabled = True
                 self.temperature_checkbox.disabled = False
                 self.temperature_textbox.disabled = True
-                self.temperature_unit_dropdown.disabled = True
+                self.temperature_unit_combobox.disabled = True
                 self.initial_checkbox.disabled = False
             else:
                 self.template_dropdown.options = []
@@ -2455,7 +2444,7 @@ class MeasurementCreator:
                 self.ph_textbox.disabled = False
                 self.temperature_checkbox.disabled = True
                 self.temperature_textbox.disabled = False
-                self.temperature_unit_dropdown.disabled = False
+                self.temperature_unit_combobox.disabled = False
                 self.initial_checkbox.disabled = True
                 self.template_measurement = None
                 current_name = self.new_measurement.name
@@ -2512,14 +2501,14 @@ class MeasurementCreator:
         if event["type"] == "change" and event["name"] == "value":
             if event["new"]:
                 self.temperature_textbox.disabled = True
-                self.temperature_unit_dropdown.disabled = True
+                self.temperature_unit_combobox.disabled = True
                 self.new_measurement.temperature = self.template_measurement.temperature
                 self.new_measurement.temperature_unit = self.template_measurement.temperature_unit
             else:
                 self.temperature_textbox.disabled = False
-                self.temperature_unit_dropdown.disabled = False
+                self.temperature_unit_combobox.disabled = False
                 self.new_measurement.temperature = self.temperature_textbox.value
-                self.new_measurement.temperature_unit = self.temperature_unit_dropdown.value
+                self.new_measurement.temperature_unit = self.temperature_unit_combobox.value
     
     def _handle_temperature_change(self, event):
         # Enable the temperature_textbox when the temperature_checkbox is
@@ -2527,7 +2516,7 @@ class MeasurementCreator:
         if event["type"] == "change" and event["name"] == "value":
             if event["new"]:
                 self.new_measurement.temperature = self.temperature_textbox.value
-                self.new_measurement.temperature_unit = self.temperature_unit_dropdown.value
+                self.new_measurement.temperature_unit = self.temperature_unit_combobox.value
 
     def _handle_temperature_unit_change(self, event):
         # Enable the temperature_unit_dropdown when the template
@@ -2538,13 +2527,13 @@ class MeasurementCreator:
         if event["type"] == "change" and event["name"] == "value":
             if event["new"]:
                 current_value = self.temperature_textbox.value
-                new_unit = self.temperature_unit_dropdown.value
+                new_unit = self.temperature_unit_combobox.value
                 old_unit = self._current_temp_unit
 
                 if old_unit == new_unit:
                     return  # No conversion needed
 
-                if new_unit == pyenzyme.units.predefined.K:
+                if new_unit == "K":
                     # Converting from °C to K
                     converted_value = current_value + 273.15
                     self.temperature_textbox.min = 0.0
@@ -2553,7 +2542,7 @@ class MeasurementCreator:
                     self.new_measurement.temperature = converted_value
                     self.new_measurement.temperature_unit = new_unit
 
-                elif new_unit == pyenzyme.units.predefined.C:
+                elif new_unit == "C":
                     # Converting from K to °C
                     converted_value = current_value - 273.15
                     self.temperature_textbox.min = -273.15
@@ -2563,7 +2552,7 @@ class MeasurementCreator:
                     self.new_measurement.temperature_unit = new_unit
 
                 else:
-                    raise ValueError(
+                    print(
                         f"Invalid temperature unit. Valid units are K and C, "
                         f"got {new_unit} instead."
                     )
@@ -2579,35 +2568,23 @@ class MeasurementCreator:
                     initial_tab.textbox.value = template_datum.initial
                     initial_tab.data_type_dropdown.options = [(template_datum.data_type.name.capitalize().replace("_", " "), template_datum.data_type)]
                     initial_tab.data_type_dropdown.value = template_datum.data_type
-                    initial_tab.data_unit_dropdown.options = [
-                        (template_datum.data_unit.name, template_datum.data_unit)
-                    ]
-                    initial_tab.data_unit_dropdown.value = template_datum.data_unit
-                    initial_tab.time_unit_dropdown.options = [
-                        (template_datum.time_unit.name, template_datum.time_unit)
-                    ]
-                    initial_tab.time_unit_dropdown.value = template_datum.time_unit
+                    initial_tab.data_unit_combobox.options = [template_datum.data_unit.name]
+                    initial_tab.data_unit_combobox.value = template_datum.data_unit.name
+                    initial_tab.time_unit_combobox.options = [template_datum.time_unit.name]
+                    initial_tab.time_unit_combobox.value = template_datum.time_unit.name
                     new_datum.initial = template_datum.initial
                     new_datum.data_type = template_datum.data_type
-                    new_datum.data_unit = template_datum.data_unit
-                    new_datum.time_unit = template_datum.time_unit
+                    new_datum.data_unit = template_datum.data_unit.name
+                    new_datum.time_unit = template_datum.time_unit.name
             else:
                 for new_datum, initial_tab in zip(self.new_measurement.species_data, self.initial_tabs.values()):
                     initial_tab.textbox.value = 0.0
                     initial_tab.data_type_dropdown.options = [(data_type.name.capitalize().replace("_", " "), data_type) for data_type in pyenzyme.DataTypes]
                     initial_tab.data_type_dropdown.value = pyenzyme.DataTypes.CONCENTRATION
-                    initial_tab.data_unit_dropdown.options = [
-                        (unit_name, self.unit_options_dict[unit_name])
-                        for unit_name in self.c_units
-                        if unit_name in self.unit_options_dict
-                    ]
-                    initial_tab.data_unit_dropdown.value = pyenzyme.units.predefined.mM
-                    initial_tab.time_unit_dropdown.options = [
-                        (unit_name, self.unit_options_dict[unit_name])
-                        for unit_name in self.t_units
-                        if unit_name in self.unit_options_dict
-                    ]
-                    initial_tab.time_unit_dropdown.value = pyenzyme.units.predefined.s
+                    initial_tab.data_unit_combobox.options = self.c_units
+                    initial_tab.data_unit_combobox.value = "mM"
+                    initial_tab.time_unit_combobox.options = self.t_units
+                    initial_tab.time_unit_combobox.value = "s"
                     new_datum.initial = None
                     new_datum.data_type = None
                     new_datum.data_unit = None
@@ -2624,8 +2601,8 @@ class MeasurementCreator:
                             species_id=initial_tab.species_id,
                             initial=event["new"],
                             data_type=initial_tab.data_type_dropdown.value,
-                            data_unit=initial_tab.data_unit_dropdown.value,
-                            time_unit=initial_tab.time_unit_dropdown.value
+                            data_unit=initial_tab.data_unit_combobox.value,
+                            time_unit=initial_tab.time_unit_combobox.value
                         )
                 for species_datum in self.new_measurement.species_data:
                     if species_datum.species_id == initial_tab.species_id:
@@ -2651,22 +2628,28 @@ class MeasurementCreator:
                         species_datum.data_type = event["new"]
     
     def _handle_data_unit_change(self, event, initial_tab):
-        # Enable the data_unit_dropdown when the data_unit_checkbox is
+        # Enable the data_unit_combobox when the data_unit_checkbox is
         # checked
         if event["type"] == "change" and event["name"] == "value":
             if event["new"]:
                 for species_datum in self.new_measurement.species_data:
                     if species_datum.species_id == initial_tab.species_id:
-                        species_datum.data_unit = event["new"]
+                        try:
+                            species_datum.data_unit = event["new"]
+                        except Exception:
+                            print(f"Invalid data unit: {event['new']}")
 
     def _handle_time_unit_change(self, event, initial_tab):
-        # Enable the time_unit_dropdown when the time_unit_checkbox is
+        # Enable the time_unit_combobox when the time_unit_checkbox is
         # checked
         if event["type"] == "change" and event["name"] == "value":
             if event["new"]:
                 for species_datum in self.new_measurement.species_data:
                     if species_datum.species_id == initial_tab.species_id:
-                        species_datum.time_unit = event["new"]
+                        try:
+                            species_datum.time_unit = event["new"]
+                        except Exception:
+                            print(f"Invalid time unit: {event['new']}")
 
 
 if __name__ == '__main__':

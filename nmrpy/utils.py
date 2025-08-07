@@ -1,13 +1,13 @@
 from dataclasses import dataclass
 
-from ipywidgets import BoundedFloatText, Button, Dropdown, HTML, VBox
+from ipywidgets import BoundedFloatText, Button, Combobox, Dropdown, HTML, VBox
 
 try:
     import sympy
     import pyenzyme
     from pyenzyme import EnzymeMLDocument, Measurement
 except ImportError as ex:
-    print(ex)
+    print(f"Optional dependency import failed for utils.py: {ex}")
     sympy = None
     pyenzyme = None
 
@@ -108,6 +108,7 @@ def get_initial_concentration_by_species_id(
         for measurement_datum in measurement.species:
             if measurement_datum.species_id == species_id:
                 intial_concentration = measurement_datum.init_conc
+                break
     return intial_concentration
 
 def get_species_id_by_name(
@@ -150,6 +151,7 @@ def get_species_name_by_id(enzymeml_document: EnzymeMLDocument, species_id: str)
     for species in get_species_from_enzymeml(enzymeml_document):
         if species.id == species_id:
             species_name = species.name
+            break
     return species_name
 
 
@@ -410,16 +412,16 @@ class InitialConditionTab:
     header: HTML
     textbox: BoundedFloatText
     data_type_dropdown: Dropdown
-    data_unit_dropdown: Dropdown
-    time_unit_dropdown: Dropdown
+    data_unit_combobox: Combobox
+    time_unit_combobox: Combobox
 
     def as_vbox(self):
         return VBox([
             self.header,
             self.textbox,
             self.data_type_dropdown,
-            self.data_unit_dropdown,
-            self.time_unit_dropdown,
+            self.data_unit_combobox,
+            self.time_unit_combobox,
         ])
 
 
@@ -449,7 +451,7 @@ def create_enzymeml(
         raise ValueError(
             "A measurement ID is required to create an EnzymeML document. Please provide a measurement ID using the `measurement_id` keyword argument."
         )
-    global_time = (fid_array.t.tolist(),)
+    global_time = ([float(x) for x in fid_array.t],)
     measurement = next(
         measurement for measurement in enzymeml_document.measurements
             if measurement.id == measurement_id

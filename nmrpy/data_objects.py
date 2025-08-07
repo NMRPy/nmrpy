@@ -26,7 +26,8 @@ try:
     import pyenzyme
     from pyenzyme import EnzymeMLDocument, Measurement
     from nmrpy.utils import create_enzymeml, create_enzymeml_measurement, fill_enzymeml_measurement, get_species_from_enzymeml
-except ImportError:
+except ImportError as ex:
+    print(f"Optional dependency import failed for data_objects.py: {ex}")
     pyenzyme = None
 
 
@@ -2445,6 +2446,10 @@ Ctrl+Alt+Right - assign
         if len(self.enzymeml_document.measurements) == 0:
             raise ValueError(
                 "No measurements found in EnzymeML document. At least one measurement is required."
+            )
+        if any(len(measurement.species_data) == 0 for measurement in self.enzymeml_document.measurements):
+            raise ValueError(
+                "No species data found in at least one EnzymeML measurement. Species data is required for each measurement."
             )
         if not template_measurement and (keep_ph or keep_temperature or keep_initial):
             print("Warning: Without a template measurement, there are no pH, temperature, or initial values to keep.")
