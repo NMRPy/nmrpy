@@ -1,3 +1,4 @@
+from typing import Mapping, Optional
 import nmrpy.data_objects
 import logging, traceback
 import numpy
@@ -13,7 +14,7 @@ from matplotlib.widgets import Cursor
 from ipywidgets import FloatText, Output, VBox, HBox, Button, Combobox, Dropdown, Label, Checkbox, HTML, Tab, BoundedFloatText, Text
 from IPython.display import display
 
-from nmrpy.utils import format_species_string
+from nmrpy.utils import T0Logic, T0Tab, format_species_string
 try:
     import pyenzyme
     from pyenzyme import EnzymeMLDocument, Measurement
@@ -2129,14 +2130,213 @@ class ConcentrationCalculator:
         raise NotImplementedError(
             "Widget for calculating concentrations is currently under heavy construction. Please calculate and assign concentrations manually."
         )
-    
+
+class T0Adder:
+    """
+    Widget for adding t0 to a measurement with optional t1 zero-shift
+    and time offset.
+    """
+
+    def __init__(
+        self,
+        fid_array,
+        measurement_id: Optional[str] = None,
+        use_t1: bool = True,
+        t0_values: Optional[Mapping[str, float]] = None,
+        offset_enabled: bool = False,
+        offset_value: float = 0.0,
+    ):
+        # Logic state
+        self.logic = T0Logic(fid_array.enzymeml_document, measurement_id)
+        self.use_t1 = bool(use_t1)
+        self.offset_enabled = bool(offset_enabled)
+        self.offset_value = float(offset_value) if offset_enabled else 0.0
+        self.t0_values: dict[str, float] = dict(t0_values or {})
+
+        # Widget state
+        self.t0_tabs: dict[str, T0Tab] = {}
+        self._build_widgets()
+        self._wire_callbacks()
+        self._refresh_tabs()
+        display(self.container)
+
+        # Initial state
+        if self.use_t1:
+            self.logic.zero_shift_times()
+        else:
+            for sid, val in self.t0_values.items():
+                self.logic.set_t0_value(sid, val)
+
+        if self.offset_enabled:
+            self.logic.apply_offset(self.offset_value)
+
+        self.logic.update_initials()
+
+    def _build_widgets(self):
+        self.title_html = HTML(value="<b>Add t0 to EnzymeML Measurement</b>")
+
+        self.measurement_dropdown = Dropdown(
+            options=[m.id for m in self.logic.doc.measurements],
+            value=self.logic.measurement.id,
+            description="Select a measurement:",
+            layout={"width": "max-content"},
+            style={"description_width": "initial"},
+        )
+
+        self.use_t1_checkbox = Checkbox(
+            value=self.use_t1,
+            description=f"Use t1 values from {self.logic.measurement.id}?",
+            indent=False,
+        )
+
+        self.offset_checkbox = Checkbox(
+            value=self.offset_enabled,
+            description="Apply offset to time axis?",
+            indent=False,
+        )
+
+        self.offset_textbox = BoundedFloatText(
+            value=self.offset_value,
+            min=0.0,
+            max=1000.0,
+            step=0.01,
+            description=f"Offset in {self.logic.get_time_unit_name()}:",
+            layout={"width": "max-content"},
+            style={"description_width": "initial"},
+            disabled=not self.offset_enabled,
+        )
+
+        self.general_tab = VBox(
+            [
+                self.measurement_dropdown,
+                self.use_t1_checkbox,
+                self.offset_checkbox,
+                self.offset_textbox,
+            ]
+        )
+
+        self.tab = Tab(children=[self.general_tab])
+        self.tab.set_title(0, "General")
+
+        self.container = VBox([self.title_html, self.tab])
+
+    def _wire_callbacks(self):
+        self.measurement_dropdown.observe(self._on_measurement_change, names="value")
+        self.use_t1_checkbox.observe(self._on_use_t1_change, names="value")
+        self.offset_checkbox.observe(self._on_offset_toggle, names="value")
+        self.offset_textbox.observe(self._on_offset_value_change, names="value")
+
+    def _refresh_tabs(self):
+        self.t0_tabs.clear()
+
+        species_ids = self.logic.nonconstant_species_ids()
+        new_children = [self.general_tab]
+        titles = ["General"]
+
+        for sid in species_ids:
+            start_val = float(self.t0_values.get(sid, 0.0))
+            header = HTML(value=f"<b>Set t0 for {sid}</b>")
+            t0_box = BoundedFloatText(
+                value=start_val,
+                min=0.0,
+                max=1000.0,
+                step=0.01,
+                description=f"t0 data in {self.logic.get_data_unit_name(sid)}:",
+                layout={"width": "max-content"},
+                style={"description_width": "initial"},
+                disabled=self.use_t1,
+            )
+            tab = T0Tab(sid, sid, header, t0_box)
+            t0_box.observe(lambda ev, sp=sid: self._on_t0_value_change(ev, sp), names="value")
+
+            self.t0_tabs[sid] = tab
+            new_children.append(tab.as_vbox())
+            titles.append(sid)
+
+        self.tab.children = tuple(new_children)
+        for i, title in enumerate(titles):
+            self.tab.set_title(i, title)
+
+    def _on_measurement_change(self, change):
+        if change["type"] != "change":
+            return
+        
+        self.logic = T0Logic(self.logic.doc, change["new"])
+
+        self.use_t1_checkbox.description = f"Use t1 values from {self.logic.measurement.id}?"
+        self.offset_textbox.description = f"Offset in {self.logic.get_time_unit_name()}:"
+
+        self._refresh_tabs()
+
+        if self.use_t1:
+            self.logic.zero_shift_times()
+        else:
+            for sid, val in self.t0_values.items():
+                self.logic.set_t0_value(sid, val)
+
+        if self.offset_enabled:
+            self.logic.apply_offset(self.offset_value)
+
+        self.logic.update_initials()
+
+    def _on_use_t1_change(self, change):
+        if change["type"] != "change":
+            return
+        
+        self.use_t1 = bool(change["new"])
+
+        for tab in self.t0_tabs.values():
+            tab.t0_data_textbox.disabled = self.use_t1
+            if self.use_t1:
+                tab.t0_data_textbox.value = 0.0
+
+        if self.use_t1:
+            self.logic.zero_shift_times()
+        self.logic.update_initials()
+
+    def _on_offset_toggle(self, change):
+        if change["type"] != "change":
+            return
+        
+        self.offset_enabled = bool(change["new"])
+        self.offset_textbox.disabled = not self.offset_enabled
+
+        if not self.offset_enabled:
+            self.logic.apply_offset(0.0)
+        else:
+            self.logic.apply_offset(float(self.offset_textbox.value or 0.0))
+        self.logic.update_initials()
+
+    def _on_offset_value_change(self, change):
+        if change["type"] != "change":
+            return
+        if not self.offset_enabled:
+            return
+        
+        self.offset_value = float(change["new"] or 0.0)
+
+        self.logic.apply_offset(self.offset_value)
+        self.logic.update_initials()
+
+    def _on_t0_value_change(self, change, species_id: str):
+        if change["type"] != "change":
+            return
+        if self.use_t1:
+            return
+        
+        value = float(change["new"] or 0.0)
+        self.t0_values[species_id] = value
+
+        self.logic.set_t0_value(species_id, value)
+        self.logic.update_initials()
+
 class MeasurementCreator:
     """
     Widget for creating a new measurement.
     """
     def __init__(self, fid_array):
         self.fid_array = fid_array
-        self.measurements = self.fid_array.enzymeml_document.measurements.copy()
+        self.measurements = self.fid_array.enzymeml_document.measurements.model_copy(deep=True)
         self.template_measurement = None
         self.new_measurement = None
         self.initialized = False
