@@ -25,7 +25,7 @@ from nmrpy.nmrpy_model import (
 try:
     import pyenzyme
     from pyenzyme import EnzymeMLDocument, Measurement
-    from nmrpy.utils import create_enzymeml, create_enzymeml_measurement, fill_enzymeml_measurement, get_species_from_enzymeml
+    from nmrpy.utils import T0Logic, create_enzymeml, create_enzymeml_measurement, fill_enzymeml_measurement, get_species_from_enzymeml
 except ImportError as ex:
     print(f"Optional dependency import failed for data_objects.py: {ex}")
     pyenzyme = None
@@ -2422,8 +2422,59 @@ Ctrl+Alt+Right - assign
             print(f'Data model saved to "{filename}".')
         else:
             raise ValueError(f'Unsupported format: {format}')
+  
+    def add_t0_to_enzymeml(
+        self,
+        gui: bool = True,
+        measurement_id: Optional[str] = None,
+        use_t1: bool = True,
+        t0: Optional[Mapping[str, float]] = None,
+        offset: Optional[float] = None,
+    ) -> None:
+        """
+        Add t0 to a measurement in the EnzymeML document either by using
+        t1 values (zero-shift times) or by providing a dict of t0 data
+        values, and optionally apply a time-axis offset.
+        """
+        if (pyenzyme is None):
+            raise RuntimeError(
+                "The `pyenzyme` package is required to use NMRpy with an EnzymeML document. Please install it via `pip install nmrpy[enzymeml]`."
+            )
+        if len(self.enzymeml_document.measurements) == 0:
+            raise ValueError(
+                "No measurements found in EnzymeML document. At least one measurement is required."
+            )
+        if gui:
+            _ = T0Adder(
+                enzymeml_document=self.enzymeml_document,
+                measurement_id=measurement_id,
+                use_t1=use_t1,
+                t0_values=t0,
+                offset_enabled=offset is not None,
+                offset_value=offset or 0.0,
+            )
+            return
 
+        logic = T0Logic(self.enzymeml_document, measurement_id)
 
+        if use_t1:
+            logic.zero_shift_times()
+        else:
+            t0 = t0 or {}
+            missing = set()
+            for sid in logic.nonconstant_species_ids():
+                if sid in t0:
+                    logic.set_t0_value(sid, float(t0[sid]))
+                else:
+                    missing.add(sid)
+            if missing:
+                print(f"WARNING: {len(missing)} species ID(s) missing in t0: {sorted(missing)}")
+
+        if offset is not None:
+            logic.apply_offset(float(offset))
+
+        logic.update_initials()
+                        
     def create_new_enzymeml_measurement(
             self,
             gui: bool = True,
@@ -2455,7 +2506,6 @@ Ctrl+Alt+Right - assign
             print("Warning: Without a template measurement, there are no pH, temperature, or initial values to keep.")
 
         if gui:
-            # TODO: Implement GUI for creating a new measurement
             self._measurement_creator = MeasurementCreator(
                 fid_array=self,
             )
