@@ -1,11 +1,12 @@
 from dataclasses import dataclass
+from typing import Optional
 
-from ipywidgets import BoundedFloatText, Button, Combobox, Dropdown, HTML, VBox
+from ipywidgets import BoundedFloatText, Button, Checkbox, Combobox, Dropdown, HTML, VBox
 
 try:
     import sympy
     import pyenzyme
-    from pyenzyme import EnzymeMLDocument, Measurement
+    from pyenzyme import EnzymeMLDocument, Measurement, MeasurementData
 except ImportError as ex:
     print(f"Optional dependency import failed for utils.py: {ex}")
     sympy = None
@@ -195,13 +196,156 @@ def format_measurement_string(measurement: Measurement) -> str:
         return f"{measurement.id}"
 
 
+##### t0 helpers #####
+
+class T0Logic:
+    """Logic handling for the t0 widget."""
+
+    def __init__(
+        self,
+        enzymeml_document: EnzymeMLDocument,
+        measurement_id: Optional[str] = None,
+    ):
+        """Initialize the T0Logic object.
+
+        Args:
+            enzymeml_document (EnzymeMLDocument): An EnzymeML document.
+            measurement_id (Optional[str]): The ID of the measurement to use.
+              If None, the last measurement in the document is used.
+
+        Raises:
+            ValueError: If no measurements are found in the EnzymeML document.
+
+        Returns:
+            T0Logic: A T0Logic object.
+        """
+        if not getattr(enzymeml_document, "measurements", None):
+            raise ValueError("No measurements found in EnzymeML document. At least one measurement is required.")
+
+        self.doc = enzymeml_document
+        self.measurement = self._select_measurement(measurement_id)
+        self._previous_offset: float = 0.0
+
+    def _select_measurement(self, measurement_id: Optional[str]):
+        if measurement_id is None:
+            return self.doc.measurements[-1]
+        for m in self.doc.measurements:
+            if m.id == measurement_id:
+                return m
+        raise ValueError(f"Measurement with ID '{measurement_id}' not found in EnzymeML document.")
+
+    def get_data_unit_name(self, species_id: str) -> str:
+        """Return the display name for the data unit of a given
+        species_id. Falls back gracefully if missing/unknown.
+        """
+        try:
+            sd = self.species_data_by_id()[species_id]
+            unit = getattr(sd, "data_unit", None)
+            if unit is None:
+                return "data units"
+            return getattr(unit, "name", str(unit))
+        except Exception:
+            return "data units"
+
+    def get_time_unit_name(self) -> str:
+        """Return the display name for the time unit of a given
+        measurement. Falls back gracefully if missing/unknown.
+        """
+        try:
+            return self.measurement.species_data[0].time_unit.name
+        except Exception:
+            return "time units"
+
+    def nonconstant_species_ids(self) -> list[str]:
+        """Return IDs of species that are *not* constant, preserving
+        measurement order.
+        """
+        ids: list[str] = []
+        constant: set[str] = set()
+        for s in get_species_from_enzymeml(self.doc):
+            if getattr(s, "constant", False):
+                constant.add(s.id)
+        for sd in self.measurement.species_data:
+            if sd.species_id not in constant:
+                ids.append(sd.species_id)
+        return ids
+
+    def species_data_by_id(self) -> dict[str, MeasurementData]:
+        """Return a dictionary of species data by their ID."""
+        return {sd.species_id: sd for sd in self.measurement.species_data}
+
+    def zero_shift_times(self) -> None:
+        """Shift times so that first timepoint per species is 0.0."""
+        for sd in self.measurement.species_data:
+            if not sd.time:
+                continue
+            t0 = sd.time[0]
+            if t0 != 0.0:
+                sd.time = [t - t0 for t in sd.time]
+
+    def set_t0_value(self, species_id: str, value: float) -> None:
+        """Ensure there is a data point at time 0.0 for a species; set
+        its data to `value`. If time already starts at 0.0, only
+        overwrite data[0]; otherwise insert (0.0, value).
+        """
+        sdb = self.species_data_by_id()
+        if species_id not in sdb:
+            # Keep it graceful for batch operations
+            return
+        sd = sdb[species_id]
+        if sd.time and sd.time[0] == 0.0:
+            if not sd.data:
+                sd.data = [value]
+            else:
+                sd.data[0] = value
+        else:
+            sd.time.insert(0, 0.0)
+            sd.data.insert(0, value)
+
+    def apply_offset(self, new_offset: float) -> None:
+        """Apply an absolute offset to times (per species), keeping
+        time[0] as is.
+        """
+        prev = getattr(self, "_previous_offset", 0.0)
+        for sd in self.measurement.species_data:
+            if not sd.time:
+                continue
+            # Preserve time[0] exactly; shift others by delta
+            delta = new_offset - prev
+            if len(sd.time) > 1:
+                head = sd.time[0]
+                tail = [t + delta for t in sd.time[1:]]
+                sd.time = [head, *tail]
+        self._previous_offset = new_offset
+
+    def update_initials(self) -> None:
+        """Set `initial` to data[0] for all species where available."""
+        for sd in self.measurement.species_data:
+            if sd.data:
+                sd.initial = sd.data[0]
+
+
+@dataclass
+class T0Tab:
+    species_id: str
+    title: str
+    header: HTML
+    t0_data_textbox: BoundedFloatText
+
+    def as_vbox(self):
+        return VBox([
+            self.header,
+            self.t0_data_textbox,
+        ])
+
+
 ##### Measurement creation helpers #####
 
 def create_enzymeml_measurement(
     enzymeml_document: EnzymeMLDocument, **kwargs
 ) -> Measurement:
-    """Create a new EnzymeML Measurement object from a template within an
-    EnzymeML document or from scratch.
+    """Create a new EnzymeML Measurement object from a template within
+    an EnzymeML document or from scratch.
 
     Args:
         enzymeml_document (EnzymeMLDocument): An EnzymeML document.
