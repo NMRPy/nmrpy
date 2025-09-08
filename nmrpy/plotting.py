@@ -2336,7 +2336,7 @@ class MeasurementCreator:
     """
     def __init__(self, fid_array):
         self.fid_array = fid_array
-        self.measurements = self.fid_array.enzymeml_document.measurements.model_copy(deep=True)
+        self.measurements = self.fid_array.enzymeml_document.measurements.copy()
         self.template_measurement = None
         self.new_measurement = None
         self.initialized = False
