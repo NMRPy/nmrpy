@@ -1326,31 +1326,33 @@ Ctrl+Alt+Right - assign
                 "`fid.ranges` is required but still empty. "
                 "Please assign them manually or with the `rangepicker` method."
             )
-        if len(self.peaks) != len(self.ranges):
-            raise RuntimeError(
-                "`fid.peaks` and `fid.ranges` must have the same length, as "
-                "each peak must have a range assigned to it."
-            )
-        
+ 
+        def normalize_range(range_group):
+            start, end = range_group[0], range_group[1]
+            return {
+                "start": float(min(start, end)),
+                "end": float(max(start, end))
+            }
+            
         # Create or update Peak objects in data model
-        for i, (peak_val, range_val) in enumerate(zip(self.peaks, self.ranges)):
-            if i < len(self.fid_object.peaks):
-                # Peak already exists, update it
-                self.fid_object.peaks[i].peak_position = float(peak_val)
-                self.fid_object.peaks[i].peak_range = {
-                    "start": float(range_val[0]),
-                    "end": float(range_val[1]),
-                }
-            else:
-                # Peak does not yet exist, create it
-                self.fid_object.add_to_peaks(
-                    peak_index=i,
-                    peak_position=float(peak_val),
-                    peak_range={
-                        "start": float(range_val[0]),
-                        "end": float(range_val[1]),
-                    },
-                )
+        existing_peaks_count = len(self.fid_object.peaks)        
+        global_index = 0
+        for peak_group, range_group in zip(self._grouped_peaklist, self.ranges):
+            normalized_range = normalize_range(range_group)
+            
+            for peak in peak_group:
+                if global_index < existing_peaks_count:
+                    # Peak already exists, update it
+                    self.fid_object.peaks[global_index].peak_position = float(peak)
+                    self.fid_object.peaks[global_index].peak_range = normalized_range
+                else:
+                    # Peak does not yet exist, create it
+                    self.fid_object.add_to_peaks(
+                        peak_index=global_index,
+                        peak_position=float(peak),
+                        peak_range=normalized_range,
+                    )
+                global_index += 1
 
     def assign_peaks(self, species_list: list[str] | EnzymeMLDocument = None):
         """
