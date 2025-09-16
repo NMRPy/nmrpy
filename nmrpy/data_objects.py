@@ -1403,7 +1403,8 @@ class FidArray(Base):
 
     '''
 
-    def __init__(self):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         self.data_model = NMRpy(
             datetime_created=str(datetime.now()),
             experiment=Experiment(name="NMR experiment"),
