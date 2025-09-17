@@ -170,7 +170,8 @@ class Plot():
             peak = peakshapes[n]
             ax.plot(ppm, peak, '-', color=peak_colour, lw=lw)
             ax.text(ppm[numpy.argmax(peak)], label_pad+peak.max(), str(n), ha='center')
-            if (fid._flags['assigned']) and (show_labels):
+            is_assigned = getattr(fid, '_flags', {}).get('assigned', False)
+            if (is_assigned) and (show_labels):
                 ax.text(
                     ppm[numpy.argmax(peak)],
                     label_pad + peak.max(),

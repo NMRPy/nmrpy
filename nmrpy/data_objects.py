@@ -478,9 +478,10 @@ class Fid(Base):
                 integral = int_gauss+int_lorentz
                 integrals.append(integral)
                 # Update data model
-                peak_object = self.fid_object.peaks[i]
-                if peak_object.peak_integral != integral:
-                    peak_object.peak_integral = float(integral)
+                if getattr(self, 'fid_object', None) is not None:
+                    peak_object = self.fid_object.peaks[i]
+                    if peak_object.peak_integral != integral:
+                        peak_object.peak_integral = float(integral)
             return integrals
             
     def _get_plots(self):
@@ -558,7 +559,8 @@ class Fid(Base):
         """
         self.data = numpy.append(self.data, 0*self.data)
         # Update data model
-        self.fid_object.processing_steps.is_zero_filled = True
+        if getattr(self, 'fid_object', None) is not None:
+            self.fid_object.processing_steps.is_zero_filled = True
 
     def emhz(self, lb=5.0):
         """
@@ -571,8 +573,9 @@ class Fid(Base):
         """
         self.data = numpy.exp(-numpy.pi*numpy.arange(len(self.data)) * (lb/self._params['sw_hz'])) * self.data
         # Update data model
-        self.fid_object.processing_steps.is_apodised = True
-        self.fid_object.processing_steps.apodisation_frequency = lb
+        if getattr(self, 'fid_object', None) is not None:
+            self.fid_object.processing_steps.is_apodised = True
+            self.fid_object.processing_steps.apodisation_frequency = lb
 
     def real(self):
         """
@@ -580,8 +583,8 @@ class Fid(Base):
         """
         self.data = numpy.real(self.data)
         # Update data model
-
-        self.fid_object.processing_steps.is_only_real = True
+        if getattr(self, 'fid_object', None) is not None:
+            self.fid_object.processing_steps.is_only_real = True
  
     # GENERAL FUNCTIONS
     def ft(self):
@@ -601,8 +604,9 @@ class Fid(Base):
             self.data = Fid._ft(list_params)
             self._flags['ft'] = True
         # Update data model
-        self.fid_object.processing_steps.is_fourier_transformed = True
-        self.fid_object.processing_steps.fourier_transform_type = 'FFT'
+        if getattr(self, 'fid_object', None) is not None:
+            self.fid_object.processing_steps.is_fourier_transformed = True
+            self.fid_object.processing_steps.fourier_transform_type = 'FFT'
 
     @classmethod
     def _ft(cls, list_params):
@@ -683,8 +687,9 @@ class Fid(Base):
             if verbose:
                 print('phasing: %s'%self.id)
             self.data = Fid._phase_correct((self.data, method, verbose))
-            self.fid_object.processed_data = [str(datum) for datum in self.data]
-            self.fid_object.processing_steps.is_phased = True
+            # Update data model
+            if getattr(self, 'fid_object', None) is not None:
+                self.fid_object.processing_steps.is_phased = True
 
     @classmethod
     def _phase_correct(cls, list_params):
@@ -754,9 +759,10 @@ class Fid(Base):
         ph = numpy.exp(1.0j*(p0+(p1*numpy.arange(size)/size)))
         self.data = ph*self.data
         # Update data model
-        self.fid_object.processing_steps.is_phased = True
-        self.fid_object.processing_steps.zero_order_phase = p0
-        self.fid_object.processing_steps.first_order_phase = p1
+        if getattr(self, 'fid_object', None) is not None:
+            self.fid_object.processing_steps.is_phased = True
+            self.fid_object.processing_steps.zero_order_phase = p0
+            self.fid_object.processing_steps.first_order_phase = p1
 
     def phaser(self):
         """
@@ -821,7 +827,8 @@ Left - select peak
         data_bl = data-yp
         self.data = numpy.array(data_bl)
         # Update data model
-        self.fid_object.processing_steps.is_baseline_corrected = True
+        if getattr(self, 'fid_object', None) is not None:
+            self.fid_object.processing_steps.is_baseline_corrected = True
 
     def peakpick(self, thresh=0.1):
         """ 
@@ -1266,7 +1273,9 @@ Ctrl+Alt+Right - assign
         list_parameters = [self.data, self._grouped_index_peaklist, self._index_ranges, frac_gauss, method]
         self._deconvoluted_peaks = numpy.array([j for i in Fid._deconv_datum(list_parameters) for j in i])
         print(self.deconvoluted_integrals)
-        self.fid_object.processing_steps.is_deconvoluted = True
+        # Update data model
+        if getattr(self, 'fid_object', None) is not None:
+            self.fid_object.processing_steps.is_deconvoluted = True
         print('deconvolution completed')
 
 
@@ -1316,6 +1325,8 @@ Ctrl+Alt+Right - assign
         # of Fid.peaks and Fid.ranges.
 
         # Validates FID has peaks and ranges and len(peaks) == len(ranges)
+        if getattr(self, 'fid_object', None) is None:
+            return
         if self.peaks is None or len(self.peaks) == 0:
             raise RuntimeError(
                 "`fid.peaks` is required but still empty. "
@@ -1818,9 +1829,11 @@ class FidArray(Base):
             for fid, datum in zip(fids, ft_data):
                 fid.data = datum
                 fid._flags['ft'] = True
-                fid.fid_object.processed_data = [str(data) for data in datum]
-                fid.fid_object.processing_steps.is_fourier_transformed = True
-                fid.fid_object.processing_steps.fourier_transform_type = 'FFT'
+                # Update data model
+                if getattr(fid, 'fid_object', None) is not None:
+                    fid.fid_object.processed_data = [str(data) for data in datum]
+                    fid.fid_object.processing_steps.is_fourier_transformed = True
+                    fid.fid_object.processing_steps.fourier_transform_type = 'FFT'
         else: 
             for fid in self.get_fids():
                 fid.ft()
@@ -1842,9 +1855,11 @@ class FidArray(Base):
         dmax = self.data.max()
         for fid in self.get_fids():
             fid.data = fid.data/dmax
-            fid.fid_object.processed_data = [float(datum) for datum in fid.data]
-            fid.fid_object.processing_steps.is_normalised = True
-            fid.fid_object.processing_steps.max_value = float(dmax)
+            # Update data model
+            if getattr(fid, 'fid_object', None) is not None:
+                fid.fid_object.processed_data = [float(datum) for datum in fid.data]
+                fid.fid_object.processing_steps.is_normalised = True
+                fid.fid_object.processing_steps.max_value = float(dmax)
 
     def phase_correct_fids(self, method='leastsq', mp=True, cpus=None, verbose=True):
         """ 
@@ -1868,8 +1883,10 @@ class FidArray(Base):
             phased_data = self._generic_mp(Fid._phase_correct, list_params, cpus)
             for fid, datum in zip(fids, phased_data):
                 fid.data = datum
-                fid.fid_object.processed_data = [str(data) for data in datum]
-                fid.fid_object.processing_steps.is_phased = True
+                # Update data model
+                if getattr(fid, 'fid_object', None) is not None:
+                    fid.fid_object.processed_data = [str(data) for data in datum]
+                    fid.fid_object.processing_steps.is_phased = True
         else:
             for fid in self.get_fids():
                 fid.phase_correct(method=method, verbose=verbose)
@@ -1984,10 +2001,12 @@ Ctrl+Alt+Right - assign
                     integral = int_gauss + int_lorentz
                     integrals.append(integral)
                     # Update data model
-                    peak_object = fid.fid_object.peaks[i]
-                    if peak_object.peak_integral != integral:
-                        peak_object.peak_integral = float(integral)
-                fid.fid_object.processing_steps.is_deconvoluted = True
+                    if getattr(fid, 'fid_object', None) is not None:
+                        peak_object = fid.fid_object.peaks[i]
+                        if peak_object.peak_integral != integral:
+                            peak_object.peak_integral = float(integral)
+                if getattr(fid, 'fid_object', None) is not None:
+                    fid.fid_object.processing_steps.is_deconvoluted = True
         else:
             for fid in self.get_fids():
                 fid.deconv(frac_gauss=frac_gauss)
