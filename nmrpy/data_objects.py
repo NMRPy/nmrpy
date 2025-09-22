@@ -2517,7 +2517,7 @@ Ctrl+Alt+Right - assign
             )
         if gui:
             _ = T0Adder(
-                enzymeml_document=self.enzymeml_document,
+                fid_array=self,
                 measurement_id=measurement_id,
                 use_t1=use_t1,
                 t0_values=t0,
