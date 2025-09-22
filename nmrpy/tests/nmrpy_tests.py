@@ -697,6 +697,11 @@ class TestPlottingUtils(unittest.TestCase):
     def test_select_integral_traces(self):
         self.fid_array_varian.select_integral_traces()
 
+class TestDataModels(unittest.TestCase):
+    def setUp(self):
+        ...
+
+
 class NMRPyTest:
     def __init__(self, tests='all'):
         """
@@ -711,6 +716,8 @@ class NMRPyTest:
         'fidarrayutils' - FidArray utilities tests
         'plotutils'     - plotting utilities tests
         'noplot'        - all tests except plotting utilities (scripted usage)
+        'datamodels'    - data model tests
+        'nodatamodels'  - all tests except data model tests
         """
         runner = unittest.TextTestRunner()
         baseinit_test = unittest.makeSuite(TestBaseInitialisation)
@@ -719,6 +726,7 @@ class NMRPyTest:
         fidutils_test = unittest.makeSuite(TestFidUtils)
         fidarrayutils_test = unittest.makeSuite(TestFidArrayUtils)
         plotutils_test = unittest.makeSuite(TestPlottingUtils)
+        datamodels_test = unittest.makeSuite(TestDataModels)
         
         suite = baseinit_test
         if tests == 'all':
@@ -727,11 +735,13 @@ class NMRPyTest:
             suite.addTests(fidutils_test)
             suite.addTests(fidarrayutils_test)
             suite.addTests(plotutils_test)
+            suite.addTests(datamodels_test)
         elif tests == 'noplot':
             suite.addTests(fidinit_test)
             suite.addTests(fidarrayinit_test)
             suite.addTests(fidutils_test)
             suite.addTests(fidarrayutils_test)
+            suite.addTests(datamodels_test)
         elif tests == 'fidinit':
             suite.addTests(fidinit_test)
         elif tests == 'fidarrayinit':
@@ -741,6 +751,14 @@ class NMRPyTest:
         elif tests == 'fidarrayutils':
             suite.addTests(fidarrayutils_test)
         elif tests == 'plotutils':
+            suite.addTests(plotutils_test)
+        elif tests == 'datamodels':
+            suite.addTests(datamodels_test)
+        elif tests == 'nodatamodels':
+            suite.addTests(fidinit_test)
+            suite.addTests(fidarrayinit_test)
+            suite.addTests(fidutils_test)
+            suite.addTests(fidarrayutils_test)
             suite.addTests(plotutils_test)
         else:
             raise ValueError('Please select a valid set of tests to run.')
