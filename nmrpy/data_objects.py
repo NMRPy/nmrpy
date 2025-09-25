@@ -333,6 +333,8 @@ class Fid(Base):
         if species is not None:
             if not all((i is None) or isinstance(i, str) for i in species):
                 raise AttributeError('species must be strings')
+            if isinstance(species, str):
+                species = [species]
             if not len(species) == len(self.peaks):
                 raise AttributeError('species must have the same length as peaks')
             self._species = numpy.array(species, dtype=object)
@@ -345,6 +347,10 @@ class Fid(Base):
     def fid_object(self, fid_object):
         if isinstance(fid_object, FIDObject):
             self.__fid_object = fid_object
+        elif fid_object is None:
+            self.__fid_object = None
+        else:
+            raise AttributeError('fid_object must be an instance of FIDObject')
 
     @fid_object.deleter
     def fid_object(self):
@@ -360,6 +366,13 @@ class Fid(Base):
             raise RuntimeError(
                 "The `pyenzyme` package is required to use NMRpy with an EnzymeML document. Please install it via `pip install nmrpy[enzymeml]`."
             )
+        if enzymeml_species is None:
+            self.__enzymeml_species = None
+            return
+        if not isinstance(enzymeml_species, list):
+            enzymeml_species = [enzymeml_species]
+        if not all(isinstance(i, (pyenzyme.SmallMolecule, pyenzyme.Protein, pyenzyme.Complex)) for i in enzymeml_species):
+            raise AttributeError('enzymeml_species must be a list of valid EnzymeML species: pyenzyme.SmallMolecule, pyenzyme.Protein, or pyenzyme.Complex')
         self.__enzymeml_species = enzymeml_species
 
     @property
@@ -1419,7 +1432,7 @@ class FidArray(Base):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.data_model = NMRpy(
-            datetime_created=str(datetime.now()),
+            datetime_created=str(datetime.now().isoformat()),
             experiment=Experiment(name="NMR experiment"),
         )
         self.enzymeml_document = None
@@ -1430,18 +1443,28 @@ class FidArray(Base):
     
     @property
     def data_model(self):
-        for fid in self.get_fids():
-            self.__data_model.experiment.fid_array.append(fid.fid_object)
+        try:
+            for fid in self.get_fids():
+                if fid.fid_object.ld_id not in [f.ld_id for f in self.__data_model.experiment.fid_array]:
+                    self.__data_model.experiment.fid_array.append(fid.fid_object)
+                else:
+                    self.__data_model.experiment.fid_array[self.__data_model.experiment.fid_array.index(fid.fid_object)].ld_id = fid.fid_object.ld_id
+            self.__data_model.datetime_modified = str(datetime.now().isoformat())
+        except AttributeError:
+            print('Warning: FidArray.data_model is not yet set.')
         return self.__data_model
 
     @data_model.setter
     def data_model(self, data_model):
+        if data_model is None:
+            self.__data_model = None
+            return
         if not isinstance(data_model, NMRpy):
             raise AttributeError(
                 f'Parameter `data_model` has to be of type `NMRpy`, got {type(data_model)} instead.'
             )
         self.__data_model = data_model
-        self.__data_model.datetime_modified = str(datetime.now())
+        self.__data_model.datetime_modified = str(datetime.now().isoformat())
 
     @data_model.deleter
     def data_model(self):
@@ -1450,6 +1473,10 @@ class FidArray(Base):
 
     @property
     def enzymeml_document(self):
+        try:
+            self.__enzymeml_document.modified = str(datetime.now().isoformat())
+        except AttributeError:
+            print('Warning: FidArray.enzymeml_document is not yet set.')
         return self.__enzymeml_document
 
     @enzymeml_document.setter
@@ -1470,7 +1497,7 @@ class FidArray(Base):
                 'EnzymeML document must contain at least one measurement.'
             )
         self.__enzymeml_document = enzymeml_document
-        self.__enzymeml_document.modified = str(datetime.now())
+        self.__enzymeml_document.modified = str(datetime.now().isoformat())
         self.__data_model.experiment.name = self.__enzymeml_document.name
         for fid in self.get_fids():
             fid.enzymeml_species = get_species_from_enzymeml(self.__enzymeml_document)
@@ -1492,13 +1519,16 @@ class FidArray(Base):
         if not isinstance(concentrations, dict):
             raise TypeError('concentrations must be a dictionary.')        
         for fid in self.get_fids():
-            if not len(fid.species):
+            if fid.species is None or not len(fid.species):
                 raise ValueError('All FIDs must have species assigned to peaks.')
         if not set(concentrations.keys()).issubset(fid.species):
             invalid_species = set(concentrations.keys()) - set(fid.species)
             raise ValueError(f'Invalid species in concentrations: {invalid_species}')
         if not all(len(concentrations[species]) == len(self.t) for species in concentrations.keys()):
             raise ValueError('Length of concentrations must match length of FID data.')
+        for v in concentrations.values():
+            if not all(isinstance(i, (int, float)) for i in v):
+                raise ValueError('Concentrations must be a list of integers or floats.')
         self.__concentrations = concentrations
 
     @concentrations.deleter

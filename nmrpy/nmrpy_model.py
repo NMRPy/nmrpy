@@ -297,6 +297,7 @@ class FIDObject(BaseModel):
 
     model_config: ConfigDict = ConfigDict(  # type: ignore
         validate_assigment=True,
+        extra='forbid',  # This will raise ValidationError for unknown fields
     )  # type: ignore
 
     raw_data: list[str] = Field(default_factory=list)

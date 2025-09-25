@@ -3,6 +3,14 @@ from nmrpy.data_objects import *
 import numpy
 import os
 
+try:
+    import pyenzyme
+    from pyenzyme import EnzymeMLDocument, Measurement, MeasurementData
+except ImportError as ex:
+    print(f"Optional dependency import failed for nmrpy_tests.py: {ex}")
+    pyenzyme = None
+
+
 testpath = os.path.dirname(__file__)
 
 class TestBaseInitialisation(unittest.TestCase):
@@ -699,8 +707,196 @@ class TestPlottingUtils(unittest.TestCase):
 
 class TestDataModels(unittest.TestCase):
     def setUp(self):
-        ...
+        if (pyenzyme is None):
+            raise RuntimeError(
+                "The `pyenzyme` package is required to use NMRpy with an EnzymeML document. Please install it via `pip install nmrpy[enzymeml]` or choose a different set of tests to run."
+            )
+        # Load Bruker test data
+        path_bruker = os.path.join(testpath, 'test_data', 'bruker1')
+        self.fid_array = FidArray.from_path(fid_path=path_bruker, file_format='bruker')
+        self.fid = self.fid_array.get_fids()[0]
 
+        # Load EnzymeML test document
+        enzml_doc = pyenzyme.EnzymeMLDocument(name='NMRpy test document')
+        enzml_doc.add_to_creators(
+            given_name='Foo',
+            family_name='Bar',
+            mail='foo.bar@example.com'
+        )
+        enzml_doc.add_to_vessels(
+            id='test_vessel',
+            name='Test vessel',
+            volume=1.0,
+            unit='ml'
+        )        
+        enzml_doc.add_to_small_molecules(
+            id='test_variable_small_molecule',
+            name='Test variable small molecule',
+            vessel_id='test_vessel'
+        )
+        enzml_doc.add_to_small_molecules(
+            id='test_constant_small_molecule',
+            name='Test constant small molecule',
+            constant=True,
+            vessel_id='test_vessel'
+        )
+        measurement = pyenzyme.Measurement(
+            id='test_measurement',
+            name='Test measurement',
+        )
+        for species in getattr(enzml_doc, 'small_molecules'):
+            measurement.add_to_species_data(
+                species_id=species.id
+            )
+        enzml_doc.measurements.append(measurement)
+        self.enzml_doc = enzml_doc
+
+        # Create data model objects
+        self.data_model = NMRpy(
+            datetime_created='2025-01-01T00:00:00',
+            experiment=Experiment(name="Test experiment object")
+        )
+        self.fid_object = FIDObject(
+            raw_data=[],
+            processed_data=[],
+            nmr_parameters=Parameters(),
+            processing_steps=ProcessingSteps(),
+        )
+
+        # Set peaks and ranges for both FidArrays
+        peaks = [ 4.71,  4.64,  4.17,  0.57]
+        ranges = [[ 5.29,  3.67], [1.05,  0.27]]
+        for fid in self.fid_array.get_fids():
+            fid.peaks = peaks
+            fid.ranges = ranges
+
+    # Test Fid properties
+    def test_fid_species_setter(self):
+        self.fid.peaks = [1]
+        self.fid.species = 'string'
+        self.assertEqual(all(i==j for i, j in zip(self.fid.species, numpy.array(['string'], dtype=object))), True)
+        self.fid.peaks = [1, 2]
+        self.fid.species = ['string', 'string2']
+        self.assertEqual(all(i==j for i, j in zip(self.fid.species, numpy.array(['string', 'string2'], dtype=object))), True)
+        self.fid.peaks = [1, 2, 3]
+        self.fid.species = None
+        self.assertEqual(self.fid.species, None)
+
+    def test_failed_fid_species_setter(self):
+        self.fid.peaks = [1]
+        with self.assertRaises(TypeError):
+            self.fid.species = 1
+        self.fid.peaks = [1, 2]
+        with self.assertRaises(AttributeError):
+            self.fid.species = [1, 'string']
+        with self.assertRaises(AttributeError):
+            self.fid.species = [['string', 'string2']]
+        with self.assertRaises(AttributeError):
+            self.fid.species = [['string'], ['string2']]
+        with self.assertRaises(AttributeError):
+            self.fid.species = [['string', 'string2'], ['string3', 'string4']]
+        with self.assertRaises(AttributeError):
+            self.fid.species = ['string', 'string2', 'string3']
+        
+    def test_fid_fid_object_setter(self):
+        self.assertIsInstance(self.fid.fid_object, FIDObject)
+        self.fid.fid_object = None
+        self.assertEqual(self.fid.fid_object, None)
+        self.fid.fid_object = self.fid_object
+        self.assertEqual(self.fid.fid_object, self.fid_object)
+
+    def test_failed_fid_fid_object_setter(self):
+        with self.assertRaises(AttributeError):
+            self.fid.fid_object = 1
+        with self.assertRaises(AttributeError):
+            self.fid.fid_object = 'string'
+        with self.assertRaises(AttributeError):
+            self.fid.fid_object = [1, 2]
+        with self.assertRaises(AttributeError):
+            self.fid.fid_object = {'string': 1}
+        with self.assertRaises(AttributeError):
+            self.fid.fid_object = True
+
+    def test_fid_enzymeml_species_setter(self):
+        self.fid.enzymeml_species = self.enzml_doc.small_molecules
+        self.assertEqual(self.fid.enzymeml_species, self.enzml_doc.small_molecules)
+        self.fid.enzymeml_species = self.enzml_doc.small_molecules[0]
+        self.assertEqual(self.fid.enzymeml_species, [self.enzml_doc.small_molecules[0]])
+    
+    def test_failed_fid_enzymeml_species_setter(self):
+        with self.assertRaises(AttributeError):
+            self.fid.enzymeml_species = 1
+        with self.assertRaises(AttributeError):
+            self.fid.enzymeml_species = 'string'
+        with self.assertRaises(AttributeError):
+            self.fid.enzymeml_species = [1, 2]
+        with self.assertRaises(AttributeError):
+            self.fid.enzymeml_species = [self.enzml_doc.small_molecules[0], 'string']
+    
+    # Test FidArray properties
+    def test_fid_array_data_model_setter(self):
+        self.assertIsInstance(self.fid_array.data_model, NMRpy)
+        self.fid_array.data_model = self.data_model
+        self.assertEqual(self.fid_array.data_model, self.data_model)
+        self.fid_array.data_model = None
+        self.assertEqual(self.fid_array.data_model, None)
+    
+    def test_failed_fid_array_data_model_setter(self):
+        with self.assertRaises(AttributeError):
+            self.fid_array.data_model = 'string'
+        with self.assertRaises(AttributeError):
+            self.fid_array.data_model = 1
+        with self.assertRaises(AttributeError):
+            self.fid_array.data_model = [1, 2]
+        with self.assertRaises(AttributeError):
+            self.fid_array.data_model = {'string': 1}
+        with self.assertRaises(AttributeError):
+            self.fid_array.data_model = True
+    
+    def test_fid_array_enzymeml_document_setter(self):
+        self.fid_array.enzymeml_document = self.enzml_doc
+        self.assertEqual(self.fid_array.enzymeml_document, self.enzml_doc)
+        self.fid_array.enzymeml_document = None
+        self.assertEqual(self.fid_array.enzymeml_document, None)
+    
+    def test_failed_fid_array_enzymeml_document_setter(self):
+        with self.assertRaises(AttributeError):
+            self.fid_array.enzymeml_document = 'string'
+        with self.assertRaises(AttributeError):
+            self.fid_array.enzymeml_document = 1
+        with self.assertRaises(AttributeError):
+            self.fid_array.enzymeml_document = [1, 2]
+        with self.assertRaises(AttributeError):
+            self.fid_array.enzymeml_document = {'string': 1}
+        with self.assertRaises(AttributeError):
+            self.fid_array.enzymeml_document = True
+    
+    def test_fid_array_concentrations_setter(self):
+        for fid in self.fid_array.get_fids():
+            fid.species = ['test_variable_small_molecule', 'test_variable_small_molecule', 'test_variable_small_molecule', 'test_constant_small_molecule']
+            test_concentrations = {'test_variable_small_molecule': [1], 'test_constant_small_molecule': [1.0]}
+        self.fid_array.concentrations = test_concentrations
+        self.assertEqual(self.fid_array.concentrations, test_concentrations)
+        self.fid_array.concentrations = None
+        self.assertEqual(self.fid_array.concentrations, None)
+    
+    def test_failed_fid_array_concentrations_setter(self):
+        for fid in self.fid_array.get_fids():
+            fid.species = ['test_variable_small_molecule', 'test_variable_small_molecule', 'test_variable_small_molecule', 'test_constant_small_molecule']
+        with self.assertRaises(TypeError):
+            self.fid_array.concentrations = 'string'
+        with self.assertRaises(TypeError):
+            self.fid_array.concentrations = 1
+        with self.assertRaises(TypeError):
+            self.fid_array.concentrations = [1, 2]
+        with self.assertRaises(TypeError):
+            self.fid_array.concentrations = True
+        with self.assertRaises(ValueError):
+            self.fid_array.concentrations = {'test_variable_small_molecule': [1], 'test_constant_small_molecule': ['string']}
+        with self.assertRaises(ValueError):
+            self.fid_array.concentrations = {'test_variable_small_molecule': [1], 'test_constant_small_molecule': [1.0, 2.0]}
+
+    # Test methods
 
 class NMRPyTest:
     def __init__(self, tests='all'):
