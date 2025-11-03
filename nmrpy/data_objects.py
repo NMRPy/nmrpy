@@ -341,6 +341,25 @@ class Fid(Base):
 
     @property
     def fid_object(self):
+        try:
+            self.__fid_object.raw_data = self.data.tolist()
+        except AttributeError:
+            print('Warning: Fid.data is not yet set. Raw data will not be updated.')
+        try:
+            self.__fid_object.nmr_parameters = Parameters(
+                acquisition_time=self._params['at'],
+                relaxation_time=self._params['d1'],
+                repetition_time=self._params['rt'],
+                number_of_transients=self._params['nt'],
+                acquisition_times_array=self._params['acqtime'],
+                spectral_width_ppm=self._params['sw'],
+                spectral_width_hz=self._params['sw_hz'],
+                spectrometer_frequency=self._params['sfrq'],
+                reference_frequency=self._params['reffrq'],
+                spectral_width_left=self._params['sw_left'],
+            )
+        except AttributeError:
+            print('Warning: Fid._params is not yet set. NMR parameters will not be updated.')
         return self.__fid_object
 
     @fid_object.setter
@@ -496,7 +515,7 @@ class Fid(Base):
                     if peak_object.peak_integral != integral:
                         peak_object.peak_integral = float(integral)
             return integrals
-            
+
     def _get_plots(self):
         """
         Return a list of all :class:`~nmrpy.plotting.Plot` objects owned by this :class:`~nmrpy.data_objects.Fid`.
@@ -699,10 +718,13 @@ class Fid(Base):
                 raise ValueError('Only Fourier-transformed data can be phase-corrected.')
             if verbose:
                 print('phasing: %s'%self.id)
-            self.data = Fid._phase_correct((self.data, method, verbose))
+            phased_data, p0, p1 = Fid._phase_correct((self.data, method, verbose))
+            self.data = phased_data
             # Update data model
             if getattr(self, 'fid_object', None) is not None:
                 self.fid_object.processing_steps.is_phased = True
+                self.fid_object.processing_steps.zero_order_phase = p0
+                self.fid_object.processing_steps.first_order_phase = p1
 
     @classmethod
     def _phase_correct(cls, list_params):
@@ -717,18 +739,18 @@ class Fid(Base):
                     ('p1', 0.0, True),
                     )
             mz = lmfit.minimize(Fid._phased_data_sum, p, args=([data]), method=method)
-            phased_data = Fid._ps(data, p0=mz.params['p0'].value, p1=mz.params['p1'].value)
+            phased_data, p0, p1 = Fid._ps(data, p0=mz.params['p0'].value, p1=mz.params['p1'].value)
             if abs(phased_data.min()) > abs(phased_data.max()):
                     phased_data *= -1
             if sum(phased_data) < 0.0:
                     phased_data *= -1
             if verbose:
                 print('Zero order: %d\tFirst order: %d\t (In degrees)'%(mz.params['p0'].value, mz.params['p1'].value))
-            return phased_data
+            return phased_data, p0, p1
         
     @classmethod
     def _phased_data_sum(cls, pars, data):
-            err = Fid._ps(data, p0=pars['p0'].value, p1=pars['p1'].value).real
+            err = Fid._ps(data, p0=pars['p0'].value, p1=pars['p1'].value)[0].real
             return numpy.array([abs(err).sum()]*2)
 
     @classmethod
@@ -750,7 +772,7 @@ class Fid(Base):
             p1 = p1*numpy.pi/180.0
             size = len(data)
             ph = numpy.exp(1.0j*(p0+(p1*numpy.arange(size)/size)))
-            return ph*data
+            return ph*data, p0, p1
 
     def ps(self, p0=0.0, p1=0.0):
         """
@@ -1527,7 +1549,7 @@ class FidArray(Base):
         if not all(len(concentrations[species]) == len(self.t) for species in concentrations.keys()):
             raise ValueError('Length of concentrations must match length of FID data.')
         for v in concentrations.values():
-            if not all(isinstance(i, (int, float)) for i in v):
+            if not all(isinstance(i, (in4t, float)) for i in v):
                 raise ValueError('Concentrations must be a list of integers or floats.')
         self.__concentrations = concentrations
 
@@ -1912,11 +1934,13 @@ class FidArray(Base):
             list_params = [[fid.data, method, verbose] for fid in fids]
             phased_data = self._generic_mp(Fid._phase_correct, list_params, cpus)
             for fid, datum in zip(fids, phased_data):
-                fid.data = datum
+                fid.data = datum[0]
                 # Update data model
                 if getattr(fid, 'fid_object', None) is not None:
                     fid.fid_object.processed_data = [str(data) for data in datum]
                     fid.fid_object.processing_steps.is_phased = True
+                    fid.fid_object.processing_steps.zero_order_phase = datum[1]
+                    fid.fid_object.processing_steps.first_order_phase = datum[2]
         else:
             for fid in self.get_fids():
                 fid.phase_correct(method=method, verbose=verbose)
