@@ -213,7 +213,7 @@ class Plot():
 
         xlabel = 'PPM (%.2f MHz)'%(params['reffrq'])
         ylabel = 'min.'
-        acqtime = fids[0]._params['acqtime']
+        acqtime = [fids[i]._params['acqtime'] for i in range(lower_index, upper_index)]
         minutes = acqtime[lower_index:upper_index]
         self.fig = self._generic_array_plot(ppm, minutes, plot_data, 
                                             colours_list=colours_list,
@@ -270,7 +270,7 @@ class Plot():
         if lower_ppm is None:
             lower_ppm = sw_left-sw
 
-        acqtime = params['acqtime']
+        acqtime = params['acqtime_array']
         ppm = numpy.linspace(sw_left-sw, sw_left, data.shape[1])[::-1]
         ppm_bool_index = (ppm < upper_ppm) * (ppm > lower_ppm)
         ppm = ppm[ppm_bool_index]

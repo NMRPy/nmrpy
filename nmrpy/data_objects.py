@@ -131,13 +131,13 @@ class Base():
         rfl = float(procpar['procpar']['rfl']['values'][0])
         tof = float(procpar['procpar']['tof']['values'][0])
         rt = at+d1
-        nt = numpy.array(
+        nt_array = numpy.array(
             [procpar['procpar']['nt']['values']], dtype=int).flatten()
-        acqtime = numpy.zeros(nt.shape)
-        acqtime[0] = (rt * nt[0] / 2)
-        for i in range(1, len(nt)):
-            acqtime[i] = acqtime[i - 1] + (nt[i - 1] + nt[i]) / 2 * rt
-        acqtime /= 60.   # convert to min
+        acqtime_array = numpy.zeros(nt_array.shape)
+        acqtime_array[0] = (rt * nt_array[0] / 2)
+        for i in range(1, len(nt_array)):
+            acqtime_array[i] = acqtime_array[i - 1] + (nt_array[i - 1] + nt_array[i]) / 2 * rt
+        acqtime_array /= 60.   # convert to min
         sw_hz = float(procpar['procpar']['sw']['values'][0])
         sw = round(sw_hz/reffrq, 2)
         sw_left = (0.5+1e6*(sfrq-reffrq)/sw_hz)*sw_hz/sfrq
@@ -145,8 +145,10 @@ class Base():
             at=at,
             d1=d1,
             rt=rt,
-            nt=nt,
-            acqtime=acqtime,
+            nt_array=nt_array,
+            nt=None,
+            acqtime_array=acqtime_array,
+            acqtime=None,
             sw=sw,
             sw_hz=sw_hz,
             sfrq=sfrq,
@@ -184,16 +186,18 @@ class Base():
         tstart = cumulative - 0.5*single    # tstart for acquisition
         al = procpar['arraylength']
         a = procpar['arrayset']
-        acqtime = numpy.zeros((al))
-        acqtime[0] = tstart[a-1]
+        acqtime_array = numpy.zeros((al))
+        acqtime_array[0] = tstart[a-1]
         for i in range(1, al):
-            acqtime[i] = acqtime[i-1] + td
+            acqtime_array[i] = acqtime_array[i-1] + td
         params = dict(
             at=at,
             d1=d1,
             rt=rt,
+            nt_array=None,
             nt=nt,
-            acqtime=acqtime,
+            acqtime_array=acqtime_array,
+            acqtime=None,
             sw=sw,
             sw_hz=sw_hz,
             sfrq=sfrq,
@@ -217,7 +221,6 @@ class Fid(Base):
         self._flags = {
             "ft": False,
         }
-
 
     def __str__(self):
         return 'FID: %s (%i data)'%(self.id, len(self.data))
@@ -1290,7 +1293,7 @@ class FidArray(Base):
         t = None
         if nfids > 0:
             try:
-                t = self._params['acqtime']
+                t = self._params['acqtime_array']
             except:
                 t = numpy.arange(len(self.get_fids()))
         return t
@@ -1341,9 +1344,9 @@ class FidArray(Base):
                 idx = fids.index(fid_id)
                 delattr(self, fid_id)
                 if hasattr(self, '_params') and self._params is not None:
-                    at = list(self._params['acqtime'])
+                    at = list(self._params['acqtime_array'])
                     at.pop(idx)
-                    self._params['acqtime'] = at
+                    self._params['acqtime_array'] = at
             else:
                 raise AttributeError('{} is not an FID object.'.format(fid_id))
         else:
@@ -1366,6 +1369,43 @@ class FidArray(Base):
                     self.add_fid(fid)
                 except AttributeError as e:
                     print(e)
+    
+    @staticmethod
+    def _setup_params(fid_array):
+        """Setup the parameters nt, nt_array, acqtime, and acqtime_array
+        for the :class:`~nmrpy.data_objects.FidArray` object.
+
+        :arg fid_array: a :class:`~nmrpy.data_objects.FidArray` object
+        """
+        nt_list = []
+        is_bruker = False
+        for fid in fid_array.get_fids():
+            fid_index = int(fid.id.split('fid')[1])
+            if fid._file_format == 'varian':
+                # Varian files provide nt_array and acqtime_array. For
+                # each FID, nt and acqtime are extracted from these.
+                fid._params['nt'] = float(fid._params['nt_array'][fid_index])
+                fid._params['acqtime'] = float(fid._params['acqtime_array'][fid_index])
+                # Remove nt_array and acqtime_array from the Fid objects
+                del fid._params['nt_array']
+                del fid._params['acqtime_array']
+            elif fid._file_format == 'bruker':
+                # Bruker files provide nt and acqtime_array. For each
+                # FID, acqtime is extracted from acqtime_array.
+                # Additionally, nt is added to the nt_list for later use
+                # in the FidArray object.
+                is_bruker = True
+                nt_list.append(fid._params['nt'])
+                fid._params['acqtime'] = float(fid._params['acqtime_array'][fid_index])
+                # Remove nt_array and acqtime_array from the Fid objects
+                del fid._params['nt_array']
+                del fid._params['acqtime_array']
+        if is_bruker:
+            # Create nt_array from the nt_list for the FidArray object
+            fid_array._params['nt_array'] = numpy.array(nt_list)
+        # Remove nt and acqtime from the FidArray object
+        del fid_array._params['nt']
+        del fid_array._params['acqtime']
 
     @classmethod
     def from_data(cls, data):
@@ -1424,6 +1464,7 @@ class FidArray(Base):
                 fid._file_format = fid_array._file_format
                 fid.fid_path = fid_array.fid_path
                 fid._procpar = fid_array._procpar
+            cls._setup_params(fid_array)
             return fid_array 
         else:
             raise IOError('Data could not be imported.')
