@@ -717,7 +717,7 @@ Left - select peak
         ym = numpy.ma.masked_array(data, m)
         xm = numpy.ma.masked_array(x, m)
         p = numpy.ma.polyfit(xm, ym, deg)
-        yp = scipy.polyval(p, x)
+        yp = numpy.polyval(p, x)
         self._bl_poly = yp
         data_bl = data-yp
         self.data = numpy.array(data_bl)
@@ -1293,7 +1293,12 @@ class FidArray(Base):
         t = None
         if nfids > 0:
             try:
-                t = self._params['acqtime_array']
+                if "acqtime_array" in self._params.keys():
+                    # New NMRpy _params structure
+                    t = self._params['acqtime_array']
+                else:
+                    # Old NMRpy _params structure
+                    t = self._params['acqtime']
             except:
                 t = numpy.arange(len(self.get_fids()))
         return t
@@ -1344,9 +1349,14 @@ class FidArray(Base):
                 idx = fids.index(fid_id)
                 delattr(self, fid_id)
                 if hasattr(self, '_params') and self._params is not None:
-                    at = list(self._params['acqtime_array'])
+                    at = list(self._params['acqtime_array']) if "acqtime_array" in self._params.keys() else list(self._params['acqtime'])
                     at.pop(idx)
-                    self._params['acqtime_array'] = at
+                    if "acqtime_array" in self._params.keys():
+                        # New NMRpy _params structure
+                        self._params['acqtime_array'] = at
+                    else:
+                        # Old NMRpy _params structure
+                        self._params['acqtime'] = at
             else:
                 raise AttributeError('{} is not an FID object.'.format(fid_id))
         else:
