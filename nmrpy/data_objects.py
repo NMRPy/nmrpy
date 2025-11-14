@@ -114,6 +114,8 @@ class Base():
             return self._extract_procpar_bruker(procpar)
         elif self._file_format == 'varian':
             return self._extract_procpar_varian(procpar)
+        elif self._file_format == 'spinsolve':
+            return self._extract_procpar_spinsolve(procpar)
         #else:
         #    raise AttributeError('Could not parse procpar.') 
 
@@ -161,7 +163,7 @@ class Base():
         return params
 
     @staticmethod
-    def _extract_procpar_bruker(procpar): 
+    def _extract_procpar_bruker(procpar):
         """
         Extract some commonly-used NMR parameters (using Bruker denotations)
         and return a parameter dictionary 'params'.
@@ -203,7 +205,42 @@ class Base():
             sfrq=sfrq,
             reffrq=reffrq,
             sw_left=sw_left,
-            )
+        )
+        return params
+
+    @staticmethod
+    def _extract_procpar_spinsolve(procpar):
+        """
+        Extract some commonly-used NMR parameters (using Spinsolve denotations)
+        and return a parameter dictionary 'params'.
+        """
+        reffrq = float(procpar['dx']['$SF'][0])
+        nt = procpar['acqu']['nrScans']
+        sw_hz = procpar['acqus']['SW_h']
+        sw = float(procpar['dx']['$SW'][0])
+        sfrq = float(procpar['dx']['.OBSERVEFREQUENCY'][0])
+        sw_left = (0.5+1e6*(sfrq-reffrq)/sw_hz)*sw_hz/sfrq
+        at = float(procpar['dx']['LAST'][0].split(',')[0])
+        rt = procpar['acqu']['repTime'] / 1000
+        d1 = rt - at
+        al = procpar['arraylength']
+        acqtime_array = numpy.zeros((al))
+        for i in range(1, al):
+            acqtime_array[i] = acqtime_array[i-1] + rt
+        params = dict(
+            at=at,
+            d1=d1,
+            rt=rt,
+            nt_array=None,
+            nt=nt,
+            acqtime_array=acqtime_array,
+            acqtime=None,
+            sw=sw,
+            sw_hz=sw_hz,
+            sfrq=sfrq,
+            reffrq=reffrq,
+            sw_left=sw_left,
+        )
         return params
 
 class Fid(Base):
@@ -2067,6 +2104,7 @@ class Importer(Base):
     def import_fid(self, arrayset=None):
         """
         This will first attempt to import Bruker data. Failing that, Varian.
+        Failing that, Magritek Spinsolve.
         """
         try:
             print('Attempting Bruker')
@@ -2076,9 +2114,9 @@ class Importer(Base):
             self._procpar = brukerimporter._procpar
             self._file_format = brukerimporter._file_format
             return
-        except (FileNotFoundError, OSError):
-            print('fid_path does not specify a valid .fid directory.')
-            return 
+        # except (FileNotFoundError, OSError):
+        #     print('fid_path does not specify a valid .fid directory.')
+        #     return
         except (TypeError, IndexError):
             print('probably not Bruker data')
         try: 
@@ -2091,6 +2129,16 @@ class Importer(Base):
             return
         except TypeError:
             print('probably not Varian data')
+        try:
+            print('Attempting Magritek Spinsolve')
+            spinsolveimporter = SpinsolveImporter(fid_path=self.fid_path)
+            spinsolveimporter.import_fid()
+            self._procpar = spinsolveimporter._procpar
+            self.data = spinsolveimporter.data
+            self._file_format = spinsolveimporter._file_format
+            return
+        except TypeError:
+            print('probably not Magritek Spinsolve data')
 
 class VarianImporter(Importer):
 
@@ -2168,6 +2216,31 @@ class BrukerImporter(Importer):
             tcum.append(td)
             tsingle.append(tot)
         return (td, numpy.array(tcum), numpy.array(tsingle))
+
+class SpinsolveImporter(Importer):
+    def import_fid(self):
+        try:
+            dirs = [
+                int(i)
+                for i in os.listdir(self.fid_path)
+                if os.path.isdir(self.fid_path + os.path.sep + i)
+            ]
+            dirs.sort()
+            dirs = [str(i) for i in dirs]
+            alldata = []
+            for d in dirs:
+                procpar, data = nmrglue.spinsolve.read(self.fid_path + os.path.sep + d)
+                alldata.append((procpar, data))
+            self.alldata = alldata
+            data = numpy.vstack([d[1] for d in alldata])
+            self.data = data
+            self._procpar = procpar
+            self._file_format = 'spinsolve'
+            self._procpar['arraylength'] = self.data.shape[0]
+        except FileNotFoundError:
+            print('fid_path does not specify a valid .fid directory.')
+        except OSError:
+            print('fid_path does not specify a valid .fid directory.')
 
 if __name__ == '__main__':
     pass
