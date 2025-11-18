@@ -214,19 +214,27 @@ class Base():
         Extract some commonly-used NMR parameters (using Spinsolve denotations)
         and return a parameter dictionary 'params'.
         """
-        reffrq = float(procpar['dx']['$SF'][0])
         nt = procpar['acqu']['nrScans']
-        sw_hz = procpar['acqus']['SW_h']
-        sw = float(procpar['dx']['$SW'][0])
-        sfrq = float(procpar['dx']['.OBSERVEFREQUENCY'][0])
-        sw_left = (0.5+1e6*(sfrq-reffrq)/sw_hz)*sw_hz/sfrq
-        at = float(procpar['dx']['LAST'][0].split(',')[0])
-        rt = procpar['acqu']['repTime'] / 1000
+        sw_hz = procpar['acqu']['bandwidth'] * 1000.0
+        sfrq = procpar['acqu']['b1Freq']
+        sw = sw_hz / sfrq
+        l_frq = procpar['acqu']['lowestFrequency']
+        reffrq = sfrq - (l_frq + 0.5 * sw_hz) / 1e6
+        sw_left = (0.5 + 1e6 * (sfrq - reffrq) / sw_hz) * sw_hz / sfrq
+        options = procpar['acqu']['Options'].split(',')
+        at = 0  # default if not provided
+        for o in options:
+            if 'AcquisitionTime' in o:
+                at = float(re.search('\\(.+\\)', o)[0].strip('()'))  # overwrite default
+        rt = procpar['acqu']['repTime']
+        if rt >= 600:  # sometimes reported in s, sometimes in ms, 600 is a reasonable cutoff
+            rt /= 1000
         d1 = rt - at
         al = procpar['arraylength']
         acqtime_array = numpy.zeros((al))
+        acqtime_array[0] = nt * rt / 2
         for i in range(1, al):
-            acqtime_array[i] = acqtime_array[i-1] + rt
+            acqtime_array[i] = acqtime_array[i - 1] + nt * rt
         params = dict(
             at=at,
             d1=d1,
@@ -1479,9 +1487,9 @@ class FidArray(Base):
 
         :keyword fid_path: filepath to .fid directory
 
-        :keyword file_format: 'varian' or 'bruker', usually unnecessary
+        :keyword file_format: 'varian' or 'bruker' or 'spinsolve', usually unnecessary
         
-        :keyword arrayset: (int) array set for interleaved spectra, 
+        :keyword arrayset: (int) array set for interleaved spectra (implemented for Bruker only),
                                  user is prompted if not specified 
         """
         if not file_format:
@@ -1498,6 +1506,9 @@ class FidArray(Base):
         elif file_format == 'bruker':
             importer = BrukerImporter(fid_path=fid_path)
             importer.import_fid(arrayset=arrayset)
+        elif file_format == 'spinsolve':
+            importer = SpinsolveImporter(fid_path=fid_path)
+            importer.import_fid()
         elif file_format == 'nmrpy':
             with open(fid_path, 'rb') as f:
                 return pickle.load(f)
@@ -2114,9 +2125,6 @@ class Importer(Base):
             self._procpar = brukerimporter._procpar
             self._file_format = brukerimporter._file_format
             return
-        # except (FileNotFoundError, OSError):
-        #     print('fid_path does not specify a valid .fid directory.')
-        #     return
         except (TypeError, IndexError):
             print('probably not Bruker data')
         try: 
@@ -2221,7 +2229,7 @@ class SpinsolveImporter(Importer):
     def import_fid(self):
         try:
             dirs = [
-                int(i)
+                i
                 for i in os.listdir(self.fid_path)
                 if os.path.isdir(self.fid_path + os.path.sep + i)
             ]
