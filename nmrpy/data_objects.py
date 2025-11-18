@@ -1,14 +1,13 @@
 import numpy
-import scipy
 from matplotlib import pyplot
 import lmfit
 import nmrglue
 import numbers
-from scipy.optimize import leastsq
 from multiprocessing import Pool, cpu_count
 from nmrpy.plotting import *
 import os
 import pickle
+import re
 
 class Base():
     _complex_dtypes = [
@@ -17,7 +16,7 @@ class Base():
                     numpy.dtype('clongdouble'),
                     ]
 
-    _file_formats = ['varian', 'bruker', None]
+    _file_formats = ['varian', 'bruker', 'spinsolve', None]
 
     def __init__(self, *args, **kwargs):
         self.id = kwargs.get('id', None)
@@ -222,7 +221,7 @@ class Base():
         reffrq = sfrq - (l_frq + 0.5 * sw_hz) / 1e6
         sw_left = (0.5 + 1e6 * (sfrq - reffrq) / sw_hz) * sw_hz / sfrq
         options = procpar['acqu']['Options'].split(',')
-        at = 0  # default if not provided
+        at = 6.554  # default in reaction monitoring mode, use if not provided
         for o in options:
             if 'AcquisitionTime' in o:
                 at = float(re.search('\\(.+\\)', o)[0].strip('()'))  # overwrite default
@@ -569,7 +568,7 @@ class Fid(Base):
         if Fid._is_valid_dataset(data) and file_format in Fid._file_formats:
             data = numpy.array(numpy.fft.fft(data), dtype=data.dtype)
             s = len(data)
-            if file_format == 'varian' or file_format == None:
+            if file_format == 'varian' or file_format == 'spinsolve' or file_format == None:
                     ft_data = numpy.append(data[int(s / 2.0):], data[: int(s / 2.0)])
             if file_format == 'bruker':
                     ft_data = numpy.append(data[int(s / 2.0):: -1], data[s: int(s / 2.0): -1])
@@ -2124,19 +2123,18 @@ class Importer(Base):
             self.data = brukerimporter.data
             self._procpar = brukerimporter._procpar
             self._file_format = brukerimporter._file_format
+        except (FileNotFoundError, OSError):
             return
-        except (TypeError, IndexError):
-            print('probably not Bruker data')
-        try: 
+        try:
             print('Attempting Varian')
             varianimporter = VarianImporter(fid_path=self.fid_path)
             varianimporter.import_fid()
             self._procpar = varianimporter._procpar
             self.data = varianimporter.data 
             self._file_format = varianimporter._file_format
-            return
-        except TypeError:
+        except (FileNotFoundError, OSError):
             print('probably not Varian data')
+            return
         try:
             print('Attempting Magritek Spinsolve')
             spinsolveimporter = SpinsolveImporter(fid_path=self.fid_path)
@@ -2144,9 +2142,9 @@ class Importer(Base):
             self._procpar = spinsolveimporter._procpar
             self.data = spinsolveimporter.data
             self._file_format = spinsolveimporter._file_format
-            return
-        except TypeError:
+        except (FileNotFoundError, OSError):
             print('probably not Magritek Spinsolve data')
+            return
 
 class VarianImporter(Importer):
 
@@ -2156,11 +2154,10 @@ class VarianImporter(Importer):
             self.data = data 
             self._procpar = procpar
             self._file_format = 'varian'
-        except FileNotFoundError:
+        except (FileNotFoundError, OSError):
             print('fid_path does not specify a valid .fid directory.')
-        except OSError:
-            print('fid_path does not specify a valid .fid directory.')
-        
+            print('probably not Varian data!\n')
+
 class BrukerImporter(Importer):
 
     def import_fid(self, arrayset=None):
@@ -2204,11 +2201,10 @@ class BrukerImporter(Importer):
                     self._procpar['tsingle'] = self._get_time_delta()
             self._procpar['arraylength'] = self.data.shape[0]
             self._procpar['arrayset'] = arrayset
-        except FileNotFoundError:
+        except (FileNotFoundError, OSError, ValueError):
             print('fid_path does not specify a valid .fid directory.')
-        except OSError:
-            print('fid_path does not specify a valid .fid directory.')
-            
+            print('probably not Bruker data!\n')
+
     def _get_time_delta(self):
         td = 0.0
         tcum = []
@@ -2245,10 +2241,9 @@ class SpinsolveImporter(Importer):
             self._procpar = procpar
             self._file_format = 'spinsolve'
             self._procpar['arraylength'] = self.data.shape[0]
-        except FileNotFoundError:
+        except (FileNotFoundError, OSError):
             print('fid_path does not specify a valid .fid directory.')
-        except OSError:
-            print('fid_path does not specify a valid .fid directory.')
+            print('probably not Magritek Spinsolve data!\n')
 
 if __name__ == '__main__':
     pass
