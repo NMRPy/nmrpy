@@ -1432,29 +1432,29 @@ class FidArray(Base):
         :arg fid_array: a :class:`~nmrpy.data_objects.FidArray` object
         """
         nt_list = []
-        is_bruker = False
+        is_varian = False
         for fid in fid_array.get_fids():
             fid_index = int(fid.id.split('fid')[1])
             if fid._file_format == 'varian':
                 # Varian files provide nt_array and acqtime_array. For
                 # each FID, nt and acqtime are extracted from these.
+                is_varian = True
                 fid._params['nt'] = float(fid._params['nt_array'][fid_index])
                 fid._params['acqtime'] = float(fid._params['acqtime_array'][fid_index])
                 # Remove nt_array and acqtime_array from the Fid objects
                 del fid._params['nt_array']
                 del fid._params['acqtime_array']
-            elif fid._file_format == 'bruker':
+            elif fid._file_format == 'bruker' or fid._file_format == 'spinsolve':
                 # Bruker files provide nt and acqtime_array. For each
                 # FID, acqtime is extracted from acqtime_array.
                 # Additionally, nt is added to the nt_list for later use
                 # in the FidArray object.
-                is_bruker = True
                 nt_list.append(fid._params['nt'])
                 fid._params['acqtime'] = float(fid._params['acqtime_array'][fid_index])
                 # Remove nt_array and acqtime_array from the Fid objects
                 del fid._params['nt_array']
                 del fid._params['acqtime_array']
-        if is_bruker:
+        if not is_varian:
             # Create nt_array from the nt_list for the FidArray object
             fid_array._params['nt_array'] = numpy.array(nt_list)
         # Remove nt and acqtime from the FidArray object
@@ -2117,93 +2117,86 @@ class Importer(Base):
         Failing that, Magritek Spinsolve.
         """
         try:
-            print('Attempting Bruker')
+            print('Attempting Bruker...')
             brukerimporter = BrukerImporter(fid_path=self.fid_path)
             brukerimporter.import_fid(arrayset=arrayset)
             self.data = brukerimporter.data
             self._procpar = brukerimporter._procpar
             self._file_format = brukerimporter._file_format
-        except (FileNotFoundError, OSError):
             return
+        except (TypeError, IndexError, OSError, ValueError):
+            print('probably not Bruker data!\n')
         try:
-            print('Attempting Varian')
+            print('Attempting Varian...')
             varianimporter = VarianImporter(fid_path=self.fid_path)
             varianimporter.import_fid()
             self._procpar = varianimporter._procpar
             self.data = varianimporter.data 
             self._file_format = varianimporter._file_format
-        except (FileNotFoundError, OSError):
-            print('probably not Varian data')
             return
+        except (TypeError, FileNotFoundError, OSError):
+            print('probably not Varian data!\n')
         try:
-            print('Attempting Magritek Spinsolve')
+            print('Attempting Magritek Spinsolve...')
             spinsolveimporter = SpinsolveImporter(fid_path=self.fid_path)
             spinsolveimporter.import_fid()
             self._procpar = spinsolveimporter._procpar
             self.data = spinsolveimporter.data
             self._file_format = spinsolveimporter._file_format
-        except (FileNotFoundError, OSError):
-            print('probably not Magritek Spinsolve data')
             return
+        except (TypeError):
+            print('probably not Magritek Spinsolve data!')
 
 class VarianImporter(Importer):
 
     def import_fid(self):
-        try:
-            procpar, data = nmrglue.varian.read(self.fid_path)
-            self.data = data 
-            self._procpar = procpar
-            self._file_format = 'varian'
-        except (FileNotFoundError, OSError):
-            print('fid_path does not specify a valid .fid directory.')
-            print('probably not Varian data!\n')
+        procpar, data = nmrglue.varian.read(self.fid_path)
+        self.data = data
+        self._procpar = procpar
+        self._file_format = 'varian'
 
 class BrukerImporter(Importer):
 
     def import_fid(self, arrayset=None):
-        try:
-            dirs = [int(i) for i in os.listdir(self.fid_path) if \
-                    os.path.isdir(self.fid_path+os.path.sep+i)]
-            dirs.sort()
-            dirs = [str(i) for i in dirs]
-            alldata = []
-            for d in dirs:
-                procpar, data = nmrglue.bruker.read(self.fid_path+os.path.sep+d)
-                alldata.append((procpar, data))
-            self.alldata = alldata
-            incr = 1
-            while True:
-                if len(alldata) == 1:
-                    break
-                if alldata[incr][1].shape == alldata[0][1].shape:
-                    break
-                incr += 1
-            if incr > 1:
-                if arrayset == None:
-                    print('Total of '+str(incr)+' alternating FidArrays found.')
-                    arrayset = input('Which one to import? ')
-                    arrayset = int(arrayset)
-                else:
-                    arrayset = arrayset
-                if arrayset < 1 or arrayset > incr:
-                    raise ValueError('Select a value between 1 and '
-                                      + str(incr) + '.')
+        dirs = [int(i) for i in os.listdir(self.fid_path) if \
+                os.path.isdir(self.fid_path+os.path.sep+i)]
+        dirs.sort()
+        dirs = [str(i) for i in dirs]
+        alldata = []
+        for d in dirs:
+            procpar, data = nmrglue.bruker.read(self.fid_path+os.path.sep+d)
+            alldata.append((procpar, data))
+        self.alldata = alldata
+        incr = 1
+        while True:
+            if len(alldata) == 1:
+                break
+            if alldata[incr][1].shape == alldata[0][1].shape:
+                break
+            incr += 1
+        if incr > 1:
+            if arrayset == None:
+                print('Total of '+str(incr)+' alternating FidArrays found.')
+                arrayset = input('Which one to import? ')
+                arrayset = int(arrayset)
             else:
-                arrayset = 1
-            self.incr = incr
-            procpar = alldata[arrayset-1][0]
-            data = numpy.vstack([d[1] for d in alldata[(arrayset-1)::incr]])
-            self.data = data
-            self._procpar = procpar
-            self._file_format = 'bruker'
-            self.data = nmrglue.bruker.remove_digital_filter(procpar, self.data)
-            self._procpar['tdelta'], self._procpar['tcum'],\
-                    self._procpar['tsingle'] = self._get_time_delta()
-            self._procpar['arraylength'] = self.data.shape[0]
-            self._procpar['arrayset'] = arrayset
-        except (FileNotFoundError, OSError, ValueError):
-            print('fid_path does not specify a valid .fid directory.')
-            print('probably not Bruker data!\n')
+                arrayset = arrayset
+            if arrayset < 1 or arrayset > incr:
+                raise ValueError('Select a value between 1 and '
+                                  + str(incr) + '.')
+        else:
+            arrayset = 1
+        self.incr = incr
+        procpar = alldata[arrayset-1][0]
+        data = numpy.vstack([d[1] for d in alldata[(arrayset-1)::incr]])
+        self.data = data
+        self._procpar = procpar
+        self._file_format = 'bruker'
+        self.data = nmrglue.bruker.remove_digital_filter(procpar, self.data)
+        self._procpar['tdelta'], self._procpar['tcum'],\
+                self._procpar['tsingle'] = self._get_time_delta()
+        self._procpar['arraylength'] = self.data.shape[0]
+        self._procpar['arrayset'] = arrayset
 
     def _get_time_delta(self):
         td = 0.0
@@ -2223,27 +2216,23 @@ class BrukerImporter(Importer):
 
 class SpinsolveImporter(Importer):
     def import_fid(self):
-        try:
-            dirs = [
-                i
-                for i in os.listdir(self.fid_path)
-                if os.path.isdir(self.fid_path + os.path.sep + i)
-            ]
-            dirs.sort()
-            dirs = [str(i) for i in dirs]
-            alldata = []
-            for d in dirs:
-                procpar, data = nmrglue.spinsolve.read(self.fid_path + os.path.sep + d)
-                alldata.append((procpar, data))
-            self.alldata = alldata
-            data = numpy.vstack([d[1] for d in alldata])
-            self.data = data
-            self._procpar = procpar
-            self._file_format = 'spinsolve'
-            self._procpar['arraylength'] = self.data.shape[0]
-        except (FileNotFoundError, OSError):
-            print('fid_path does not specify a valid .fid directory.')
-            print('probably not Magritek Spinsolve data!\n')
+        dirs = [
+            i
+            for i in os.listdir(self.fid_path)
+            if os.path.isdir(self.fid_path + os.path.sep + i)
+        ]
+        dirs.sort()
+        dirs = [str(i) for i in dirs]
+        alldata = []
+        for d in dirs:
+            procpar, data = nmrglue.spinsolve.read(self.fid_path + os.path.sep + d)
+            alldata.append((procpar, data))
+        self.alldata = alldata
+        data = numpy.vstack([d[1] for d in alldata])
+        self.data = data
+        self._procpar = procpar
+        self._file_format = 'spinsolve'
+        self._procpar['arraylength'] = self.data.shape[0]
 
 if __name__ == '__main__':
     pass
