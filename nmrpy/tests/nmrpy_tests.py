@@ -44,7 +44,7 @@ class TestFidInitialisation(unittest.TestCase):
         self.assertIsInstance(fid.data, numpy.ndarray)
         self.assertFalse(any(self._is_iter(i) for i in fid.data))
 
-    def test_failed_fid_assignment(self):
+    def test_fid_assignment_fail(self):
         for test_id in [1, []]:
             with self.assertRaises(AttributeError):
                Fid(id=test_id)
@@ -52,7 +52,7 @@ class TestFidInitialisation(unittest.TestCase):
             with self.assertRaises(TypeError):
                Fid(data=test_data)
 
-    def test_failed_fid_procpar_setter(self):
+    def test_fid_procpar_setter_fail(self):
         fid = Fid()
         with self.assertRaises(AttributeError):
             fid._procpar = 'string'
@@ -62,7 +62,7 @@ class TestFidInitialisation(unittest.TestCase):
         for i in ['varian', 'bruker', None]:
             fid._file_format = i
 
-    def test_failed_fid__file_format_setter(self):
+    def test_fid__file_format_setter_fail(self):
         fid = Fid()
         for i in ['string', 1]:
             with self.assertRaises(AttributeError):
@@ -74,7 +74,7 @@ class TestFidInitialisation(unittest.TestCase):
         fid.peaks = [1, 2]
         self.assertIsInstance(fid.peaks, numpy.ndarray) 
 
-    def test_failed_fid_peaks_setter(self):
+    def test_fid_peaks_setter_fail(self):
         fid = Fid()
         with self.assertRaises(AttributeError):
             fid.peaks = [1, 'string']
@@ -103,7 +103,7 @@ class TestFidInitialisation(unittest.TestCase):
         )
 
 
-    def test_failed_fid_ranges_setter(self):
+    def test_fid_ranges_setter_fail(self):
         fid = Fid()
         with self.assertRaises(AttributeError):
             fid.ranges = [1, 1]
@@ -118,7 +118,7 @@ class TestFidInitialisation(unittest.TestCase):
             fid.data = data
             self.assertIsInstance(fid.data, numpy.ndarray)
 
-    def test_failed_fid_data_setter(self):
+    def test_fid_data_setter_fail(self):
         for test_data in self.fid_bad_data:
             with self.assertRaises(TypeError):
                Fid.from_data(test_data)
@@ -134,7 +134,7 @@ class TestFidInitialisation(unittest.TestCase):
             self.assertIsInstance(fid.data, numpy.ndarray)
             self.assertEqual(list(fid.data), list(data))
         
-    def test_fid_from_data_failed(self):
+    def test_fid_from_data_fail(self):
         for test_data in self.fid_bad_data:
             with self.assertRaises(TypeError):
                Fid.from_data(test_data)
@@ -142,7 +142,7 @@ class TestFidInitialisation(unittest.TestCase):
     def test__is_iter_of_iters(self):
         Fid._is_iter_of_iters([[]])
 
-    def test_failed__is_iter_of_iters(self):
+    def test__is_iter_of_iters_fail(self):
         for i in [
                 [],
                 [1, 3],
@@ -172,7 +172,7 @@ class TestFidInitialisation(unittest.TestCase):
         fid._f_pk(numpy.arange(100), frac_gauss = 2.0)
         fid._f_pk(numpy.arange(100), frac_gauss = -2.0)
 
-    def test_f_pk_failed(self):
+    def test_f_pk_fail(self):
         fid = Fid()
         with self.assertRaises(TypeError):
             fid._f_pk(numpy.arange(100), offset='g')
@@ -187,7 +187,7 @@ class TestFidInitialisation(unittest.TestCase):
         fid._f_pks([p1, p2], x)
         fid._f_pks([p1, p2], list(x))
 
-    def test_f_pks_failed(self):
+    def test_f_pks_fail(self):
         fid = Fid()
         x = numpy.arange(100)
         p1 = ['j', 1.0, 1.0, 1.0, 0.5]
@@ -208,7 +208,7 @@ class TestFidInitialisation(unittest.TestCase):
         fid._f_makep(x, peaks)
         fid._f_makep(list(x), peaks)
 
-    def test_f_makep_failed(self):
+    def test_f_makep_fail(self):
         fid = Fid()
         x = numpy.arange(100)
         peaks = [ 4.71,  4.64,  4.17,  0.57]
@@ -230,7 +230,7 @@ class TestFidInitialisation(unittest.TestCase):
         fid._f_conv([p1, p2], data)
         fid._f_conv([p1, p2], list(data))
 
-    def test_f_conv_failed(self):
+    def test_f_conv_fail(self):
         fid = Fid()
         x = 1+numpy.arange(100)
         data = 1/x**2
@@ -257,11 +257,11 @@ class TestFidArrayInitialisation(unittest.TestCase):
         self.assertTrue(fid_array.id == 'string')
         print(fid_array)
 
-    def test_failed_fid_array_assignment(self):
+    def test_fid_array_assignment_fail(self):
         with self.assertRaises(AttributeError):
             FidArray(id=1)
     
-    def test_failed_fid_array_from_dataable(self):
+    def test_fid_array_from_dataable_fail(self):
         fid_data_array = [1, 2.0, 3.0+1j] 
         with self.assertRaises(TypeError):
             FidArray.from_data(fid_data_array)
@@ -271,22 +271,17 @@ class TestFidArrayInitialisation(unittest.TestCase):
         fid_array.add_fid(self.fid)
         self.assertEqual(fid_array.get_fid(self.fid.id), self.fid)
 
-    def test_fid_array_add_fid_failed(self):
+    def test_fid_array_add_fid_fail3(self):
         fid_array = FidArray()
         with self.assertRaises(AttributeError):
             fid_array.add_fid('not and fid')
 
-    def test_failed_fid_array_add_fid(self):
-        fid_array = FidArray()
-        with self.assertRaises(AttributeError):
-            fid_array.add_fid('not_fid')
-
-    def test_failed_fid_array_procpar_setter(self):
+    def test_fid_array_procpar_setter_fail(self):
         fid_array = FidArray()
         with self.assertRaises(AttributeError):
             fid_array._procpar = 'string'
 
-    def test_failed_fid_array_data_setter(self):
+    def test_fid_array_data_setter_fail(self):
         fid_array = FidArray()
         with self.assertRaises(AttributeError):
             fid_array.data = 'string'
@@ -296,7 +291,7 @@ class TestFidArrayInitialisation(unittest.TestCase):
         fid_array.add_fid(self.fid)
         fid_array.del_fid(self.fid.id)
 
-    def test_failed_fid_array_del_fid(self):
+    def test_fid_array_del_fid_fail(self):
         fid_array = FidArray()
         fid_array.add_fid(self.fid)
         with self.assertRaises(AttributeError):
@@ -305,11 +300,11 @@ class TestFidArrayInitialisation(unittest.TestCase):
         with self.assertRaises(AttributeError):
             fid_array.del_fid('string')
 
-    def test_failed_fid_array_get_fid(self):
+    def test_fid_array_get_fid_fail(self):
         fid_array = FidArray()
         self.assertEqual(fid_array.get_fid('non_existent_fid'), None)
 
-    def test_failed_fid_array_add_fid(self):
+    def test_fid_array_add_fid_fail2(self):
         fid_array = FidArray()
         with self.assertRaises(AttributeError):
             fid_array.add_fid(1)
@@ -318,7 +313,7 @@ class TestFidArrayInitialisation(unittest.TestCase):
         fid_array = FidArray()
         fid_array.add_fids(self.fids)
 
-    def test_failed_fid_array_add_fid(self):
+    def test_fid_array_add_fid_fail(self):
         fid_array = FidArray()
         fid_array.add_fids(self.fids+['string'])
 
@@ -335,8 +330,10 @@ class TestFidArrayInitialisation(unittest.TestCase):
         fid_array = FidArray.from_path(fid_path=path)
         self.assertIsInstance(fid_array._procpar, dict)
         self.assertIsInstance(fid_array._params, dict)
+        self.assertIsInstance(fid_array.data, numpy.ndarray)
+        self.assertEqual(fid_array.data.ndim, 2)
 
-    def test_fid_params_setter_failed(self):
+    def test_fid_params_setter_fail(self):
         fid = Fid()
         with self.assertRaises(AttributeError):
             fid._params = 'not a dictionary'
@@ -346,43 +343,90 @@ class TestFidArrayInitialisation(unittest.TestCase):
         fid_array = FidArray.from_path(fid_path=path)
         self.assertIsInstance(fid_array._procpar, dict)
         self.assertIsInstance(fid_array._params, dict)
+        self.assertIsInstance(fid_array.data, numpy.ndarray)
+        self.assertEqual(fid_array.data.ndim, 2)
         path = os.path.join(testpath, 'test_data', 'bruker2')
         fid_array = FidArray.from_path(fid_path=path, arrayset=2)
         self.assertIsInstance(fid_array._procpar, dict)
         self.assertIsInstance(fid_array._params, dict)
+        self.assertIsInstance(fid_array.data, numpy.ndarray)
+        self.assertEqual(fid_array.data.ndim, 2)
+        path = os.path.join(testpath, 'test_data', 'spinsolve2')
+        fid_array = FidArray.from_path(fid_path=path)
+        self.assertIsInstance(fid_array._procpar, dict)
+        self.assertIsInstance(fid_array._params, dict)
+        self.assertIsInstance(fid_array.data, numpy.ndarray)
+        self.assertEqual(fid_array.data.ndim, 2)
 
     def test_from_path_array_varian(self):
         path = os.path.join(testpath, 'test_data', 'test1.fid')
         fid_array = FidArray.from_path(fid_path=path, file_format='varian')
         self.assertIsInstance(fid_array._procpar, dict)
         self.assertIsInstance(fid_array._params, dict)
+        self.assertIsInstance(fid_array.data, numpy.ndarray)
+        self.assertEqual(fid_array.data.ndim, 2)
 
     def test_from_path_array_bruker(self):
         path = os.path.join(testpath, 'test_data', 'bruker1')
         fid_array = FidArray.from_path(fid_path=path, file_format='bruker')
         self.assertIsInstance(fid_array._procpar, dict)
         self.assertIsInstance(fid_array._params, dict)
+        self.assertIsInstance(fid_array.data, numpy.ndarray)
+        self.assertEqual(fid_array.data.ndim, 2)
         path = os.path.join(testpath, 'test_data', 'bruker2')
         fid_array = FidArray.from_path(fid_path=path, file_format='bruker',
                                        arrayset=2)
         self.assertIsInstance(fid_array._procpar, dict)
         self.assertIsInstance(fid_array._params, dict)
+        self.assertIsInstance(fid_array.data, numpy.ndarray)
+        self.assertEqual(fid_array.data.ndim, 2)
 
-    def test_failed_from_path_array_varian(self):
+    def test_from_path_array_spinsolve(self):
+        path = os.path.join(testpath, 'test_data', 'spinsolve1')
+        fid_array = FidArray.from_path(fid_path=path, file_format='spinsolve')
+        self.assertIsInstance(fid_array._procpar, dict)
+        self.assertIsInstance(fid_array._params, dict)
+        self.assertIsInstance(fid_array.data, numpy.ndarray)
+        self.assertEqual(fid_array.data.ndim, 2)
+        path = os.path.join(testpath, 'test_data', 'spinsolve1')
+        fid_array = FidArray.from_path(fid_path=path, file_format='spinsolve')
+        self.assertIsInstance(fid_array._procpar, dict)
+        self.assertIsInstance(fid_array._params, dict)
+        self.assertIsInstance(fid_array.data, numpy.ndarray)
+        self.assertEqual(fid_array.data.ndim, 2)
+
+    def test_from_path_array_varian_fail2(self):
         path = os.path.join(testpath, 'test_data', 'bruker1')
-        with self.assertRaises(AttributeError):
+        with self.assertRaises(FileNotFoundError):
+            fid_array = FidArray.from_path(fid_path=path, file_format='varian')
+        path = os.path.join(testpath, 'test_data', 'spinsolve1')
+        with self.assertRaises(FileNotFoundError):
             fid_array = FidArray.from_path(fid_path=path, file_format='varian')
         path = os.path.join(testpath, 'test_data', 'non_existent')
-        with self.assertRaises(FileNotFoundError):
+        with self.assertRaises(OSError):
             fid_array = FidArray.from_path(fid_path=path, file_format='varian')
 
-    def test_failed_from_path_array_bruker(self):
+    def test_from_path_array_bruker_fail2(self):
         path = os.path.join(testpath, 'test_data', 'test1.fid')
-        with self.assertRaises(AttributeError):
+        with self.assertRaises(IndexError):
+            fid_array = FidArray.from_path(fid_path=path, file_format='bruker')
+        path = os.path.join(testpath, 'test_data', 'spinsolve2')
+        with self.assertRaises(ValueError):
             fid_array = FidArray.from_path(fid_path=path, file_format='bruker')
         path = os.path.join(testpath, 'test_data', 'non_existent')
         with self.assertRaises(FileNotFoundError):
             fid_array = FidArray.from_path(fid_path=path, file_format='bruker')
+
+    def test_from_path_array_spinsolve_fail2(self):
+        path = os.path.join(testpath, 'test_data', 'test1.fid')
+        with self.assertRaises(ValueError):
+            fid_array = FidArray.from_path(fid_path=path, file_format='spinsolve')
+        path = os.path.join(testpath, 'test_data', 'bruker1')
+        with self.assertRaises(FileNotFoundError):
+            fid_array = FidArray.from_path(fid_path=path, file_format='spinsolve')
+        path = os.path.join(testpath, 'test_data', 'non_existent')
+        with self.assertRaises(FileNotFoundError):
+            fid_array = FidArray.from_path(fid_path=path, file_format='spinsolve')
 
     def test_array_procpar(self):
         path = os.path.join(testpath, 'test_data', 'test2.fid')
@@ -395,7 +439,7 @@ class TestFidArrayInitialisation(unittest.TestCase):
         fid_array = FidArray.from_path(path)
         self.assertIsInstance(fid_array.data, numpy.ndarray)
 
-    def test_failed_from_path_array(self):
+    def test_from_path_array_fail(self):
         path = None
         with self.assertRaises(AttributeError):
             fid_array = FidArray.from_path(path)
@@ -403,7 +447,7 @@ class TestFidArrayInitialisation(unittest.TestCase):
         with self.assertRaises(OSError):
             fid_array = FidArray.from_path(path)
 
-    def test_failed_from_path_array_varian(self):
+    def test_from_path_array_varian_fail(self):
         path = None
         with self.assertRaises(AttributeError):
             fid_array = FidArray.from_path(path, file_format='varian')
@@ -411,18 +455,26 @@ class TestFidArrayInitialisation(unittest.TestCase):
         with self.assertRaises(OSError):
             fid_array = FidArray.from_path(path, file_format='varian')
 
-    def test_failed_from_path_array_bruker(self):
+    def test_from_path_array_bruker_fail(self):
         path = None
         with self.assertRaises(AttributeError):
             fid_array = FidArray.from_path(path, file_format='bruker')
         path = 'non_existent_path'
         with self.assertRaises(OSError):
             fid_array = FidArray.from_path(path, file_format='bruker')
+
+    def test_from_path_array_spinsolve_fail(self):
+        path = None
+        with self.assertRaises(AttributeError):
+            fid_array = FidArray.from_path(path, file_format='spinsolve')
+        path = 'non_existent_path'
+        with self.assertRaises(OSError):
+            fid_array = FidArray.from_path(path, file_format='spinsolve')
 
     def test__is_iter_of_iters(self):
         FidArray._is_iter_of_iters([[]])
 
-    def test_failed__is_iter_of_iters(self):
+    def test__is_iter_of_iters_fail(self):
         for i in [
                 [],
                 [1, 3],
@@ -467,7 +519,7 @@ class TestFidUtils(unittest.TestCase):
         fid = self.fid_array_bruker.get_fids()[0]
         fid.ps(p0=20, p1=20)
 
-    def test_ps_failed(self):
+    def test_ps_fail(self):
         for fid in [self.fid_array_varian.get_fids()[0], self.fid_array_bruker.get_fids()[0]]:
             with self.assertRaises(TypeError):
                 fid.ps(p0='string', p1=20)
@@ -509,7 +561,7 @@ class TestFidUtils(unittest.TestCase):
         self.assertTrue(numpy.allclose(data, fid.data))
         self.assertIsInstance(fid.data, numpy.ndarray)
  
-    def test_failed__ft(self):
+    def test__ft_fail(self):
         fid = self.fid_array_varian.get_fids()[0]
         with self.assertRaises(ValueError):
             Fid._ft([fid.data])
@@ -540,7 +592,7 @@ class TestFidUtils(unittest.TestCase):
             d_slice = list(d_slice)
             Fid._f_fitp(d_slice, p_slice, frac_gauss=0.5)
 
-    def test_f_fitp_failed(self):
+    def test_f_fitp_fail(self):
         fid = self.fid_array_varian.get_fids()[0]
         fid.ft() 
         fid.phase_correct() 
@@ -603,11 +655,11 @@ class TestFidArrayUtils(unittest.TestCase):
         self.fid_array_varian.ft_fids()
         self.fid_array_varian.phase_correct_fids(method='nelder')
 
-    def test_failed_phase_correct_fids(self):
+    def test_phase_correct_fids_fail(self):
         with self.assertRaises(ValueError):
             self.fid_array_varian.phase_correct_fids(mp=True)
 
-    def test_failed_phase_correct_fids_mp(self):
+    def test_phase_correct_fids_mp_fail(self):
         with self.assertRaises(ValueError):
             self.fid_array_varian.phase_correct_fids()
 
@@ -627,7 +679,7 @@ class TestFidArrayUtils(unittest.TestCase):
         self.fid_array_varian.real_fids()
         self.fid_array_varian.deconv_fids(mp=True, frac_gauss=None)
 
-    def test_failed_deconv_fids(self):
+    def test_deconv_fids_fail(self):
         with self.assertRaises(ValueError):
             self.fid_array_varian.deconv_fids(mp=True, frac_gauss=0.0)
 
@@ -713,12 +765,12 @@ class NMRPyTest:
         'noplot'        - all tests except plotting utilities (scripted usage)
         """
         runner = unittest.TextTestRunner()
-        baseinit_test = unittest.makeSuite(TestBaseInitialisation)
-        fidinit_test = unittest.makeSuite(TestFidInitialisation)
-        fidarrayinit_test = unittest.makeSuite(TestFidArrayInitialisation)
-        fidutils_test = unittest.makeSuite(TestFidUtils)
-        fidarrayutils_test = unittest.makeSuite(TestFidArrayUtils)
-        plotutils_test = unittest.makeSuite(TestPlottingUtils)
+        baseinit_test = unittest.defaultTestLoader.loadTestsFromTestCase(TestBaseInitialisation)
+        fidinit_test = unittest.defaultTestLoader.loadTestsFromTestCase(TestFidInitialisation)
+        fidarrayinit_test = unittest.defaultTestLoader.loadTestsFromTestCase(TestFidArrayInitialisation)
+        fidutils_test = unittest.defaultTestLoader.loadTestsFromTestCase(TestFidUtils)
+        fidarrayutils_test = unittest.defaultTestLoader.loadTestsFromTestCase(TestFidArrayUtils)
+        plotutils_test = unittest.defaultTestLoader.loadTestsFromTestCase(TestPlottingUtils)
         
         suite = baseinit_test
         if tests == 'all':
