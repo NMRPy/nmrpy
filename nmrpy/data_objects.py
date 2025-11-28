@@ -234,6 +234,7 @@ class Base():
         acqtime_array[0] = nt * rt / 2
         for i in range(1, al):
             acqtime_array[i] = acqtime_array[i - 1] + nt * rt
+        acqtime_array /= 60.   # convert to min
         params = dict(
             at=at,
             d1=d1,
