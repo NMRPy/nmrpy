@@ -8,6 +8,7 @@ from nmrpy.plotting import *
 import os
 import pickle
 import re
+import glob
 
 class Base():
     _complex_dtypes = [
@@ -16,7 +17,7 @@ class Base():
                     numpy.dtype('clongdouble'),
                     ]
 
-    _file_formats = ['varian', 'bruker', 'spinsolve', None]
+    _file_formats = ['varian', 'bruker', 'spinsolve', 'jcampdx', None]
 
     def __init__(self, *args, **kwargs):
         self.id = kwargs.get('id', None)
@@ -56,7 +57,7 @@ class Base():
         if file_format in self._file_formats:
             self.__file_format = file_format
         else:
-            raise AttributeError('_file_format must be "varian", "bruker", or None.')
+            raise AttributeError('_file_format must be "varian", "bruker", "spinsolve", "jcampdx", or None.')
 
     @classmethod
     def _is_iter(cls, i):
@@ -115,6 +116,8 @@ class Base():
             return self._extract_procpar_varian(procpar)
         elif self._file_format == 'spinsolve':
             return self._extract_procpar_spinsolve(procpar)
+        elif self._file_format == 'jcampdx':
+            return self._extract_procpar_jcampdx(procpar)
         #else:
         #    raise AttributeError('Could not parse procpar.') 
 
@@ -229,6 +232,63 @@ class Base():
         if rt >= 600:  # sometimes reported in s, sometimes in ms, 600 is a reasonable cutoff
             rt /= 1000
         d1 = rt - at
+        al = procpar['arraylength']
+        acqtime_array = numpy.zeros((al))
+        acqtime_array[0] = nt * rt / 2
+        for i in range(1, al):
+            acqtime_array[i] = acqtime_array[i - 1] + nt * rt
+        acqtime_array /= 60.   # convert to min
+        params = dict(
+            at=at,
+            d1=d1,
+            rt=rt,
+            nt_array=None,
+            nt=nt,
+            acqtime_array=acqtime_array,
+            acqtime=None,
+            sw=sw,
+            sw_hz=sw_hz,
+            sfrq=sfrq,
+            reffrq=reffrq,
+            sw_left=sw_left,
+        )
+        return params
+
+    @staticmethod
+    def _extract_procpar_jcampdx(procpar):
+        """
+        Extract some commonly-used NMR parameters (using JCAMP-DX denotations)
+        and return a parameter dictionary 'params'.
+        """
+        at = float(procpar['LAST'][0].split(',')[0])
+        try:
+            d1 = float(procpar['.LASTDELAY'][0].strip('[]'))
+            rt = at + d1
+        except KeyError:
+            try:
+                rt = int(procpar['.DELAY'][0].split(',')[1].strip(')'))/1000
+                d1 = rt - at
+            except KeyError:
+                d1 = 0.0
+                rt = at
+        sfrq = float(procpar['.OBSERVEFREQUENCY'][0])
+        try:
+            offset = float(procpar['.P1.OFFSET'][0].strip('[]').split(',')[0])
+        except KeyError:
+            offset = 0.0
+        reffrq = sfrq - offset / 1e6
+        try:
+            nt = int(procpar['NS'][0])
+        except KeyError:
+            nt = 1
+        try:
+            sw_hz = float(procpar['.SPECTRALWIDTH'][0])
+            sw = sw_hz / reffrq
+        except KeyError:
+            reffrq = float(procpar['$SF'][0])
+            sw = float(procpar['$SW'][0])
+            sw_hz = sw * reffrq
+        sw_left = (0.5 + 1e6 * (sfrq - reffrq) / sw_hz) * sw_hz / sfrq
         al = procpar['arraylength']
         acqtime_array = numpy.zeros((al))
         acqtime_array[0] = nt * rt / 2
@@ -571,7 +631,7 @@ class Fid(Base):
             s = len(data)
             if file_format == 'varian' or file_format == 'spinsolve' or file_format == None:
                     ft_data = numpy.append(data[int(s / 2.0):], data[: int(s / 2.0)])
-            if file_format == 'bruker':
+            if file_format == 'bruker' or file_format == 'jcampdx':
                     ft_data = numpy.append(data[int(s / 2.0):: -1], data[s: int(s / 2.0): -1])
             return ft_data
 
@@ -1445,8 +1505,8 @@ class FidArray(Base):
                 # Remove nt_array and acqtime_array from the Fid objects
                 del fid._params['nt_array']
                 del fid._params['acqtime_array']
-            elif fid._file_format == 'bruker' or fid._file_format == 'spinsolve':
-                # Bruker files provide nt and acqtime_array. For each
+            elif fid._file_format in ('bruker', 'spinsolve', 'jcampdx'):
+                # Files from other formats provide nt and acqtime_array. For each
                 # FID, acqtime is extracted from acqtime_array.
                 # Additionally, nt is added to the nt_list for later use
                 # in the FidArray object.
@@ -1508,6 +1568,9 @@ class FidArray(Base):
             importer.import_fid(arrayset=arrayset)
         elif file_format == 'spinsolve':
             importer = SpinsolveImporter(fid_path=fid_path)
+            importer.import_fid()
+        elif file_format == 'jcampdx':
+            importer = JcampdxImporter(fid_path=fid_path)
             importer.import_fid()
         elif file_format == 'nmrpy':
             with open(fid_path, 'rb') as f:
@@ -2145,8 +2208,18 @@ class Importer(Base):
             self.data = spinsolveimporter.data
             self._file_format = spinsolveimporter._file_format
             return
-        except (TypeError):
+        except (TypeError, ValueError):
             print('probably not Magritek Spinsolve data!')
+        try:
+            print('Attempting JCAMP-DX...')
+            jcampdximporter = JcampdxImporter(fid_path=self.fid_path)
+            jcampdximporter.import_fid()
+            self._procpar = jcampdximporter._procpar
+            self.data = jcampdximporter.data
+            self._file_format = jcampdximporter._file_format
+            return
+        except (TypeError, ValueError):
+            print('probably not JCAMP-DX data!')
 
 class VarianImporter(Importer):
 
@@ -2233,6 +2306,24 @@ class SpinsolveImporter(Importer):
         self.data = data
         self._procpar = procpar
         self._file_format = 'spinsolve'
+        self._procpar['arraylength'] = self.data.shape[0]
+
+class JcampdxImporter(Importer):
+    def import_fid(self):
+        dxfiles = glob.glob(self.fid_path + os.path.sep + '*.dx')
+        if len(dxfiles) == 0:
+            raise FileNotFoundError('No .dx files found in directory.')
+        dxfiles.sort()
+        alldata = []
+        for f in dxfiles:
+            procpar, impdata = nmrglue.jcampdx.read(f)
+            data = impdata[0] + 1j*impdata[1]
+            alldata.append((procpar, data))
+        self.alldata = alldata
+        data = numpy.vstack([d[1] for d in alldata])
+        self.data = data
+        self._procpar = procpar
+        self._file_format = 'jcampdx'
         self._procpar['arraylength'] = self.data.shape[0]
 
 if __name__ == '__main__':
