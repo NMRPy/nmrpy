@@ -213,7 +213,7 @@ class Plot():
 
         xlabel = 'PPM (%.2f MHz)'%(params['reffrq'])
         ylabel = 'min.'
-        if 'acqtime_array' in fids[0]._params.keys():
+        if type(fids[0]._params['acqtime']) in (float, numpy.float64):
             # New NMRpy _params structure
             minutes = [fids[i]._params['acqtime'] for i in range(lower_index, upper_index)]
         else:
