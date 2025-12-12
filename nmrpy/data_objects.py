@@ -1067,8 +1067,8 @@ Ctrl+Alt+Right - assign
                     params[par_name].max = 1.0
                     if frac_gauss is not None:
                         params[par_name].vary = False
-                #if 'sigma' in par_name or 'hwhm' in par_name:
-                #    params[par_name].max = 0.01*current_parset['amplitude'] 
+                if 'sigma' in par_name or 'hwhm' in par_name:
+                   params[par_name].max = 0.1*current_parset['amplitude'] / data.max() * len(data)
                 if 'amplitude' in par_name:
                     params[par_name].max = 2.0*data.max()
                     
