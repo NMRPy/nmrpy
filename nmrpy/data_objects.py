@@ -342,16 +342,19 @@ class Fid(Base):
     @property
     def fid_object(self):
         try:
-            self.__fid_object.raw_data = self.data.tolist()
+            self.__fid_object.raw_data = [str(datum) for datum in self.raw_data]
+            self.__fid_object.processed_data = [float(datum) for datum in self.data]
         except AttributeError:
-            print('Warning: Fid.data is not yet set. Raw data will not be updated.')
+            print('Warning: Fid.data is not yet set. Processed data will not be updated.')
+        if not isinstance(self._params.get('acqtime'), float):
+            return self.__fid_object
         try:
             self.__fid_object.nmr_parameters = Parameters(
-                acquisition_time=self._params['at'],
+                acquisition_time_period=self._params['at'],
                 relaxation_time=self._params['d1'],
                 repetition_time=self._params['rt'],
                 number_of_transients=self._params['nt'],
-                acquisition_times_array=self._params['acqtime'],
+                acquisition_time_point=self._params['acqtime'],
                 spectral_width_ppm=self._params['sw'],
                 spectral_width_hz=self._params['sw_hz'],
                 spectrometer_frequency=self._params['sfrq'],
@@ -359,7 +362,9 @@ class Fid(Base):
                 spectral_width_left=self._params['sw_left'],
             )
         except AttributeError:
-            print('Warning: Fid._params is not yet set. NMR parameters will not be updated.')
+            print('Warning: Fid._params does not yet exist. NMR parameters will not be updated.')
+        except TypeError:
+            print('Warning: Fid._params exists but is not yet set. NMR parameters will not be updated.')
         return self.__fid_object
 
     @fid_object.setter
@@ -1549,7 +1554,7 @@ class FidArray(Base):
         if not all(len(concentrations[species]) == len(self.t) for species in concentrations.keys()):
             raise ValueError('Length of concentrations must match length of FID data.')
         for v in concentrations.values():
-            if not all(isinstance(i, (in4t, float)) for i in v):
+            if not all(isinstance(i, (int, float)) for i in v):
                 raise ValueError('Concentrations must be a list of integers or floats.')
         self.__concentrations = concentrations
 

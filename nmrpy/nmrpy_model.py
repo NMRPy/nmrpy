@@ -1,8 +1,40 @@
+"""
+This file contains Pydantic model definitions for data validation.
+
+Pydantic is a data validation library that uses Python type annotations.
+It allows you to define data models with type hints that are validated
+at runtime while providing static type checking.
+
+Usage example:
+```python
+from my_model import MyModel
+
+# Validates data at runtime
+my_model = MyModel(name="John", age=30)
+
+# Type-safe - my_model has correct type hints
+print(my_model.name)
+
+# Will raise error if validation fails
+try:
+    MyModel(name="", age=30)
+except ValidationError as e:
+    print(e)
+```
+
+For more information see:
+https://docs.pydantic.dev/
+
+WARNING: This is an auto-generated file.
+Do not edit directly - any changes will be overwritten.
+"""
+
+
 ## This is a generated file. Do not modify it manually!
 
 from __future__ import annotations
 from pydantic import BaseModel, Field, ConfigDict
-from typing import Optional, Generic, TypeVar
+from typing import Optional, Generic, TypeVar, Union
 from enum import Enum
 from uuid import uuid4
 from datetime import date, datetime
@@ -10,7 +42,6 @@ from datetime import date, datetime
 # Filter Wrapper definition used to filter a list of objects
 # based on their attributes
 Cls = TypeVar("Cls")
-
 
 class FilterWrapper(Generic[Cls]):
     """Wrapper class to filter a list of objects based on their attributes"""
@@ -48,8 +79,7 @@ def add_namespace(obj, prefix: str | None, iri: str | None):
     elif iri and prefix is None:
         raise ValueError("If iri is provided, prefix must also be provided")
 
-    obj.ld_context[prefix] = iri  # type: ignore
-
+    obj.ld_context[prefix] = iri # type: ignore
 
 def validate_prefix(term: str | dict, prefix: str):
     """Validates that a term is prefixed with a given prefix
@@ -67,43 +97,52 @@ def validate_prefix(term: str | dict, prefix: str):
     elif isinstance(term, str) and not term.startswith(prefix + ":"):
         raise ValueError(f"Term {term} is not prefixed with {prefix}")
 
-
 # Model Definitions
-
 
 class NMRpy(BaseModel):
 
-    model_config: ConfigDict = ConfigDict(  # type: ignore
-        validate_assigment=True,
-    )  # type: ignore
+    model_config: ConfigDict = ConfigDict( # type: ignore
+        validate_assignment = True,
+    ) # type: ignore
 
-    datetime_created: str
-    datetime_modified: Optional[str] = Field(default=None)
-    experiment: Optional[Experiment] = Field(default=None)
+    datetime_created: str = Field(
+        default=...,
+        description="""Date and time this dataset has been created.""",
+    )
+    datetime_modified: Optional[str] = Field(
+        default=None,
+        description="""Date and time this dataset has last been modified.""",
+    )
+    experiment: Optional[Experiment] = Field(
+        default=None,
+        description="""Experiment object associated with this dataset.""",
+    )
 
     # JSON-LD fields
     ld_id: str = Field(
-        serialization_alias="@id", default_factory=lambda: "md:NMRpy/" + str(uuid4())
+        serialization_alias="@id",
+        default_factory=lambda: "md:NMRpy/" + str(uuid4())
     )
     ld_type: list[str] = Field(
         serialization_alias="@type",
-        default_factory=lambda: [
+        default_factory = lambda: [
             "md:NMRpy",
         ],
     )
     ld_context: dict[str, str | dict] = Field(
         serialization_alias="@context",
-        default_factory=lambda: {
+        default_factory = lambda: {
             "md": "http://mdmodel.net/",
-        },
+        }
     )
+
 
     def set_attr_term(
         self,
         attr: str,
         term: str | dict,
         prefix: str | None = None,
-        iri: str | None = None,
+        iri: str | None = None
     ):
         """Sets the term for a given attribute in the JSON-LD object
 
@@ -125,9 +164,7 @@ class NMRpy(BaseModel):
             AssertionError: If the attribute is not found in the model
         """
 
-        assert (
-            attr in self.model_fields
-        ), f"Attribute {attr} not found in {self.__class__.__name__}"
+        assert attr in self.model_fields, f"Attribute {attr} not found in {self.__class__.__name__}"
 
         if prefix:
             validate_prefix(term, prefix)
@@ -136,7 +173,10 @@ class NMRpy(BaseModel):
         self.ld_context[attr] = term
 
     def add_type_term(
-        self, term: str, prefix: str | None = None, iri: str | None = None
+        self,
+        term: str,
+        prefix: str | None = None,
+        iri: str | None = None
     ):
         """Adds a term to the @type field of the JSON-LD object
 
@@ -166,29 +206,35 @@ class NMRpy(BaseModel):
 
 class Experiment(BaseModel):
 
-    model_config: ConfigDict = ConfigDict(  # type: ignore
-        validate_assigment=True,
-    )  # type: ignore
+    model_config: ConfigDict = ConfigDict( # type: ignore
+        validate_assignment = True,
+    ) # type: ignore
 
-    name: str
-    fid_array: list[FIDObject] = Field(default_factory=list)
+    name: str = Field(
+        default=...,
+        description="""A descriptive name for the overarching experiment.""",
+    )
+    fid_array: list[FIDObject] = Field(
+        default_factory=list,
+        description="""List of individual FidObjects.""",
+    )
 
     # JSON-LD fields
     ld_id: str = Field(
         serialization_alias="@id",
-        default_factory=lambda: "md:Experiment/" + str(uuid4()),
+        default_factory=lambda: "md:Experiment/" + str(uuid4())
     )
     ld_type: list[str] = Field(
         serialization_alias="@type",
-        default_factory=lambda: [
+        default_factory = lambda: [
             "md:Experiment",
         ],
     )
     ld_context: dict[str, str | dict] = Field(
         serialization_alias="@context",
-        default_factory=lambda: {
+        default_factory = lambda: {
             "md": "http://mdmodel.net/",
-        },
+        }
     )
 
     def filter_fid_array(self, **kwargs) -> list[FIDObject]:
@@ -203,12 +249,13 @@ class Experiment(BaseModel):
 
         return FilterWrapper[FIDObject](self.fid_array, **kwargs).filter()
 
+
     def set_attr_term(
         self,
         attr: str,
         term: str | dict,
         prefix: str | None = None,
-        iri: str | None = None,
+        iri: str | None = None
     ):
         """Sets the term for a given attribute in the JSON-LD object
 
@@ -230,9 +277,7 @@ class Experiment(BaseModel):
             AssertionError: If the attribute is not found in the model
         """
 
-        assert (
-            attr in self.model_fields
-        ), f"Attribute {attr} not found in {self.__class__.__name__}"
+        assert attr in self.model_fields, f"Attribute {attr} not found in {self.__class__.__name__}"
 
         if prefix:
             validate_prefix(term, prefix)
@@ -241,7 +286,10 @@ class Experiment(BaseModel):
         self.ld_context[attr] = term
 
     def add_type_term(
-        self, term: str, prefix: str | None = None, iri: str | None = None
+        self,
+        term: str,
+        prefix: str | None = None,
+        iri: str | None = None
     ):
         """Adds a term to the @type field of the JSON-LD object
 
@@ -268,13 +316,14 @@ class Experiment(BaseModel):
         add_namespace(self, prefix, iri)
         self.ld_type.append(term)
 
+
     def add_to_fid_array(
         self,
-        raw_data: list[str] = [],
-        processed_data: list[Union[None, str, float]] = [],
-        nmr_parameters: Optional[Parameters] = None,
-        processing_steps: Optional[ProcessingSteps] = None,
-        peaks: list[Peak] = [],
+        raw_data: list[str]= [],
+        processed_data: list[Union[None,str,float]]= [],
+        nmr_parameters: Optional[Parameters]= None,
+        processing_steps: Optional[ProcessingSteps]= None,
+        peaks: list[Peak]= [],
         **kwargs,
     ):
         params = {
@@ -282,46 +331,65 @@ class Experiment(BaseModel):
             "processed_data": processed_data,
             "nmr_parameters": nmr_parameters,
             "processing_steps": processing_steps,
-            "peaks": peaks,
+            "peaks": peaks
         }
 
         if "id" in kwargs:
             params["id"] = kwargs["id"]
 
-        self.fid_array.append(FIDObject(**params))
+        self.fid_array.append(
+            FIDObject(**params)
+        )
 
         return self.fid_array[-1]
 
-
 class FIDObject(BaseModel):
 
-    model_config: ConfigDict = ConfigDict(  # type: ignore
-        validate_assigment=True,
-        extra='forbid',  # This will raise ValidationError for unknown fields
-    )  # type: ignore
+    model_config: ConfigDict = ConfigDict( # type: ignore
+        validate_assignment = True,
+    ) # type: ignore
 
-    raw_data: list[str] = Field(default_factory=list)
-    processed_data: list[str] = Field(default_factory=list)
-    nmr_parameters: Optional[Parameters] = Field(default=None)
-    processing_steps: Optional[ProcessingSteps] = Field(default=None)
-    peaks: list[Peak] = Field(default_factory=list)
+    raw_data: list[str] = Field(
+        default_factory=list,
+        description="""Complex spectral data from numpy array as string
+        of format .""",
+    )
+    processed_data: list[Union[None,str,float]] = Field(
+        default_factory=list,
+        description="""Processed data array.""",
+    )
+    nmr_parameters: Optional[Parameters] = Field(
+        default=None,
+        description="""Contains commonly-used NMR parameters.""",
+    )
+    processing_steps: Optional[ProcessingSteps] = Field(
+        default=None,
+        description="""Contains the processing steps performed, as well
+        as the parameters used for them.""",
+    )
+    peaks: list[Peak] = Field(
+        default_factory=list,
+        description="""Container holding the peaks found in the NMR
+        spectrum associated with species from an
+        EnzymeML document.""",
+    )
 
     # JSON-LD fields
     ld_id: str = Field(
         serialization_alias="@id",
-        default_factory=lambda: "md:FIDObject/" + str(uuid4()),
+        default_factory=lambda: "md:FIDObject/" + str(uuid4())
     )
     ld_type: list[str] = Field(
         serialization_alias="@type",
-        default_factory=lambda: [
+        default_factory = lambda: [
             "md:FIDObject",
         ],
     )
     ld_context: dict[str, str | dict] = Field(
         serialization_alias="@context",
-        default_factory=lambda: {
+        default_factory = lambda: {
             "md": "http://mdmodel.net/",
-        },
+        }
     )
 
     def filter_peaks(self, **kwargs) -> list[Peak]:
@@ -336,12 +404,13 @@ class FIDObject(BaseModel):
 
         return FilterWrapper[Peak](self.peaks, **kwargs).filter()
 
+
     def set_attr_term(
         self,
         attr: str,
         term: str | dict,
         prefix: str | None = None,
-        iri: str | None = None,
+        iri: str | None = None
     ):
         """Sets the term for a given attribute in the JSON-LD object
 
@@ -363,9 +432,7 @@ class FIDObject(BaseModel):
             AssertionError: If the attribute is not found in the model
         """
 
-        assert (
-            attr in self.model_fields
-        ), f"Attribute {attr} not found in {self.__class__.__name__}"
+        assert attr in self.model_fields, f"Attribute {attr} not found in {self.__class__.__name__}"
 
         if prefix:
             validate_prefix(term, prefix)
@@ -374,7 +441,10 @@ class FIDObject(BaseModel):
         self.ld_context[attr] = term
 
     def add_type_term(
-        self, term: str, prefix: str | None = None, iri: str | None = None
+        self,
+        term: str,
+        prefix: str | None = None,
+        iri: str | None = None
     ):
         """Adds a term to the @type field of the JSON-LD object
 
@@ -401,13 +471,14 @@ class FIDObject(BaseModel):
         add_namespace(self, prefix, iri)
         self.ld_type.append(term)
 
+
     def add_to_peaks(
         self,
         peak_index: int,
-        peak_position: Optional[float] = None,
-        peak_range: Optional[PeakRange] = None,
-        peak_integral: Optional[float] = None,
-        species_id: Optional[str] = None,
+        peak_position: Optional[float]= None,
+        peak_range: Optional[PeakRange]= None,
+        peak_integral: Optional[float]= None,
+        species_id: Optional[str]= None,
         **kwargs,
     ):
         params = {
@@ -415,58 +486,106 @@ class FIDObject(BaseModel):
             "peak_position": peak_position,
             "peak_range": peak_range,
             "peak_integral": peak_integral,
-            "species_id": species_id,
+            "species_id": species_id
         }
 
         if "id" in kwargs:
             params["id"] = kwargs["id"]
 
-        self.peaks.append(Peak(**params))
+        self.peaks.append(
+            Peak(**params)
+        )
 
         return self.peaks[-1]
 
-
 class Parameters(BaseModel):
 
-    model_config: ConfigDict = ConfigDict(  # type: ignore
-        validate_assigment=True,
-    )  # type: ignore
+    model_config: ConfigDict = ConfigDict( # type: ignore
+        validate_assignment = True,
+    ) # type: ignore
 
-    acquisition_time: Optional[float] = Field(default=None)
-    relaxation_time: Optional[float] = Field(default=None)
-    repetition_time: Optional[float] = Field(default=None)
-    number_of_transients: list[float] = Field(default_factory=list)
-    acquisition_times_array: list[float] = Field(default_factory=list)
-    spectral_width_ppm: Optional[float] = Field(default=None)
-    spectral_width_hz: Optional[float] = Field(default=None)
-    spectrometer_frequency: Optional[float] = Field(default=None)
-    reference_frequency: Optional[float] = Field(default=None)
-    spectral_width_left: Optional[float] = Field(default=None)
+    acquisition_time_period: Optional[float] = Field(
+        default=None,
+        description="""Duration of the FID signal acquisition period
+        after the excitation pulse. Abbreviated
+        as .""",
+    )
+    relaxation_time: Optional[float] = Field(
+        default=None,
+        description="""Inter-scan delay allowing spins to relax back
+        toward equilibrium before the next pulse.
+        Abbreviated as .""",
+    )
+    repetition_time: Optional[float] = Field(
+        default=None,
+        description="""Total duration of a single scan cycle, combining
+        acquisition and relaxation delays ( ).""",
+    )
+    number_of_transients: Optional[float] = Field(
+        default=None,
+        description="""Number of individual FIDs averaged to improve
+        signal-to-noise ratio. Abbreviated as .""",
+    )
+    acquisition_time_point: Optional[float] = Field(
+        default=None,
+        description="""Sampled time point corresponding to the collected
+        FID data ( ).""",
+    )
+    spectral_width_ppm: Optional[float] = Field(
+        default=None,
+        description="""Frequency range of the acquired spectrum expressed
+        in parts per million (ppm). Abbreviated
+        as .""",
+    )
+    spectral_width_hz: Optional[float] = Field(
+        default=None,
+        description="""Frequency range of the acquired spectrum expressed
+        in Hertz (Hz). Abbreviated as .""",
+    )
+    spectrometer_frequency: Optional[float] = Field(
+        default=None,
+        description="""Operating resonance frequency for the observed
+        nucleus, defining the chemical shift
+        reference scale. Abbreviated as .""",
+    )
+    reference_frequency: Optional[float] = Field(
+        default=None,
+        description="""Calibration frequency used to align and
+        standardize the chemical shift scale.
+        Abbreviated as .""",
+    )
+    spectral_width_left: Optional[float] = Field(
+        default=None,
+        description="""Offset parameter defining the left boundary of the
+        spectral window relative to the reference
+        frequency. Abbreviated as .""",
+    )
 
     # JSON-LD fields
     ld_id: str = Field(
         serialization_alias="@id",
-        default_factory=lambda: "md:Parameters/" + str(uuid4()),
+        default_factory=lambda: "md:Parameters/" + str(uuid4())
     )
     ld_type: list[str] = Field(
         serialization_alias="@type",
-        default_factory=lambda: [
+        default_factory = lambda: [
             "md:Parameters",
         ],
     )
     ld_context: dict[str, str | dict] = Field(
         serialization_alias="@context",
-        default_factory=lambda: {
+        default_factory = lambda: {
             "md": "http://mdmodel.net/",
-        },
+        }
     )
+
 
     def set_attr_term(
         self,
         attr: str,
         term: str | dict,
         prefix: str | None = None,
-        iri: str | None = None,
+        iri: str | None = None
     ):
         """Sets the term for a given attribute in the JSON-LD object
 
@@ -488,9 +607,7 @@ class Parameters(BaseModel):
             AssertionError: If the attribute is not found in the model
         """
 
-        assert (
-            attr in self.model_fields
-        ), f"Attribute {attr} not found in {self.__class__.__name__}"
+        assert attr in self.model_fields, f"Attribute {attr} not found in {self.__class__.__name__}"
 
         if prefix:
             validate_prefix(term, prefix)
@@ -499,7 +616,10 @@ class Parameters(BaseModel):
         self.ld_context[attr] = term
 
     def add_type_term(
-        self, term: str, prefix: str | None = None, iri: str | None = None
+        self,
+        term: str,
+        prefix: str | None = None,
+        iri: str | None = None
     ):
         """Adds a term to the @type field of the JSON-LD object
 
@@ -529,48 +649,92 @@ class Parameters(BaseModel):
 
 class ProcessingSteps(BaseModel):
 
-    model_config: ConfigDict = ConfigDict(  # type: ignore
-        validate_assigment=True,
-    )  # type: ignore
+    model_config: ConfigDict = ConfigDict( # type: ignore
+        validate_assignment = True,
+    ) # type: ignore
 
-    is_apodised: Optional[bool] = Field(default=None)
-    apodisation_frequency: Optional[float] = Field(default=None)
-    is_zero_filled: bool = False
-    is_fourier_transformed: bool = False
-    fourier_transform_type: Optional[str] = Field(default=None)
-    is_phased: bool = False
-    zero_order_phase: Optional[float] = Field(default=None)
-    first_order_phase: Optional[float] = Field(default=None)
-    is_only_real: bool = False
-    is_normalised: bool = False
-    max_value: Optional[float] = Field(default=None)
-    is_deconvoluted: bool = False
-    is_baseline_corrected: bool = False
+    is_apodised: Optional[bool] = Field(
+        default=None,
+        description="""Whether or not Apodisation (line-broadening) has
+        been performed.""",
+    )
+    apodisation_frequency: Optional[float] = Field(
+        default=None,
+        description="""Degree of Apodisation (line-broadening) in Hz.""",
+    )
+    is_zero_filled: Optional[bool] = Field(
+        default= False,
+        description="""Whether or not Zero-filling has been performed.""",
+    )
+    is_fourier_transformed: Optional[bool] = Field(
+        default= False,
+        description="""Whether or not Fourier transform has been
+        performed.""",
+    )
+    fourier_transform_type: Optional[str] = Field(
+        default=None,
+        description="""The type of Fourier transform used.""",
+    )
+    is_phased: Optional[bool] = Field(
+        default= False,
+        description="""Whether or not Phasing was performed.""",
+    )
+    zero_order_phase: Optional[float] = Field(
+        default=None,
+        description="""Zero-order phase used for Phasing.""",
+    )
+    first_order_phase: Optional[float] = Field(
+        default=None,
+        description="""First-order phase used for Phasing.""",
+    )
+    is_only_real: Optional[bool] = Field(
+        default= False,
+        description="""Whether or not the imaginary part has been
+        discarded.""",
+    )
+    is_normalised: Optional[bool] = Field(
+        default= False,
+        description="""Whether or not Normalisation was performed.""",
+    )
+    max_value: Optional[float] = Field(
+        default=None,
+        description="""Maximum value of the dataset used for
+        Normalisation.""",
+    )
+    is_deconvoluted: Optional[bool] = Field(
+        default= False,
+        description="""Whether or not Deconvolution was performed.""",
+    )
+    is_baseline_corrected: Optional[bool] = Field(
+        default= False,
+        description="""Whether or not Baseline correction was performed.""",
+    )
 
     # JSON-LD fields
     ld_id: str = Field(
         serialization_alias="@id",
-        default_factory=lambda: "md:ProcessingSteps/" + str(uuid4()),
+        default_factory=lambda: "md:ProcessingSteps/" + str(uuid4())
     )
     ld_type: list[str] = Field(
         serialization_alias="@type",
-        default_factory=lambda: [
+        default_factory = lambda: [
             "md:ProcessingSteps",
         ],
     )
     ld_context: dict[str, str | dict] = Field(
         serialization_alias="@context",
-        default_factory=lambda: {
+        default_factory = lambda: {
             "md": "http://mdmodel.net/",
-        },
+        }
     )
+
 
     def set_attr_term(
         self,
         attr: str,
         term: str | dict,
         prefix: str | None = None,
-        iri: str | None = None,
+        iri: str | None = None
     ):
         """Sets the term for a given attribute in the JSON-LD object
 
@@ -592,9 +756,7 @@ class ProcessingSteps(BaseModel):
             AssertionError: If the attribute is not found in the model
         """
 
-        assert (
-            attr in self.model_fields
-        ), f"Attribute {attr} not found in {self.__class__.__name__}"
+        assert attr in self.model_fields, f"Attribute {attr} not found in {self.__class__.__name__}"
 
         if prefix:
             validate_prefix(term, prefix)
@@ -603,7 +765,10 @@ class ProcessingSteps(BaseModel):
         self.ld_context[attr] = term
 
     def add_type_term(
-        self, term: str, prefix: str | None = None, iri: str | None = None
+        self,
+        term: str,
+        prefix: str | None = None,
+        iri: str | None = None
     ):
         """Adds a term to the @type field of the JSON-LD object
 
@@ -633,39 +798,58 @@ class ProcessingSteps(BaseModel):
 
 class Peak(BaseModel):
 
-    model_config: ConfigDict = ConfigDict(  # type: ignore
-        validate_assigment=True,
-    )  # type: ignore
+    model_config: ConfigDict = ConfigDict( # type: ignore
+        validate_assignment = True,
+    ) # type: ignore
 
-    peak_index: int
-    peak_position: Optional[float] = Field(default=None)
-    peak_range: Optional[PeakRange] = Field(default=None)
-    peak_integral: Optional[float] = Field(default=None)
-    species_id: Optional[str] = Field(default=None)
+    peak_index: int = Field(
+        default=...,
+        description="""Index of the peak in the NMR spectrum, counted
+        from left to right.""",
+    )
+    peak_position: Optional[float] = Field(
+        default=None,
+        description="""Position of the peak in the NMR spectrum.""",
+    )
+    peak_range: Optional[PeakRange] = Field(
+        default=None,
+        description="""Range of the peak, given as a start and end value.""",
+    )
+    peak_integral: Optional[float] = Field(
+        default=None,
+        description="""Integral of the peak, resulting from the position
+        and range given.""",
+    )
+    species_id: Optional[str] = Field(
+        default=None,
+        description="""ID of an EnzymeML species.""",
+    )
 
     # JSON-LD fields
     ld_id: str = Field(
-        serialization_alias="@id", default_factory=lambda: "md:Peak/" + str(uuid4())
+        serialization_alias="@id",
+        default_factory=lambda: "md:Peak/" + str(uuid4())
     )
     ld_type: list[str] = Field(
         serialization_alias="@type",
-        default_factory=lambda: [
+        default_factory = lambda: [
             "md:Peak",
         ],
     )
     ld_context: dict[str, str | dict] = Field(
         serialization_alias="@context",
-        default_factory=lambda: {
+        default_factory = lambda: {
             "md": "http://mdmodel.net/",
-        },
+        }
     )
+
 
     def set_attr_term(
         self,
         attr: str,
         term: str | dict,
         prefix: str | None = None,
-        iri: str | None = None,
+        iri: str | None = None
     ):
         """Sets the term for a given attribute in the JSON-LD object
 
@@ -687,9 +871,7 @@ class Peak(BaseModel):
             AssertionError: If the attribute is not found in the model
         """
 
-        assert (
-            attr in self.model_fields
-        ), f"Attribute {attr} not found in {self.__class__.__name__}"
+        assert attr in self.model_fields, f"Attribute {attr} not found in {self.__class__.__name__}"
 
         if prefix:
             validate_prefix(term, prefix)
@@ -698,7 +880,10 @@ class Peak(BaseModel):
         self.ld_context[attr] = term
 
     def add_type_term(
-        self, term: str, prefix: str | None = None, iri: str | None = None
+        self,
+        term: str,
+        prefix: str | None = None,
+        iri: str | None = None
     ):
         """Adds a term to the @type field of the JSON-LD object
 
@@ -728,37 +913,44 @@ class Peak(BaseModel):
 
 class PeakRange(BaseModel):
 
-    model_config: ConfigDict = ConfigDict(  # type: ignore
-        validate_assigment=True,
-    )  # type: ignore
+    model_config: ConfigDict = ConfigDict( # type: ignore
+        validate_assignment = True,
+    ) # type: ignore
 
-    start: float
-    end: float
+    start: float = Field(
+        default=...,
+        description="""Start value of the peak range.""",
+    )
+    end: float = Field(
+        default=...,
+        description="""End value of the peak range.""",
+    )
 
     # JSON-LD fields
     ld_id: str = Field(
         serialization_alias="@id",
-        default_factory=lambda: "md:PeakRange/" + str(uuid4()),
+        default_factory=lambda: "md:PeakRange/" + str(uuid4())
     )
     ld_type: list[str] = Field(
         serialization_alias="@type",
-        default_factory=lambda: [
+        default_factory = lambda: [
             "md:PeakRange",
         ],
     )
     ld_context: dict[str, str | dict] = Field(
         serialization_alias="@context",
-        default_factory=lambda: {
+        default_factory = lambda: {
             "md": "http://mdmodel.net/",
-        },
+        }
     )
+
 
     def set_attr_term(
         self,
         attr: str,
         term: str | dict,
         prefix: str | None = None,
-        iri: str | None = None,
+        iri: str | None = None
     ):
         """Sets the term for a given attribute in the JSON-LD object
 
@@ -780,9 +972,7 @@ class PeakRange(BaseModel):
             AssertionError: If the attribute is not found in the model
         """
 
-        assert (
-            attr in self.model_fields
-        ), f"Attribute {attr} not found in {self.__class__.__name__}"
+        assert attr in self.model_fields, f"Attribute {attr} not found in {self.__class__.__name__}"
 
         if prefix:
             validate_prefix(term, prefix)
@@ -791,7 +981,10 @@ class PeakRange(BaseModel):
         self.ld_context[attr] = term
 
     def add_type_term(
-        self, term: str, prefix: str | None = None, iri: str | None = None
+        self,
+        term: str,
+        prefix: str | None = None,
+        iri: str | None = None
     ):
         """Adds a term to the @type field of the JSON-LD object
 

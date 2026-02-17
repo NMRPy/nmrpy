@@ -57,9 +57,9 @@ Container for a single NMR spectrum, containing both raw data with relevant inst
 
 Container for relevant NMR parameters. While not exhaustive, these parameters are commonly relevant for (pre-)processing and analysis of NMR data.
 
-- acquisition_time
+- acquisition_time_period
   - Type: float
-  - Description: Duration of the FID signal acquisition period after the excitation pulse. Abrreviated as `at`.
+  - Description: Duration of the FID signal acquisition period after the excitation pulse. Abbreviated as `at`.
 - relaxation_time
   - Type: float
   - Description: Inter-scan delay allowing spins to relax back toward equilibrium before the next pulse. Abbreviated as `d1`.
@@ -69,11 +69,9 @@ Container for relevant NMR parameters. While not exhaustive, these parameters ar
 - number_of_transients
   - Type: float
   - Description: Number of individual FIDs averaged to improve signal-to-noise ratio. Abbreviated as `nt`.
-  - Multiple: True
-- acquisition_times_array
+- acquisition_time_point
   - Type: float
-  - Description: Array of sampled time points corresponding to the collected FID data (`acqtime = [nt, 2nt, ..., rt x nt]`).
-  - Multiple: True
+  - Description: Sampled time point corresponding to the collected FID data (`acqtime_array = [nt, 2nt, ..., rt x nt]`).
 - spectral_width_ppm
   - Type: float
   - Description: Frequency range of the acquired spectrum expressed in parts per million (ppm). Abbreviated as `sw`.
