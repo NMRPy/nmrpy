@@ -1,4 +1,6 @@
 from typing import Mapping, Optional
+
+from pyenzyme.versions.v2 import Protein
 import nmrpy.data_objects
 import logging, traceback
 import numpy
@@ -1744,13 +1746,19 @@ class PeakAssigner:
 
     def _setup_species_source(self, species_source):
         # Configure species source and create list of available species
+
         # Check for default case first
         if species_source is None:
             if not hasattr(self.fid, "enzymeml_species"):
                 raise ValueError(
                     "No species list provided and FID has no enzymeml_species"
                 )
-            self.available_species = self.fid.enzymeml_species
+            self.available_species = []
+            for species in self.fid.enzymeml_species:
+                if isinstance(species, Protein):
+                    continue
+                else:
+                    self.available_species.append(species.id)
             return
         # Check for EnzymeML document
         elif isinstance(species_source, EnzymeMLDocument):
