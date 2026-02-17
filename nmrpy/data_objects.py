@@ -9,6 +9,27 @@ from multiprocessing import Pool, cpu_count
 from nmrpy.plotting import *
 import os
 import pickle
+from ipywidgets import Output
+from IPython.display import display
+from datetime import datetime
+
+from nmrpy.nmrpy_model import (
+    NMRpy,
+    Experiment,
+    FIDObject,
+    Parameters,
+    ProcessingSteps,
+    Peak,
+    PeakRange,
+)
+try:
+    import pyenzyme
+    from pyenzyme import EnzymeMLDocument, Measurement
+    from nmrpy.utils import T0Logic, create_enzymeml, create_enzymeml_measurement, fill_enzymeml_measurement, get_species_from_enzymeml
+except ImportError as ex:
+    print(f"Optional dependency import failed for data_objects.py: {ex}")
+    pyenzyme = None
+
 
 class Base():
     _complex_dtypes = [
@@ -215,11 +236,21 @@ class Fid(Base):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.data = kwargs.get('data', [])
+        self.raw_data = self.data.copy()
         self.peaks = None
         self.ranges = None
+        self.species = None
+        self.fid_object = FIDObject(
+            raw_data=[],
+            processed_data=[],
+            nmr_parameters=Parameters(),
+            processing_steps=ProcessingSteps(),
+        )
+        self.enzymeml_species = None
         self._deconvoluted_peaks = None
         self._flags = {
             "ft": False,
+            "assigned": False,
         }
 
     def __str__(self):
@@ -288,6 +319,87 @@ class Fid(Base):
         self._ranges = ranges
 
     @property
+    def species(self):
+        """
+        Assigned species corresponding to the various peaks in :attr:`~nmrpy.data_objects.Fid.peaks`.
+        """
+        return self._species
+
+    @species.setter
+    def species(self, species):
+        if species is None:
+            self._species = None
+            return
+        if species is not None:
+            if not all((i is None) or isinstance(i, str) for i in species):
+                raise AttributeError('species must be strings')
+            if isinstance(species, str):
+                species = [species]
+            if not len(species) == len(self.peaks):
+                raise AttributeError('species must have the same length as peaks')
+            self._species = numpy.array(species, dtype=object)
+
+    @property
+    def fid_object(self):
+        try:
+            self.__fid_object.raw_data = [str(datum) for datum in self.raw_data]
+            self.__fid_object.processed_data = [float(datum) for datum in self.data]
+        except AttributeError:
+            print('Warning: Fid.data is not yet set. Processed data will not be updated.')
+        if not isinstance(self._params.get('acqtime'), float):
+            return self.__fid_object
+        try:
+            self.__fid_object.nmr_parameters = Parameters(
+                acquisition_time_period=self._params['at'],
+                relaxation_time=self._params['d1'],
+                repetition_time=self._params['rt'],
+                number_of_transients=self._params['nt'],
+                acquisition_time_point=self._params['acqtime'],
+                spectral_width_ppm=self._params['sw'],
+                spectral_width_hz=self._params['sw_hz'],
+                spectrometer_frequency=self._params['sfrq'],
+                reference_frequency=self._params['reffrq'],
+                spectral_width_left=self._params['sw_left'],
+            )
+        except AttributeError:
+            print('Warning: Fid._params does not yet exist. NMR parameters will not be updated.')
+        except TypeError:
+            print('Warning: Fid._params exists but is not yet set. NMR parameters will not be updated.')
+        return self.__fid_object
+
+    @fid_object.setter
+    def fid_object(self, fid_object):
+        if isinstance(fid_object, FIDObject):
+            self.__fid_object = fid_object
+        elif fid_object is None:
+            self.__fid_object = None
+        else:
+            raise AttributeError('fid_object must be an instance of FIDObject')
+
+    @fid_object.deleter
+    def fid_object(self):
+        del self.__fid_object
+
+    @property
+    def enzymeml_species(self):
+        return self.__enzymeml_species
+
+    @enzymeml_species.setter
+    def enzymeml_species(self, enzymeml_species):
+        if pyenzyme is None:
+            raise RuntimeError(
+                "The `pyenzyme` package is required to use NMRpy with an EnzymeML document. Please install it via `pip install nmrpy[enzymeml]`."
+            )
+        if enzymeml_species is None:
+            self.__enzymeml_species = None
+            return
+        if not isinstance(enzymeml_species, list):
+            enzymeml_species = [enzymeml_species]
+        if not all(isinstance(i, (pyenzyme.SmallMolecule, pyenzyme.Protein, pyenzyme.Complex)) for i in enzymeml_species):
+            raise AttributeError('enzymeml_species must be a list of valid EnzymeML species: pyenzyme.SmallMolecule, pyenzyme.Protein, or pyenzyme.Complex')
+        self.__enzymeml_species = enzymeml_species
+
+    @property
     def _bl_ppm(self):
         return self.__bl_ppm
     
@@ -307,7 +419,7 @@ class Fid(Base):
 
     @property
     def _bl_indices(self):
-        if self._bl_ppm is not None:
+        if hasattr(self, '_bl_ppm'):
             return self._conv_to_index(self.data, self._bl_ppm, self._params['sw_left'], self._params['sw'])
         else:
             return None
@@ -325,7 +437,7 @@ class Fid(Base):
                 raise AttributeError('baseline polynomial must be numbers')
             self.__bl_poly = numpy.array(bl_poly)
         else:
-            self.__bl_ppm = bl_poly
+            self.__bl_poly = bl_poly
 
     @property
     def _index_peaks(self):
@@ -397,12 +509,18 @@ class Fid(Base):
         """
         if self._deconvoluted_peaks is not None:
             integrals = []
-            for peak in self._deconvoluted_peaks:
+            for i, peak in enumerate(self._deconvoluted_peaks):
                 int_gauss = peak[-1]*Fid._f_gauss_int(peak[3], peak[1])
                 int_lorentz = (1-peak[-1])*Fid._f_lorentz_int(peak[3], peak[2])
-                integrals.append(int_gauss+int_lorentz)
+                integral = int_gauss+int_lorentz
+                integrals.append(integral)
+                # Update data model
+                if getattr(self, 'fid_object', None) is not None:
+                    peak_object = self.fid_object.peaks[i]
+                    if peak_object.peak_integral != integral:
+                        peak_object.peak_integral = float(integral)
             return integrals
-            
+
     def _get_plots(self):
         """
         Return a list of all :class:`~nmrpy.plotting.Plot` objects owned by this :class:`~nmrpy.data_objects.Fid`.
@@ -428,6 +546,7 @@ class Fid(Base):
             or isinstance(self.__dict__[id], Calibrator)
             or isinstance(self.__dict__[id], DataPeakSelector)
             or isinstance(self.__dict__[id], FidRangeSelector)
+            or isinstance(self.__dict__[id], PeakAssigner)
         ]
         return widgets
 
@@ -476,6 +595,9 @@ class Fid(Base):
 
         """
         self.data = numpy.append(self.data, 0*self.data)
+        # Update data model
+        if getattr(self, 'fid_object', None) is not None:
+            self.fid_object.processing_steps.is_zero_filled = True
 
     def emhz(self, lb=5.0):
         """
@@ -487,13 +609,20 @@ class Fid(Base):
 
         """
         self.data = numpy.exp(-numpy.pi*numpy.arange(len(self.data)) * (lb/self._params['sw_hz'])) * self.data
+        # Update data model
+        if getattr(self, 'fid_object', None) is not None:
+            self.fid_object.processing_steps.is_apodised = True
+            self.fid_object.processing_steps.apodisation_frequency = lb
 
     def real(self):
         """
         Discard imaginary component of :attr:`~nmrpy.data_objects.Fid.data`.
         """
         self.data = numpy.real(self.data)
-
+        # Update data model
+        if getattr(self, 'fid_object', None) is not None:
+            self.fid_object.processing_steps.is_only_real = True
+ 
     # GENERAL FUNCTIONS
     def ft(self):
         """
@@ -506,11 +635,15 @@ class Fid(Base):
 
         """
         if self._flags['ft']:
-                raise ValueError('Data have already been Fourier Transformed.')
+            raise ValueError('Data have already been Fourier Transformed.')
         if Fid._is_valid_dataset(self.data):
             list_params = (self.data, self._file_format)
             self.data = Fid._ft(list_params)
             self._flags['ft'] = True
+        # Update data model
+        if getattr(self, 'fid_object', None) is not None:
+            self.fid_object.processing_steps.is_fourier_transformed = True
+            self.fid_object.processing_steps.fourier_transform_type = 'FFT'
 
     @classmethod
     def _ft(cls, list_params):
@@ -519,17 +652,21 @@ class Fid(Base):
         list_params is a tuple of (<data>, <file_format>).
         """
         if len(list_params) != 2:
-            raise ValueError('Wrong number of parameters. list_params must contain [<data>, <file_format>]')
+            raise ValueError(
+                'Wrong number of parameters. list_params must contain [<data>, <file_format>]'
+            )
         data, file_format = list_params
         if Fid._is_valid_dataset(data) and file_format in Fid._file_formats:
             data = numpy.array(numpy.fft.fft(data), dtype=data.dtype)
             s = len(data)
             if file_format == 'varian' or file_format == None:
-                    ft_data = numpy.append(data[int(s / 2.0):], data[: int(s / 2.0)])
+                ft_data = numpy.append(data[int(s / 2.0) :], data[: int(s / 2.0)])
             if file_format == 'bruker':
-                    ft_data = numpy.append(data[int(s / 2.0):: -1], data[s: int(s / 2.0): -1])
+                ft_data = numpy.append(
+                    data[int(s / 2.0) :: -1], data[s : int(s / 2.0) : -1]
+                )
             return ft_data
-
+        return None
 
     @staticmethod
     def _conv_to_ppm(data, index, sw_left, sw):
@@ -566,9 +703,6 @@ class Fid(Base):
     def phase_correct(self, method='leastsq', verbose = True):
             """
 
-            Automatically phase-correct :attr:`~nmrpy.data_objects.Fid.data` by minimising
-            total absolute area.
-
             :keyword method: The fitting method to use. Default is 'leastsq', the Levenberg-Marquardt algorithm, which is usually sufficient. Additional options include:
                     
                     Nelder-Mead (nelder)
@@ -578,7 +712,7 @@ class Fid(Base):
                     Conjugate Gradient (cg)
 
                     Powell (powell)
-
+                
                     Newton-CG  (newton)
 
             :keyword verbose: prints out phase angles if True (default)
@@ -589,7 +723,13 @@ class Fid(Base):
                 raise ValueError('Only Fourier-transformed data can be phase-corrected.')
             if verbose:
                 print('phasing: %s'%self.id)
-            self.data = Fid._phase_correct((self.data, method, verbose))
+            phased_data, p0, p1 = Fid._phase_correct((self.data, method, verbose))
+            self.data = phased_data
+            # Update data model
+            if getattr(self, 'fid_object', None) is not None:
+                self.fid_object.processing_steps.is_phased = True
+                self.fid_object.processing_steps.zero_order_phase = p0
+                self.fid_object.processing_steps.first_order_phase = p1
 
     @classmethod
     def _phase_correct(cls, list_params):
@@ -604,18 +744,18 @@ class Fid(Base):
                     ('p1', 0.0, True),
                     )
             mz = lmfit.minimize(Fid._phased_data_sum, p, args=([data]), method=method)
-            phased_data = Fid._ps(data, p0=mz.params['p0'].value, p1=mz.params['p1'].value)
+            phased_data, p0, p1 = Fid._ps(data, p0=mz.params['p0'].value, p1=mz.params['p1'].value)
             if abs(phased_data.min()) > abs(phased_data.max()):
                     phased_data *= -1
             if sum(phased_data) < 0.0:
                     phased_data *= -1
             if verbose:
                 print('Zero order: %d\tFirst order: %d\t (In degrees)'%(mz.params['p0'].value, mz.params['p1'].value))
-            return phased_data
+            return phased_data, p0, p1
         
     @classmethod
     def _phased_data_sum(cls, pars, data):
-            err = Fid._ps(data, p0=pars['p0'].value, p1=pars['p1'].value).real
+            err = Fid._ps(data, p0=pars['p0'].value, p1=pars['p1'].value)[0].real
             return numpy.array([abs(err).sum()]*2)
 
     @classmethod
@@ -637,7 +777,7 @@ class Fid(Base):
             p1 = p1*numpy.pi/180.0
             size = len(data)
             ph = numpy.exp(1.0j*(p0+(p1*numpy.arange(size)/size)))
-            return ph*data
+            return ph*data, p0, p1
 
     def ps(self, p0=0.0, p1=0.0):
         """
@@ -658,6 +798,11 @@ class Fid(Base):
         size = len(self.data)
         ph = numpy.exp(1.0j*(p0+(p1*numpy.arange(size)/size)))
         self.data = ph*self.data
+        # Update data model
+        if getattr(self, 'fid_object', None) is not None:
+            self.fid_object.processing_steps.is_phased = True
+            self.fid_object.processing_steps.zero_order_phase = p0
+            self.fid_object.processing_steps.first_order_phase = p1
 
     def phaser(self):
         """
@@ -701,13 +846,13 @@ Left - select peak
         """
 
         if self._bl_indices is None:
-            raise AttributeError('No points selected for baseline correction. Run fid.baseliner()')
+            raise AttributeError('No points selected for baseline correction. Run fid.baseliner() or fidarray.baseliner_fids()')
         if not len(self.data):
-            raise AttributeError('data does not exist.')
+            raise AttributeError('Data does not exist.')
         if self.data.dtype in self._complex_dtypes:
-            raise TypeError('data must not be complex.')
+            raise TypeError('Data must not be complex.')
         if not Fid._is_flat_iter(self.data):
-            raise AttributeError('data must be 1 dimensional.')
+            raise AttributeError('Data must be 1 dimensional.')
         
         data = self.data
         x = numpy.arange(len(data))
@@ -721,6 +866,9 @@ Left - select peak
         self._bl_poly = yp
         data_bl = data-yp
         self.data = numpy.array(data_bl)
+        # Update data model
+        if getattr(self, 'fid_object', None) is not None:
+            self.fid_object.processing_steps.is_baseline_corrected = True
 
     def peakpick(self, thresh=0.1):
         """ 
@@ -771,6 +919,12 @@ Ctrl+Alt+Right - assign
         Clear ranges stored in :attr:`~nmrpy.data_objects.Fid.ranges`.
         """
         self.ranges = None
+
+    def clear_species(self):
+        """
+        Clear species stored in :attr:`~nmrpy.data_objects.Fid.species`.
+        """
+        self.species = None
 
     def baseliner(self):
         """
@@ -1154,9 +1308,14 @@ Ctrl+Alt+Right - assign
             raise AttributeError('peaks must be picked.')
         if self.ranges is None:
             raise AttributeError('ranges must be specified.')
+        self._setup_peak_objects()
         print('deconvoluting {}'.format(self.id))
         list_parameters = [self.data, self._grouped_index_peaklist, self._index_ranges, frac_gauss, method]
         self._deconvoluted_peaks = numpy.array([j for i in Fid._deconv_datum(list_parameters) for j in i])
+        print(self.deconvoluted_integrals)
+        # Update data model
+        if getattr(self, 'fid_object', None) is not None:
+            self.fid_object.processing_steps.is_deconvoluted = True
         print('deconvolution completed')
 
 
@@ -1199,6 +1358,87 @@ Ctrl+Alt+Right - assign
         plt._plot_deconv(self, **kwargs)
         setattr(self, plt.id, plt)
         pyplot.show()
+
+
+    def _setup_peak_objects(self):
+        # Create or update Peak objects in data model after validation
+        # of Fid.peaks and Fid.ranges.
+
+        # Validates FID has peaks and ranges and len(peaks) == len(ranges)
+        if getattr(self, 'fid_object', None) is None:
+            return
+        if self.peaks is None or len(self.peaks) == 0:
+            raise RuntimeError(
+                "`fid.peaks` is required but still empty. "
+                "Please assign them manually or with the `peakpicker` method."
+            )
+        if self.ranges is None or len(self.ranges) == 0:
+            raise RuntimeError(
+                "`fid.ranges` is required but still empty. "
+                "Please assign them manually or with the `rangepicker` method."
+            )
+ 
+        def normalize_range(range_group):
+            start, end = range_group[0], range_group[1]
+            return {
+                "start": float(min(start, end)),
+                "end": float(max(start, end))
+            }
+            
+        # Create or update Peak objects in data model
+        existing_peaks_count = len(self.fid_object.peaks)        
+        global_index = 0
+        for peak_group, range_group in zip(self._grouped_peaklist, self.ranges):
+            normalized_range = normalize_range(range_group)
+            
+            for peak in peak_group:
+                if global_index < existing_peaks_count:
+                    # Peak already exists, update it
+                    self.fid_object.peaks[global_index].peak_position = float(peak)
+                    self.fid_object.peaks[global_index].peak_range = normalized_range
+                else:
+                    # Peak does not yet exist, create it
+                    self.fid_object.add_to_peaks(
+                        peak_index=global_index,
+                        peak_position=float(peak),
+                        peak_range=normalized_range,
+                    )
+                global_index += 1
+
+    def assign_peaks(self, species_list: list[str] | EnzymeMLDocument = None):
+        """
+        Instantiate a species-assignment GUI widget. Select peaks from
+        dropdown menu containing :attr:`~nmrpy.data_objects.Fid.peaks`.
+        Attach a species to the selected peak from second dropdown menu
+        containing species defined in EnzymeML. When satisfied with
+        assignment, press Assign button to apply.
+
+        Args:
+            species_list (list[str] | EnzymeMLDocument): The list of species to assign to the peaks.
+
+        Raises:
+            RuntimeError: If EnzymeML document is provided but the `pyenzyme` package is not installed.
+        """
+        if (pyenzyme is None) and (isinstance(species_list, EnzymeMLDocument)):
+            raise RuntimeError(
+                "The `pyenzyme` package is required to use NMRpy with an EnzymeML document. Please install it via `pip install nmrpy[enzymeml]`."
+            )
+        self._assigner_widget = PeakAssigner(
+            fid=self,
+            species_list=species_list,
+            title="Assign species for {}".format(self.id),
+        )
+
+    def clear_assigned_peaks(self):
+        """
+        Clear assigned species stored in :attr:`~nmrpy.data_objects.Fid.species`
+        and :attr:`~nmrpy.data_objects.Fid.fid_object.peaks.species_id`, as well as
+        the GUI widget.
+        """
+        self.clear_species()
+        for peak in self.fid_object.peaks:
+            peak.species_id = None
+        self._assigner_widget = None
  
 class FidArray(Base):
     '''
@@ -1215,8 +1455,113 @@ class FidArray(Base):
     where 'XX' is an increasing integer .
 
     '''
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.data_model = NMRpy(
+            datetime_created=str(datetime.now().isoformat()),
+            experiment=Experiment(name="NMR experiment"),
+        )
+        self.enzymeml_document = None
+        self.concentrations = None
+
     def __str__(self):
         return 'FidArray of {} FID(s)'.format(len(self.data))
+    
+    @property
+    def data_model(self):
+        try:
+            for fid in self.get_fids():
+                if fid.fid_object.ld_id not in [f.ld_id for f in self.__data_model.experiment.fid_array]:
+                    self.__data_model.experiment.fid_array.append(fid.fid_object)
+                else:
+                    self.__data_model.experiment.fid_array[self.__data_model.experiment.fid_array.index(fid.fid_object)].ld_id = fid.fid_object.ld_id
+            self.__data_model.datetime_modified = str(datetime.now().isoformat())
+        except AttributeError:
+            print('Warning: FidArray.data_model is not yet set.')
+        return self.__data_model
+
+    @data_model.setter
+    def data_model(self, data_model):
+        if data_model is None:
+            self.__data_model = None
+            return
+        if not isinstance(data_model, NMRpy):
+            raise AttributeError(
+                f'Parameter `data_model` has to be of type `NMRpy`, got {type(data_model)} instead.'
+            )
+        self.__data_model = data_model
+        self.__data_model.datetime_modified = str(datetime.now().isoformat())
+
+    @data_model.deleter
+    def data_model(self):
+        del self.__data_model
+        print('The current data model has been deleted.')
+
+    @property
+    def enzymeml_document(self):
+        try:
+            self.__enzymeml_document.modified = str(datetime.now().isoformat())
+        except AttributeError:
+            print('Warning: FidArray.enzymeml_document is not yet set.')
+        return self.__enzymeml_document
+
+    @enzymeml_document.setter
+    def enzymeml_document(self, enzymeml_document):
+        if enzymeml_document is None:
+            self.__enzymeml_document = None
+            return
+        if (pyenzyme is None):
+            raise RuntimeError(
+                "The `pyenzyme` package is required to use NMRpy with an EnzymeML document. Please install it via `pip install nmrpy[enzymeml]`."
+            )
+        if not isinstance(enzymeml_document, EnzymeMLDocument):
+            raise AttributeError(
+                f'Parameter `enzymeml_document` has to be of type `EnzymeMLDocument`, got {type(enzymeml_document)} instead.'
+            )
+        if not enzymeml_document.measurements:
+            raise AttributeError(
+                'EnzymeML document must contain at least one measurement.'
+            )
+        self.__enzymeml_document = enzymeml_document
+        self.__enzymeml_document.modified = str(datetime.now().isoformat())
+        self.__data_model.experiment.name = self.__enzymeml_document.name
+        for fid in self.get_fids():
+            fid.enzymeml_species = get_species_from_enzymeml(self.__enzymeml_document)
+
+    @enzymeml_document.deleter
+    def enzymeml_document(self):
+        del self.__enzymeml_document
+        print('The current EnzymeML document has been deleted.')
+
+    @property
+    def concentrations(self):
+        return self.__concentrations
+
+    @concentrations.setter
+    def concentrations(self, concentrations):
+        if concentrations is None:
+            self.__concentrations = None
+            return
+        if not isinstance(concentrations, dict):
+            raise TypeError('concentrations must be a dictionary.')        
+        for fid in self.get_fids():
+            if fid.species is None or not len(fid.species):
+                raise ValueError('All FIDs must have species assigned to peaks.')
+        if not set(concentrations.keys()).issubset(fid.species):
+            invalid_species = set(concentrations.keys()) - set(fid.species)
+            raise ValueError(f'Invalid species in concentrations: {invalid_species}')
+        if not all(len(concentrations[species]) == len(self.t) for species in concentrations.keys()):
+            raise ValueError('Length of concentrations must match length of FID data.')
+        for v in concentrations.values():
+            if not all(isinstance(i, (int, float)) for i in v):
+                raise ValueError('Concentrations must be a list of integers or floats.')
+        self.__concentrations = concentrations
+
+    @concentrations.deleter
+    def concentrations(self):
+        del self.__concentrations
+        print('The current concentrations have been deleted.')
 
     def get_fid(self, id):
         """
@@ -1265,6 +1610,8 @@ class FidArray(Base):
             or isinstance(self.__dict__[id], FidArrayRangeSelector)
             or isinstance(self.__dict__[id], DataTraceRangeSelector)
             or isinstance(self.__dict__[id], DataTraceSelector)
+            or isinstance(self.__dict__[id], PeakRangeAssigner)
+            or isinstance(self.__dict__[id], ConcentrationCalculator)
         ]
         return widgets
 
@@ -1312,7 +1659,18 @@ class FidArray(Base):
         for fid in self.get_fids():
             deconvoluted_integrals.append(fid.deconvoluted_integrals)
         return numpy.array(deconvoluted_integrals)
-
+    
+    @property
+    def species(self):
+        """
+        Collected :class:`~nmrpy.data_objects.Fid.species`
+        """
+        for i, fid in enumerate(self.get_fids()):
+            species = [s for s in fid.species]
+            if i>0:
+                break
+        return numpy.array(species)
+    
     @property
     def _deconvoluted_peaks(self):
         """
@@ -1417,6 +1775,24 @@ class FidArray(Base):
         del fid_array._params['nt']
         del fid_array._params['acqtime']
 
+    def parse_enzymeml_document(self, path_to_enzymeml_document) -> None:
+        """
+        Parse an EnzymeML document and its library from specified file path.
+
+        Args:
+            path_to_enzymeml_document (str): Path to file containing an EnzymeML document
+
+        Raises:
+            RuntimeError: If the `pyenzyme` package is not installed.
+        """
+        if (pyenzyme is None):
+            raise RuntimeError(
+                "The `pyenzyme` package is required to use NMRpy with an EnzymeML document. Please install it via `pip install nmrpy[enzymeml]`."
+            )
+        self.enzymeml_document = pyenzyme.read_enzymeml(
+            path=path_to_enzymeml_document
+        )    
+
     @classmethod
     def from_data(cls, data):
         """
@@ -1510,6 +1886,11 @@ class FidArray(Base):
             for fid, datum in zip(fids, ft_data):
                 fid.data = datum
                 fid._flags['ft'] = True
+                # Update data model
+                if getattr(fid, 'fid_object', None) is not None:
+                    fid.fid_object.processed_data = [str(data) for data in datum]
+                    fid.fid_object.processing_steps.is_fourier_transformed = True
+                    fid.fid_object.processing_steps.fourier_transform_type = 'FFT'
         else: 
             for fid in self.get_fids():
                 fid.ft()
@@ -1531,6 +1912,11 @@ class FidArray(Base):
         dmax = self.data.max()
         for fid in self.get_fids():
             fid.data = fid.data/dmax
+            # Update data model
+            if getattr(fid, 'fid_object', None) is not None:
+                fid.fid_object.processed_data = [float(datum) for datum in fid.data]
+                fid.fid_object.processing_steps.is_normalised = True
+                fid.fid_object.processing_steps.max_value = float(dmax)
 
     def phase_correct_fids(self, method='leastsq', mp=True, cpus=None, verbose=True):
         """ 
@@ -1553,7 +1939,13 @@ class FidArray(Base):
             list_params = [[fid.data, method, verbose] for fid in fids]
             phased_data = self._generic_mp(Fid._phase_correct, list_params, cpus)
             for fid, datum in zip(fids, phased_data):
-                fid.data = datum
+                fid.data = datum[0]
+                # Update data model
+                if getattr(fid, 'fid_object', None) is not None:
+                    fid.fid_object.processed_data = [str(data) for data in datum]
+                    fid.fid_object.processing_steps.is_phased = True
+                    fid.fid_object.processing_steps.zero_order_phase = datum[1]
+                    fid.fid_object.processing_steps.first_order_phase = datum[2]
         else:
             for fid in self.get_fids():
                 fid.phase_correct(method=method, verbose=verbose)
@@ -1584,12 +1976,18 @@ Ctrl+Alt+Right - assign
 
         :keyword deg: degree of the baseline polynomial (see :meth:`~nmrpy.data_objects.Fid.baseline_correct`)
         """
+        okay = True
         for fid in self.get_fids():
             try:
                 fid.baseline_correct(deg=deg)
-            except:
-                print('failed for {}. Perhaps first run baseliner_fids()'.format(fid.id))
-        print('baseline-correction completed')
+            except TypeError as te:
+                okay = False
+                print(f'Failed for {fid.id}. {te}')
+            except AttributeError as ae:
+                okay = False
+                print(f'Failed for {fid.id}. {ae}')
+        if okay:
+            print('baseline-correction completed')
 
     @property
     def _data_traces(self):
@@ -1654,6 +2052,20 @@ Ctrl+Alt+Right - assign
             deconv_datum = self._generic_mp(Fid._deconv_datum, list_params, cpus)
             for fid, datum in zip(fids, deconv_datum):
                 fid._deconvoluted_peaks = numpy.array([j for i in datum for j in i])
+                fid._setup_peak_objects()
+                integrals = []
+                for i, peak in enumerate(fid._deconvoluted_peaks):
+                    int_gauss = peak[-1] * Fid._f_gauss_int(peak[3], peak[1])
+                    int_lorentz = (1 - peak[-1]) * Fid._f_lorentz_int(peak[3], peak[2])
+                    integral = int_gauss + int_lorentz
+                    integrals.append(integral)
+                    # Update data model
+                    if getattr(fid, 'fid_object', None) is not None:
+                        peak_object = fid.fid_object.peaks[i]
+                        if peak_object.peak_integral != integral:
+                            peak_object.peak_integral = float(integral)
+                if getattr(fid, 'fid_object', None) is not None:
+                    fid.fid_object.processing_steps.is_deconvoluted = True
         else:
             for fid in self.get_fids():
                 fid.deconv(frac_gauss=frac_gauss)
@@ -1876,6 +2288,14 @@ Ctrl+Alt+Right - assign
         """
         for fid in self.get_fids():
             fid.ranges = None
+    
+    def clear_species(self):
+        """
+        Calls :meth:`~nmrpy.data_objects.Fid.clear_species` on every :class:`~nmrpy.data_objects.Fid`
+        object in this :class:`~nmrpy.data_objects.FidArray`.
+        """
+        for fid in self.get_fids():
+            fid.species = None
 
     def _generate_trace_mask(self, traces):
         ppm = [numpy.round(numpy.mean(i[0]), 2) for i in traces]
@@ -2008,8 +2428,42 @@ Ctrl+Alt+Right - assign
             integrals = decon_set[tr_keys, tr_vals]
             integrals_set[i] = integrals    
         return integrals_set
+    
+    def assign_peaks(self, species_list: list[str] | EnzymeMLDocument = None, index_list: list[int] = None):
+        """
+        Instantiate a peak-assignment GUI widget. Select a FID by
+        its ID from the combobox. Select peaks from dropdown menu
+        containing :attr:`~nmrpy.data_objects.Fid.peaks`. Attach a
+        species to the selected peak from second dropdown menu
+        containing species defined in EnzymeML. When satisfied with
+        assignment, press Assign button to apply.
+        """
+        if (pyenzyme is None) and (isinstance(species_list, EnzymeMLDocument)):
+            raise RuntimeError(
+                "The `pyenzyme` package is required to use NMRpy with an EnzymeML document. Please install it via `pip install nmrpy[enzymeml]`."
+            )
+        self._assigner_widget = PeakRangeAssigner(
+            fid_array=self, species_list=species_list, index_list=index_list
+        )
 
-    def save_to_file(self, filename=None, overwrite=False):
+    def clear_assigned_peaks(self):
+        """
+        Clear assigned peaks stored in :attr:`~nmrpy.data_objects.Fid.species`
+        and :attr:`~nmrpy.data_objects.Fid.fid_object.peaks`, as well as
+        the GUI widget.
+        """
+        for fid in self.get_fids():
+            fid.species = None
+            for peak in fid.fid_object.peaks:
+                peak.species_id = None
+        self._assigner_widget = None
+
+    def calculate_concentrations(self):
+        raise NotImplementedError(
+            "Widget for calculating concentrations is currently under heavy construction. Please calculate and assign concentrations manually."
+        )
+
+    def save_to_file(self, filename=None, overwrite=False, keep_data_model=False, keep_enzymeml=True):
         """
         Save :class:`~nmrpy.data_objects.FidArray` object to file, including all objects owned.
 
@@ -2017,6 +2471,9 @@ Ctrl+Alt+Right - assign
 
         :keyword overwrite: if True, overwrite existing file
 
+        :keyword keep_data_model: if True, keep the NMRpy data model (default is True)
+
+        :keyword keep_enzymeml: if True, keep the EnzymeML document (default is True)
         """
         if filename is None:
             basename = os.path.split(os.path.splitext(self.fid_path)[0])[-1]
@@ -2036,8 +2493,203 @@ Ctrl+Alt+Right - assign
         self._del_widgets()
         for fid in self.get_fids():
             fid._del_widgets()
+        # delete data model if required
+        if not keep_data_model:
+            del self.data_model
+            for fid in self.get_fids():
+                del fid.fid_object
+        # delete enzymeml document if required
+        if not keep_enzymeml:
+            self.enzymeml_document = None
+            for fid in self.get_fids():
+                fid.enzymeml_species = None
         with open(filename, 'wb') as f:
             pickle.dump(self, f)
+
+    def save_data_model(self, format: str = 'json', filename=None, overwrite=False):
+        """
+        Save the NMRpy data model to a file.
+
+        :keyword format: format of the file to save the data model to (default is 'json')
+
+        :keyword filename: filename to save the data model to
+
+        :keyword overwrite: if True, overwrite existing file
+        """
+        if filename is None:
+            basename = os.path.split(os.path.splitext(self.fid_path)[0])[-1]
+            filename = basename+'.'+format
+        if not isinstance(filename, str):
+            raise TypeError('filename must be a string.')
+        if filename[-len(format):] != format:
+            filename += '.'+format
+        if not overwrite and os.path.exists(filename):
+            raise FileExistsError(f'File {filename} already exists. Set overwrite=True to force.')
+        
+        # Convert raw_data and processed_data to lists for serialisation
+        for fid in self.get_fids():
+            # Raw data is always complex, convert to a list of strings
+            fid.fid_object.raw_data = [str(datum) for datum in fid.raw_data.copy()]
+            # If the processed data is still complex, also convert to a
+            # list of strings
+            if isinstance(fid.data.flat[0], numpy.complexfloating):
+                fid.fid_object.processed_data = [str(datum) for datum in fid.data.copy()]
+            # If the processed data is already real, convert to a list
+            # of floats instead
+            else:
+                fid.fid_object.processed_data = fid.data.tolist()
+        self.data_model.datetime_modified = datetime.now().isoformat()
+
+        # Save the data model
+        if format == 'json':
+            with open(filename, 'w') as f:
+                json_string = self.data_model.model_dump_json(
+                    indent=2,
+                    by_alias=True,
+                    exclude_none=True
+                )
+                f.write(json_string)
+            print(f'Data model saved to "{filename}".')
+        else:
+            raise ValueError(f'Unsupported format: {format}')
+  
+    def add_t0_to_enzymeml(
+        self,
+        gui: bool = True,
+        measurement_id: Optional[str] = None,
+        use_t1: bool = True,
+        t0: Optional[Mapping[str, float]] = None,
+        offset: Optional[float] = None,
+    ) -> None:
+        """
+        Add t0 to a measurement in the EnzymeML document either by using
+        t1 values (zero-shift times) or by providing a dict of t0 data
+        values, and optionally apply a time-axis offset.
+        """
+        if (pyenzyme is None):
+            raise RuntimeError(
+                "The `pyenzyme` package is required to use NMRpy with an EnzymeML document. Please install it via `pip install nmrpy[enzymeml]`."
+            )
+        if len(self.enzymeml_document.measurements) == 0:
+            raise ValueError(
+                "No measurements found in EnzymeML document. At least one measurement is required."
+            )
+        if gui:
+            _ = T0Adder(
+                fid_array=self,
+                measurement_id=measurement_id,
+                use_t1=use_t1,
+                t0_values=t0,
+                offset_enabled=offset is not None,
+                offset_value=offset or 0.0,
+            )
+            return
+
+        logic = T0Logic(self.enzymeml_document, measurement_id)
+
+        if use_t1:
+            logic.zero_shift_times()
+        else:
+            t0 = t0 or {}
+            missing = set()
+            for sid in logic.nonconstant_species_ids():
+                if sid in t0:
+                    logic.set_t0_value(sid, float(t0[sid]))
+                else:
+                    missing.add(sid)
+            if missing:
+                print(f"WARNING: {len(missing)} species ID(s) missing in t0: {sorted(missing)}")
+
+        if offset is not None:
+            logic.apply_offset(float(offset))
+
+        logic.update_initials()
+                        
+    def create_new_enzymeml_measurement(
+            self,
+            gui: bool = True,
+            template_measurement: bool = True,
+            template_id: str = None,
+            keep_ph: bool = True,
+            keep_temperature: bool = True,
+            keep_initial: bool = False,
+            **kwargs
+        ) -> None:
+
+        if (pyenzyme is None):
+            raise RuntimeError(
+                "The `pyenzyme` package is required to use NMRpy with an EnzymeML document. Please install it via `pip install nmrpy[enzymeml]`."
+            )
+        if not self.enzymeml_document:
+            raise AttributeError(
+                "No EnzymeML document found. Please add one using `parse_enzymeml_document()`."
+            )
+        if len(self.enzymeml_document.measurements) == 0:
+            raise ValueError(
+                "No measurements found in EnzymeML document. At least one measurement is required."
+            )
+        if any(len(measurement.species_data) == 0 for measurement in self.enzymeml_document.measurements):
+            raise ValueError(
+                "No species data found in at least one EnzymeML measurement. Species data is required for each measurement."
+            )
+        if not template_measurement and (keep_ph or keep_temperature or keep_initial):
+            print("Warning: Without a template measurement, there are no pH, temperature, or initial values to keep.")
+
+        if gui:
+            self._measurement_creator = MeasurementCreator(
+                fid_array=self,
+            )
+        else:
+            new_measurement = create_enzymeml_measurement(
+                self.enzymeml_document,
+                template_measurement=template_measurement,
+                template_id=template_id,
+            )
+            new_measurement = fill_enzymeml_measurement(
+                self.enzymeml_document,
+                new_measurement,
+                template_measurement=template_measurement,
+                template_id=template_id,                
+                keep_ph=keep_ph,
+                keep_temperature=keep_temperature,
+                keep_initial=keep_initial,
+                **kwargs
+            )
+            self.enzymeml_document.measurements.append(new_measurement)
+
+
+    def apply_to_enzymeml(self, enzymeml_document = None, measurement_id = None) -> EnzymeMLDocument:
+        """
+        Apply the calculated concentrations from the FidArray to an EnzymeMLDocument.
+
+        Args:
+            enzymeml_document (EnzymeMLDocument, optional): The EnzymeML document to apply the concentrations to.
+
+        Returns:
+            EnzymeMLDocument: The EnzymeML document with the concentrations applied.
+
+        Raises:
+            RuntimeError: If the `pyenzyme` package is not installed.
+        """
+        if (pyenzyme is None):
+            raise RuntimeError(
+                "The `pyenzyme` package is required to use NMRpy with an EnzymeML document. Please install it via `pip install nmrpy[enzymeml]`."
+            )
+        if not self.concentrations:
+            raise RuntimeError(
+                "No concentrations found. Please calculate concentrations first."
+            )
+        # If no enzymeml_document is provided, use the one stored in the
+        # FidArray
+        if not enzymeml_document:
+            enzymeml_document = self.enzymeml_document
+
+        # If no measurement_id is provided, use the id of the last
+        # measurement in the EnzymeML document
+        if not measurement_id:
+            measurement_id = self.enzymeml_document.measurements[-1].id
+
+        return create_enzymeml(self, enzymeml_document, measurement_id)
   
 class Importer(Base):
 
