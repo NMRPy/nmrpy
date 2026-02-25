@@ -172,7 +172,8 @@ class Plot():
             figsize=[9, 6],
             lw=0.3, 
             azim=-90, 
-            elev=20, 
+            elev=20,
+            roll=0,
             filename=None):
 
         if lower_index is None:
@@ -213,7 +214,7 @@ class Plot():
 
         xlabel = 'PPM (%.2f MHz)'%(params['reffrq'])
         ylabel = 'min.'
-        if 'acqtime_array' in fids[0]._params.keys():
+        if type(fids[0]._params['acqtime']) in (float, numpy.float64):
             # New NMRpy _params structure
             minutes = [fids[i]._params['acqtime'] for i in range(lower_index, upper_index)]
         else:
@@ -227,7 +228,8 @@ class Plot():
                                             ylabel=ylabel,
                                             lw=lw, 
                                             azim=azim, 
-                                            elev=elev, 
+                                            elev=elev,
+                                            roll=roll,
                                             )
         if filename is not None:
             self.fig.savefig(filename, format='pdf')
@@ -243,7 +245,8 @@ class Plot():
                 figsize=(9, 6),
                 lw=0.3, 
                 azim=-90, 
-                elev=20, 
+                elev=20,
+                roll=0,
                 filled=False, 
                 show_zticks=False, 
                 labels=None, 
@@ -305,7 +308,8 @@ class Plot():
                                             ylabel=ylabel,
                                             lw=lw, 
                                             azim=azim, 
-                                            elev=elev, 
+                                            elev=elev,
+                                            roll=roll,
                                             )
         if filename is not None:
             self.fig.savefig(filename, format='pdf')
@@ -329,7 +333,8 @@ class Plot():
                 lower_lim=None,
                 lw=0.3, 
                 azim=-90, 
-                elev=20, 
+                elev=20,
+                roll=0,
                 figsize=[5,5],
                 show_zticks=False, 
                 labels=None, 
@@ -357,7 +362,7 @@ class Plot():
 
 
         fig = plt.figure(figsize=figsize)
-        ax = fig.add_subplot(111, projection='3d', azim=azim, elev=elev)
+        ax = fig.add_subplot(111, projection='3d', azim=azim, elev=elev, roll=roll)
 
         for data_n in range(len(zlist)):
             data = zlist[data_n]
