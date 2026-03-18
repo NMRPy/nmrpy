@@ -8,7 +8,7 @@ try:
     import pyenzyme
     from pyenzyme import EnzymeMLDocument, Measurement, MeasurementData
 except ImportError as ex:
-    print(f"Optional dependency import failed for utils.py: {ex}")
+    print(f'Optional dependency import failed for utils.py: {ex}')
     sympy = None
     pyenzyme = None
 
@@ -35,15 +35,15 @@ def get_species_from_enzymeml(
     """
     if (pyenzyme is None):
         raise RuntimeError(
-            "The `pyenzyme` package is required to use NMRpy with an EnzymeML document. Please install it via `pip install nmrpy[enzymeml]`."
+            'The `pyenzyme` package is required to use NMRpy with an EnzymeML document. Please install it via `pip install nmrpy[enzymeml]`.'
         )
     if not isinstance(enzymeml_document, EnzymeMLDocument):
         raise AttributeError(
-            f"Parameter `enzymeml_document` has to be of type `EnzymeMLDocument`, got {type(enzymeml_document)} instead."
+            f'Parameter `enzymeml_document` has to be of type `EnzymeMLDocument`, got {type(enzymeml_document)} instead.'
         )
     if not proteins and not complexes and not small_molecules:
         raise ValueError(
-            "At least one of the parameters `proteins`, `complexes`, or `small_molecules` must be `True`."
+            'At least one of the parameters `proteins`, `complexes`, or `small_molecules` must be `True`.'
         )
     available_species = []
     if proteins:
@@ -57,7 +57,7 @@ def get_species_from_enzymeml(
             available_species.append(small_molecule)
     return available_species
 
-def get_ordered_list_of_species_names(fid: "Fid") -> list:
+def get_ordered_list_of_species_names(fid: 'Fid') -> list:
     """Iterate over the identites in a given FID object and extract a
     list of species names ordered by peak index, multiple occurences
     thus allowed.
@@ -70,7 +70,7 @@ def get_ordered_list_of_species_names(fid: "Fid") -> list:
     """
     if (pyenzyme is None):
         raise RuntimeError(
-            "The `pyenzyme` package is required to use NMRpy with an EnzymeML document. Please install it via `pip install nmrpy[enzymeml]`."
+            'The `pyenzyme` package is required to use NMRpy with an EnzymeML document. Please install it via `pip install nmrpy[enzymeml]`.'
         )
     list_of_tuples = []
     # Iterate over the peak objects and then over their associated peaks
@@ -102,9 +102,9 @@ def get_initial_concentration_by_species_id(
     """
     if (pyenzyme is None):
         raise RuntimeError(
-            "The `pyenzyme` package is required to use NMRpy with an EnzymeML document. Please install it via `pip install nmrpy[enzymeml]`."
+            'The `pyenzyme` package is required to use NMRpy with an EnzymeML document. Please install it via `pip install nmrpy[enzymeml]`.'
         )
-    intial_concentration = float("nan")
+    intial_concentration = float('nan')
     for measurement in enzymeml_document.measurements:
         for measurement_datum in measurement.species_data:
             if measurement_datum.species_id == species_id:
@@ -126,7 +126,7 @@ def get_species_id_by_name(
     """
     if (pyenzyme is None):
         raise RuntimeError(
-            "The `pyenzyme` package is required to use NMRpy with an EnzymeML document. Please install it via `pip install nmrpy[enzymeml]`."
+            'The `pyenzyme` package is required to use NMRpy with an EnzymeML document. Please install it via `pip install nmrpy[enzymeml]`.'
         )
     species_id = None
     for species in get_species_from_enzymeml(enzymeml_document):
@@ -146,7 +146,7 @@ def get_species_name_by_id(enzymeml_document: EnzymeMLDocument, species_id: str)
     """
     if (pyenzyme is None):
         raise RuntimeError(
-            "The `pyenzyme` package is required to use NMRpy with an EnzymeML document. Please install it via `pip install nmrpy[enzymeml]`."
+            'The `pyenzyme` package is required to use NMRpy with an EnzymeML document. Please install it via `pip install nmrpy[enzymeml]`.'
         )
     species_name = None
     for species in get_species_from_enzymeml(enzymeml_document):
@@ -171,9 +171,9 @@ def format_species_string(enzymeml_species) -> str:
     if isinstance(enzymeml_species, str):
         return enzymeml_species
     elif enzymeml_species.name:
-        return f"{enzymeml_species.id} ({enzymeml_species.name})"
+        return f'{enzymeml_species.id} ({enzymeml_species.name})'
     else:
-        return f"{enzymeml_species.id}"
+        return f'{enzymeml_species.id}'
 
 def format_measurement_string(measurement: Measurement) -> str:
     """Format a measurement object from an EnzymeML document as a string
@@ -188,12 +188,12 @@ def format_measurement_string(measurement: Measurement) -> str:
     """
     if not isinstance(measurement, Measurement):
         raise ValueError(
-            f"Parameter `measurement` has to be of type `Measurement`, got {type(measurement)} instead."
+            f'Parameter `measurement` has to be of type `Measurement`, got {type(measurement)} instead.'
         )
     if measurement.name:
-        return f"{measurement.id} ({measurement.name})"
+        return f'{measurement.id} ({measurement.name})'
     else:
-        return f"{measurement.id}"
+        return f'{measurement.id}'
 
 
 ##### t0 helpers #####
@@ -219,8 +219,8 @@ class T0Logic:
         Returns:
             T0Logic: A T0Logic object.
         """
-        if not getattr(enzymeml_document, "measurements", None):
-            raise ValueError("No measurements found in EnzymeML document. At least one measurement is required.")
+        if not getattr(enzymeml_document, 'measurements', None):
+            raise ValueError('No measurements found in EnzymeML document. At least one measurement is required.')
 
         self.doc = enzymeml_document
         self.measurement = self._select_measurement(measurement_id)
@@ -232,7 +232,7 @@ class T0Logic:
         for m in self.doc.measurements:
             if m.id == measurement_id:
                 return m
-        raise ValueError(f"Measurement with ID '{measurement_id}' not found in EnzymeML document.")
+        raise ValueError(f'Measurement with ID '{measurement_id}' not found in EnzymeML document.')
 
     def get_data_unit_name(self, species_id: str) -> str:
         """Return the display name for the data unit of a given
@@ -240,12 +240,12 @@ class T0Logic:
         """
         try:
             sd = self.species_data_by_id()[species_id]
-            unit = getattr(sd, "data_unit", None)
+            unit = getattr(sd, 'data_unit', None)
             if unit is None:
-                return "data units"
-            return getattr(unit, "name", str(unit))
+                return 'data units'
+            return getattr(unit, 'name', str(unit))
         except Exception:
-            return "data units"
+            return 'data units'
 
     def get_time_unit_name(self) -> str:
         """Return the display name for the time unit of a given
@@ -254,7 +254,7 @@ class T0Logic:
         try:
             return self.measurement.species_data[0].time_unit.name
         except Exception:
-            return "time units"
+            return 'time units'
 
     def nonconstant_species_ids(self) -> list[str]:
         """Return IDs of species that are *not* constant, preserving
@@ -263,7 +263,7 @@ class T0Logic:
         ids: list[str] = []
         constant: set[str] = set()
         for s in get_species_from_enzymeml(self.doc):
-            if getattr(s, "constant", False):
+            if getattr(s, 'constant', False):
                 constant.add(s.id)
         for sd in self.measurement.species_data:
             if sd.species_id not in constant:
@@ -306,7 +306,7 @@ class T0Logic:
         """Apply an absolute offset to times (per species), keeping
         time[0] as is.
         """
-        prev = getattr(self, "_previous_offset", 0.0)
+        prev = getattr(self, '_previous_offset', 0.0)
         for sd in self.measurement.species_data:
             if not sd.time:
                 continue
@@ -361,32 +361,32 @@ def create_enzymeml_measurement(
     Returns:
         Measurement: A new EnzymeML Measurement object.
     """
-    if kwargs["template_measurement"]:
-        if kwargs["template_id"]:
+    if kwargs['template_measurement']:
+        if kwargs['template_id']:
             for measurement in enzymeml_document.measurements:
-                if measurement.id == kwargs["template_id"]:
+                if measurement.id == kwargs['template_id']:
                     new_measurement = measurement.model_copy()
                     new_measurement.id = (
-                        f"measurement{len(enzymeml_document.measurements) + 1}"
+                        f'measurement{len(enzymeml_document.measurements) + 1}'
                     )
                     new_measurement.name = (
-                        f"Measurement no. {len(enzymeml_document.measurements) + 1}"
+                        f'Measurement no. {len(enzymeml_document.measurements) + 1}'
                     )
                     break
             else:
                 raise ValueError(
-                    f"Measurement with ID {kwargs['template_id']} not found."
+                    f'Measurement with ID {kwargs['template_id']} not found.'
                 )
         else:
             new_measurement = enzymeml_document.measurements[-1].model_copy()
-            new_measurement.id = f"measurement{len(enzymeml_document.measurements) + 1}"
+            new_measurement.id = f'measurement{len(enzymeml_document.measurements) + 1}'
             new_measurement.name = (
-                f"Measurement no. {len(enzymeml_document.measurements) + 1}"
+                f'Measurement no. {len(enzymeml_document.measurements) + 1}'
             )
     else:
         new_measurement = Measurement(
-            id=f"measurement{len(enzymeml_document.measurements) + 1}",
-            name=f"Measurement no. {len(enzymeml_document.measurements) + 1}",
+            id=f'measurement{len(enzymeml_document.measurements) + 1}',
+            name=f'Measurement no. {len(enzymeml_document.measurements) + 1}',
         )
 
     return new_measurement
@@ -440,60 +440,60 @@ def fill_enzymeml_measurement(
     """
 
     # ID and name
-    if "id" in kwargs:
-        measurement.id = kwargs["id"]
-    if "name" in kwargs:
-        measurement.name = kwargs["name"]
+    if 'id' in kwargs:
+        measurement.id = kwargs['id']
+    if 'name' in kwargs:
+        measurement.name = kwargs['name']
 
     # pH
-    if "ph" in kwargs:
-        measurement.ph = float(kwargs["ph"])
-    elif kwargs["keep_ph"] and kwargs["template_measurement"]:
+    if 'ph' in kwargs:
+        measurement.ph = float(kwargs['ph'])
+    elif kwargs['keep_ph'] and kwargs['template_measurement']:
         pass
     else:
         raise ValueError(
-            "The `measurement.ph` field is required in the EnzymeML standard. Please provide a pH value using the `ph` keyword argument."
+            'The `measurement.ph` field is required in the EnzymeML standard. Please provide a pH value using the `ph` keyword argument.'
         )
 
     # Temperature and unit
-    if "temperature" in kwargs:
-        measurement.temperature = float(kwargs["temperature"])
-        if "temperature_unit" not in kwargs:
+    if 'temperature' in kwargs:
+        measurement.temperature = float(kwargs['temperature'])
+        if 'temperature_unit' not in kwargs:
             raise ValueError(
-                "The `temperature_unit` keyword argument is required when setting a new temperature value."
+                'The `temperature_unit` keyword argument is required when setting a new temperature value.'
             )
-        measurement.temperature_unit = kwargs["temperature_unit"]
-    elif kwargs["keep_temperature"] and kwargs["template_measurement"]:
+        measurement.temperature_unit = kwargs['temperature_unit']
+    elif kwargs['keep_temperature'] and kwargs['template_measurement']:
         pass
     else:
         raise ValueError(
-            "The `measurement.temperature` field is required in the EnzymeML standard. Please provide a temperature value using the `temperature` keyword argument."
+            'The `measurement.temperature` field is required in the EnzymeML standard. Please provide a temperature value using the `temperature` keyword argument.'
         )
 
     # Initial
-    if "initial" in kwargs:
-        if not isinstance(kwargs["initial"], dict):
+    if 'initial' in kwargs:
+        if not isinstance(kwargs['initial'], dict):
             raise ValueError(
-                "The `initial` keyword argument must be a dictionary with species IDs (as they are defined in the EnzymeML document) as keys and initial values as values."
+                'The `initial` keyword argument must be a dictionary with species IDs (as they are defined in the EnzymeML document) as keys and initial values as values.'
             )
         _data_type = None
         _data_unit = None
         _time_unit = None
-        if "data_type" in kwargs:
+        if 'data_type' in kwargs:
             try:
-                _data_type = pyenzyme.DataTypes[kwargs["data_type"].upper()]
+                _data_type = pyenzyme.DataTypes[kwargs['data_type'].upper()]
             except ValueError:
                 raise ValueError(
-                    f"The `data_type` keyword argument must be a valid EnzymeML data type. Valid types are: {', '.join([data_type.name for data_type in pyenzyme.DataTypes])}."
+                    f'The `data_type` keyword argument must be a valid EnzymeML data type. Valid types are: {', '.join([data_type.name for data_type in pyenzyme.DataTypes])}.'
                 )
-        if "data_unit" in kwargs:
-            _data_unit = kwargs["data_unit"]
-        if "time_unit" in kwargs:
-            _time_unit = kwargs["time_unit"]
-        if kwargs["template_measurement"]:
+        if 'data_unit' in kwargs:
+            _data_unit = kwargs['data_unit']
+        if 'time_unit' in kwargs:
+            _time_unit = kwargs['time_unit']
+        if kwargs['template_measurement']:
             for species_datum in measurement.species_data:
-                if species_datum.species_id in kwargs["initial"]:
-                    species_datum.initial = kwargs["initial"][species_datum.species_id]
+                if species_datum.species_id in kwargs['initial']:
+                    species_datum.initial = kwargs['initial'][species_datum.species_id]
                     if _data_type:
                         species_datum.data_type = _data_type
                     if _data_unit:
@@ -503,30 +503,30 @@ def fill_enzymeml_measurement(
         else:
             if not _data_type:
                 raise ValueError(
-                    "The `data_type` keyword argument is required when creating a new measurement without a template measurement."
+                    'The `data_type` keyword argument is required when creating a new measurement without a template measurement.'
                 )
             if not _data_unit:
                 raise ValueError(
-                    "The `data_unit` keyword argument is required when creating a new measurement without a template measurement."
+                    'The `data_unit` keyword argument is required when creating a new measurement without a template measurement.'
                 )
             if not _time_unit:
                 raise ValueError(
-                    "The `timec_unit` keyword argument is required when creating a new measurement without a template measurement."
+                    'The `timec_unit` keyword argument is required when creating a new measurement without a template measurement.'
                 )
-            for species_type in ["small_molecules", "proteins", "complexes"]:
+            for species_type in ['small_molecules', 'proteins', 'complexes']:
                 for species in getattr(enzymeml_document, species_type):
                     measurement.add_to_species_data(
                         species_id=species.id,
-                        initial=kwargs["initial"][species.id],
+                        initial=kwargs['initial'][species.id],
                         data_type=_data_type,
                         data_unit=_data_unit,
                         time_unit=_time_unit,
                     )
-    elif kwargs["keep_initial"] and kwargs["template_measurement"]:
+    elif kwargs['keep_initial'] and kwargs['template_measurement']:
         pass
     else:
         raise ValueError(
-            "The `measurement.species_data.initial` field is required in the EnzymeML standard. Please provide a dictionary with species IDs (as they are defined in the EnzymeML document) as keys and initial values as values using the `initial` keyword argument."
+            'The `measurement.species_data.initial` field is required in the EnzymeML standard. Please provide a dictionary with species IDs (as they are defined in the EnzymeML document) as keys and initial values as values using the `initial` keyword argument.'
         )
 
     return measurement
@@ -554,7 +554,7 @@ class InitialConditionTab:
 ##### Serialization #####
 
 def create_enzymeml(
-    fid_array: "FidArray", enzymeml_document: EnzymeMLDocument, measurement_id: str
+    fid_array: 'FidArray', enzymeml_document: EnzymeMLDocument, measurement_id: str
 ) -> EnzymeMLDocument:
     """Create an EnzymeML document from a given FidArray object.
 
@@ -567,22 +567,22 @@ def create_enzymeml(
     """
     if (pyenzyme is None):
         raise RuntimeError(
-            "The `pyenzyme` package is required to use NMRpy with an EnzymeML document. Please install it via `pip install nmrpy[enzymeml]`."
+            'The `pyenzyme` package is required to use NMRpy with an EnzymeML document. Please install it via `pip install nmrpy[enzymeml]`.'
         )
     if not enzymeml_document.measurements:
         raise AttributeError(
-            "EnzymeML document does not contain measurement metadata. Please add a measurement to the document first."
+            'EnzymeML document does not contain measurement metadata. Please add a measurement to the document first.'
         )
     if not measurement_id:
         raise ValueError(
-            "A measurement ID is required to create an EnzymeML document. Please provide a measurement ID using the `measurement_id` keyword argument."
+            'A measurement ID is required to create an EnzymeML document. Please provide a measurement ID using the `measurement_id` keyword argument.'
         )
     global_time = ([float(x) for x in fid_array.t],)
     measurement = next(
         measurement for measurement in enzymeml_document.measurements
             if measurement.id == measurement_id
     )
-    print(f"Selected measurement: {measurement}")
+    print(f'Selected measurement: {measurement}')
     for measured_species, concentrations in fid_array.concentrations.items():
         for available_species in measurement.species_data:
             if not available_species.species_id == measured_species:

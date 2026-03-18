@@ -29,7 +29,7 @@ try:
         InitialConditionTab,
     )
 except ImportError as ex:
-    print(f"Optional dependency import failed for plotting.py: {ex}")
+    print(f'Optional dependency import failed for plotting.py: {ex}')
     pyenzyme = None
 
 class Plot():
@@ -306,7 +306,7 @@ class Plot():
         if lower_ppm is None:
             lower_ppm = sw_left-sw
 
-        if "acqtime_array" in params.keys():
+        if 'acqtime_array' in params.keys():
             # New NMRpy _params structure
             acqtime = params['acqtime_array']
         else:
@@ -1749,9 +1749,9 @@ class PeakAssigner:
 
         # Check for default case first
         if species_source is None:
-            if not hasattr(self.fid, "enzymeml_species"):
+            if not hasattr(self.fid, 'enzymeml_species'):
                 raise ValueError(
-                    "No species list provided and FID has no enzymeml_species"
+                    'No species list provided and FID has no enzymeml_species'
                 )
             self.available_species = []
             for species in self.fid.enzymeml_species:
@@ -1776,8 +1776,8 @@ class PeakAssigner:
         # If we get here, the input was invalid
         else:
             raise ValueError(
-                "species_list must be a list of species names, "
-                "an EnzymeML document, or None if FID has enzymeml_species"
+                'species_list must be a list of species names, '
+                'an EnzymeML document, or None if FID has enzymeml_species'
             )
 
     def _create_widgets(self):
@@ -1785,23 +1785,23 @@ class PeakAssigner:
         self.title_label = Label(value=self.title)
         self.peak_dropdown = Dropdown(
             options=self.available_peaks,
-            description="Select a peak:",
-            layout={"width": "max-content"},
-            style={"description_width": "initial"},
+            description='Select a peak:',
+            layout={'width': 'max-content'},
+            style={'description_width': 'initial'},
         )
         self.species_dropdown = Dropdown(
             options=[
                 format_species_string(species) for species in self.available_species
             ],
-            description="Select a species:",
-            layout={"width": "max-content"},
-            style={"description_width": "initial"},
+            description='Select a species:',
+            layout={'width': 'max-content'},
+            style={'description_width': 'initial'},
         )
         self.save_button = Button(
-            description="Save selection",
-            icon="file-arrow-down",
+            description='Save selection',
+            icon='file-arrow-down',
         )
-        self.reset_button = Button(description="Reset selection", disabled=True)
+        self.reset_button = Button(description='Reset selection', disabled=True)
         self.selection_output = Output()
 
     def _setup_callbacks(self):
@@ -1856,10 +1856,10 @@ class PeakAssigner:
         # Handle reset button click
         with self.selection_output:
             self.selection_output.clear_output(wait=True)
-            print("\nCleared selections!")
+            print('\nCleared selections!')
 
             # Reset state
-            self.fid._flags["assigned"] = False
+            self.fid._flags['assigned'] = False
             self.fid.species = numpy.empty(len(self.fid.peaks), dtype=object)
             for peak_object in self.fid.fid_object.peaks:
                 peak_object.species_id = None
@@ -1878,15 +1878,15 @@ class PeakAssigner:
         for peak in self.fid.fid_object.peaks:
             if peak.peak_position not in peak_position:
                 continue
-            peak.species_id = species_id.split(" ")[0]
+            peak.species_id = species_id.split(' ')[0]
             self.fid.species[peak.peak_index] = peak.species_id
-        self.fid._flags["assigned"] = True
+        self.fid._flags['assigned'] = True
 
     def _display_selections(self):
         # Display current selections
-        print("\nSaved selections:")
+        print('\nSaved selections:')
         for key, value in self.selected_values.items():
-            print(f"{key}: {value}")
+            print(f'{key}: {value}')
 
 
 class PeakRangeAssigner:
@@ -1926,9 +1926,9 @@ class PeakRangeAssigner:
 
         # Check for default case first
         if species_source is None:
-            if not hasattr(self.fid_array, "enzymeml_document"):
+            if not hasattr(self.fid_array, 'enzymeml_document'):
                 raise ValueError(
-                    "No species list provided and FIDArray has no enzymeml_document"
+                    'No species list provided and FIDArray has no enzymeml_document'
                 )
             self.available_species = get_species_from_enzymeml(
                 self.fid_array.enzymeml_document,
@@ -1953,8 +1953,8 @@ class PeakRangeAssigner:
         # If we get here, the input was invalid
         else:
             raise ValueError(
-                "species_list must be a list of species names, an EnzymeML "
-                "document, or None if FIDArray has enzymeml_document"
+                'species_list must be a list of species names, an EnzymeML '
+                'document, or None if FIDArray has enzymeml_document'
             )
 
     def _build_fids(self, index_list):
@@ -1971,15 +1971,15 @@ class PeakRangeAssigner:
         for i in index_list:
             if i >= total_fids:
                 raise IndexError(
-                    f"Index {i} is out of bounds (there are {total_fids} FIDs)."
+                    f'Index {i} is out of bounds (there are {total_fids} FIDs).'
                 )
 
         # 2) Determine how many digits for the ID
         n_digits = len(str(total_fids - 1))  # e.g., 2 if up to 99, 3 if up to 999
         if n_digits == 1:
-            fid_format = "fid{}"
+            fid_format = 'fid{}'
         else:
-            fid_format = f"fid{{:0{n_digits}d}}"
+            fid_format = f'fid{{:0{n_digits}d}}'
 
         # 3) Build the list of FIDs
         fids = []
@@ -1991,31 +1991,31 @@ class PeakRangeAssigner:
 
     def _create_widgets(self):
         # Create all widget components
-        self.title_label = Label(value="Assign peaks for all FIDs")
+        self.title_label = Label(value='Assign peaks for all FIDs')
         self.combobox = Combobox(
             options=[fid.id for fid in self.fids],
-            description="Select FID to base entire array on:",
-            layout={"width": "max-content"},
-            style={"description_width": "initial"},
+            description='Select FID to base entire array on:',
+            layout={'width': 'max-content'},
+            style={'description_width': 'initial'},
         )
         self.peak_dropdown = Dropdown(
             options=[],
-            description="Select a peak:",
-            layout={"width": "max-content"},
-            style={"description_width": "initial"},
+            description='Select a peak:',
+            layout={'width': 'max-content'},
+            style={'description_width': 'initial'},
             disabled=True,
         )
         self.species_dropdown = Dropdown(
             options=[],
-            description="Select a species:",
-            layout={"width": "max-content"},
-            style={"description_width": "initial"},
+            description='Select a species:',
+            layout={'width': 'max-content'},
+            style={'description_width': 'initial'},
             disabled=True,
         )
         self.save_button = Button(
-            description="Save selection", icon="file-arrow-down", disabled=True
+            description='Save selection', icon='file-arrow-down', disabled=True
         )
-        self.reset_button = Button(description="Reset selection", disabled=True)
+        self.reset_button = Button(description='Reset selection', disabled=True)
         self.selection_output = Output()
 
     def _setup_callbacks(self):
@@ -2043,8 +2043,8 @@ class PeakRangeAssigner:
 
     def _handle_combobox_change(self, event):
         # Enable the peak dropdown when a FID is selected
-        if event["type"] == "change" and event["name"] == "value":
-            selected_option = event["new"]
+        if event['type'] == 'change' and event['name'] == 'value':
+            selected_option = event['new']
             if selected_option in self.combobox.options:
                 self.peak_dropdown.disabled = False
                 self.selected_fid = self.fid_array.get_fid(selected_option)
@@ -2056,7 +2056,7 @@ class PeakRangeAssigner:
     def _handle_peak_change(self, event):
         # Format the species options for disply and enable the species
         # dropdown when a peak is selected
-        if event["type"] == "change" and event["name"] == "value":
+        if event['type'] == 'change' and event['name'] == 'value':
             self.species_dropdown.disabled = False
             self.species_dropdown.options = [
                 format_species_string(species) for species in self.available_species
@@ -2066,7 +2066,7 @@ class PeakRangeAssigner:
 
     def _handle_species_change(self, event):
         # Enable the save button when a species is selected
-        if event["type"] == "change" and event["name"] == "value":
+        if event['type'] == 'change' and event['name'] == 'value':
             self.save_button.disabled = False
 
     def _handle_save(self, b):
@@ -2103,10 +2103,10 @@ class PeakRangeAssigner:
         # Reset the widget state
         with self.selection_output:
             self.selection_output.clear_output(wait=True)
-            print("\nCleared selections!")
+            print('\nCleared selections!')
             # Reset FIDs' state
             for fid in self.fids:
-                fid._flags["assigned"] = False
+                fid._flags['assigned'] = False
                 fid.species = numpy.empty(len(fid.peaks), dtype=object)
                 for peak_object in fid.fid_object.peaks:
                     peak_object.species_id = None
@@ -2124,15 +2124,15 @@ class PeakRangeAssigner:
         for peak in fid.fid_object.peaks:
             if peak.peak_position not in peak_position:
                 continue
-            peak.species_id = species_id.split(" ")[0]
+            peak.species_id = species_id.split(' ')[0]
             fid.species[peak.peak_index] = peak.species_id
-        fid._flags["assigned"] = True
+        fid._flags['assigned'] = True
 
     def _display_selections(self):
         # Display current selections
-        print("\nSaved selections:")
+        print('\nSaved selections:')
         for key, value in self.selected_values.items():
-            print(f"{key}: {value}")
+            print(f'{key}: {value}')
 
 class ConcentrationCalculator:
     """
@@ -2140,7 +2140,7 @@ class ConcentrationCalculator:
     """
     def __init__(self):
         raise NotImplementedError(
-            "Widget for calculating concentrations is currently under heavy construction. Please calculate and assign concentrations manually."
+            'Widget for calculating concentrations is currently under heavy construction. Please calculate and assign concentrations manually.'
         )
 
 class T0Adder:
@@ -2185,25 +2185,25 @@ class T0Adder:
         self.logic.update_initials()
 
     def _build_widgets(self):
-        self.title_html = HTML(value="<b>Add t0 to EnzymeML Measurement</b>")
+        self.title_html = HTML(value='<b>Add t0 to EnzymeML Measurement</b>')
 
         self.measurement_dropdown = Dropdown(
             options=[m.id for m in self.logic.doc.measurements],
             value=self.logic.measurement.id,
-            description="Select a measurement:",
-            layout={"width": "max-content"},
-            style={"description_width": "initial"},
+            description='Select a measurement:',
+            layout={'width': 'max-content'},
+            style={'description_width': 'initial'},
         )
 
         self.use_t1_checkbox = Checkbox(
             value=self.use_t1,
-            description=f"Use t1 values from {self.logic.measurement.id}?",
+            description=f'Use t1 values from {self.logic.measurement.id}?',
             indent=False,
         )
 
         self.offset_checkbox = Checkbox(
             value=self.offset_enabled,
-            description="Apply offset to time axis?",
+            description='Apply offset to time axis?',
             indent=False,
         )
 
@@ -2212,9 +2212,9 @@ class T0Adder:
             min=0.0,
             max=1000.0,
             step=0.01,
-            description=f"Offset in {self.logic.get_time_unit_name()}:",
-            layout={"width": "max-content"},
-            style={"description_width": "initial"},
+            description=f'Offset in {self.logic.get_time_unit_name()}:',
+            layout={'width': 'max-content'},
+            style={'description_width': 'initial'},
             disabled=not self.offset_enabled,
         )
 
@@ -2228,38 +2228,38 @@ class T0Adder:
         )
 
         self.tab = Tab(children=[self.general_tab])
-        self.tab.set_title(0, "General")
+        self.tab.set_title(0, 'General')
 
         self.container = VBox([self.title_html, self.tab])
 
     def _wire_callbacks(self):
-        self.measurement_dropdown.observe(self._on_measurement_change, names="value")
-        self.use_t1_checkbox.observe(self._on_use_t1_change, names="value")
-        self.offset_checkbox.observe(self._on_offset_toggle, names="value")
-        self.offset_textbox.observe(self._on_offset_value_change, names="value")
+        self.measurement_dropdown.observe(self._on_measurement_change, names='value')
+        self.use_t1_checkbox.observe(self._on_use_t1_change, names='value')
+        self.offset_checkbox.observe(self._on_offset_toggle, names='value')
+        self.offset_textbox.observe(self._on_offset_value_change, names='value')
 
     def _refresh_tabs(self):
         self.t0_tabs.clear()
 
         species_ids = self.logic.nonconstant_species_ids()
         new_children = [self.general_tab]
-        titles = ["General"]
+        titles = ['General']
 
         for sid in species_ids:
             start_val = float(self.t0_values.get(sid, 0.0))
-            header = HTML(value=f"<b>Set t0 for {sid}</b>")
+            header = HTML(value=f'<b>Set t0 for {sid}</b>')
             t0_box = BoundedFloatText(
                 value=start_val,
                 min=0.0,
                 max=1000.0,
                 step=0.01,
-                description=f"t0 data in {self.logic.get_data_unit_name(sid)}:",
-                layout={"width": "max-content"},
-                style={"description_width": "initial"},
+                description=f't0 data in {self.logic.get_data_unit_name(sid)}:',
+                layout={'width': 'max-content'},
+                style={'description_width': 'initial'},
                 disabled=self.use_t1,
             )
             tab = T0Tab(sid, sid, header, t0_box)
-            t0_box.observe(lambda ev, sp=sid: self._on_t0_value_change(ev, sp), names="value")
+            t0_box.observe(lambda ev, sp=sid: self._on_t0_value_change(ev, sp), names='value')
 
             self.t0_tabs[sid] = tab
             new_children.append(tab.as_vbox())
@@ -2270,13 +2270,13 @@ class T0Adder:
             self.tab.set_title(i, title)
 
     def _on_measurement_change(self, change):
-        if change["type"] != "change":
+        if change['type'] != 'change':
             return
         
-        self.logic = T0Logic(self.logic.doc, change["new"])
+        self.logic = T0Logic(self.logic.doc, change['new'])
 
-        self.use_t1_checkbox.description = f"Use t1 values from {self.logic.measurement.id}?"
-        self.offset_textbox.description = f"Offset in {self.logic.get_time_unit_name()}:"
+        self.use_t1_checkbox.description = f'Use t1 values from {self.logic.measurement.id}?'
+        self.offset_textbox.description = f'Offset in {self.logic.get_time_unit_name()}:'
 
         self._refresh_tabs()
 
@@ -2292,10 +2292,10 @@ class T0Adder:
         self.logic.update_initials()
 
     def _on_use_t1_change(self, change):
-        if change["type"] != "change":
+        if change['type'] != 'change':
             return
         
-        self.use_t1 = bool(change["new"])
+        self.use_t1 = bool(change['new'])
 
         for tab in self.t0_tabs.values():
             tab.t0_data_textbox.disabled = self.use_t1
@@ -2307,10 +2307,10 @@ class T0Adder:
         self.logic.update_initials()
 
     def _on_offset_toggle(self, change):
-        if change["type"] != "change":
+        if change['type'] != 'change':
             return
         
-        self.offset_enabled = bool(change["new"])
+        self.offset_enabled = bool(change['new'])
         self.offset_textbox.disabled = not self.offset_enabled
 
         if not self.offset_enabled:
@@ -2320,23 +2320,23 @@ class T0Adder:
         self.logic.update_initials()
 
     def _on_offset_value_change(self, change):
-        if change["type"] != "change":
+        if change['type'] != 'change':
             return
         if not self.offset_enabled:
             return
         
-        self.offset_value = float(change["new"] or 0.0)
+        self.offset_value = float(change['new'] or 0.0)
 
         self.logic.apply_offset(self.offset_value)
         self.logic.update_initials()
 
     def _on_t0_value_change(self, change, species_id: str):
-        if change["type"] != "change":
+        if change['type'] != 'change':
             return
         if self.use_t1:
             return
         
-        value = float(change["new"] or 0.0)
+        value = float(change['new'] or 0.0)
         self.t0_values[species_id] = value
 
         self.logic.set_t0_value(species_id, value)
@@ -2353,15 +2353,15 @@ class MeasurementCreator:
         self.new_measurement = None
         self.initialized = False
 
-        self.c_units = ["mol/l", "mmol/l", "umol/l", "nmol/l", "mol", "mmol", "umol", "nmol"]
-        self.m_units = ["g", "mg", "ug"]
-        self.v_units = ["l", "ml", "ul", "nl"]
-        self.t_units = ["s", "min", "h", "d"]
-        self.T_units = ["K", "C"]
+        self.c_units = ['mol/l', 'mmol/l', 'umol/l', 'nmol/l', 'mol', 'mmol', 'umol', 'nmol']
+        self.m_units = ['g', 'mg', 'ug']
+        self.v_units = ['l', 'ml', 'ul', 'nl']
+        self.t_units = ['s', 'min', 'h', 'd']
+        self.T_units = ['K', 'C']
 
         self._initial_name = None
         self._initial_id = None
-        self._current_temp_unit = "K"
+        self._current_temp_unit = 'K'
         self._missing_initial_conditions = []
 
         self.create_widgets()
@@ -2371,46 +2371,46 @@ class MeasurementCreator:
 
     def create_widgets(self):
         # Create all widget components
-        self.spacer = HTML(value="&nbsp;")
+        self.spacer = HTML(value='&nbsp;')
 
-        self.title_html = HTML(value="<b>Create new EnzymeML Measurement</b>")
+        self.title_html = HTML(value='<b>Create new EnzymeML Measurement</b>')
 
         self.name_textbox = Text(
-            value="",
-            description="Enter name of new measurement:",
-            layout={"width": "max-content"},
-            style={"description_width": "initial"},
+            value='',
+            description='Enter name of new measurement:',
+            layout={'width': 'max-content'},
+            style={'description_width': 'initial'},
         )
 
         self.id_checkbox = Checkbox(
             value=False,
-            description="Assign a custom ID?",
+            description='Assign a custom ID?',
             indent=False,
         )
         self.id_textbox = Text(
-            value="",
-            description="Enter custom ID:",
-            layout={"width": "max-content"},
-            style={"description_width": "initial"},
+            value='',
+            description='Enter custom ID:',
+            layout={'width': 'max-content'},
+            style={'description_width': 'initial'},
             disabled=True,
         )
             
         self.template_checkbox = Checkbox(
             value=False,
-            description="Use a template measurement?",
+            description='Use a template measurement?',
             indent=False,
         )
         self.template_dropdown = Dropdown(
             options=[],
-            description="Select a template measurement:",
-            layout={"width": "max-content"},
-            style={"description_width": "initial"},
+            description='Select a template measurement:',
+            layout={'width': 'max-content'},
+            style={'description_width': 'initial'},
             disabled=True,
         )
 
         self.ph_checkbox = Checkbox(
             value=True,
-            description="Keep pH?",
+            description='Keep pH?',
             indent=False,
             disabled=True,
         )
@@ -2419,14 +2419,14 @@ class MeasurementCreator:
             min=0.0,
             max=14.0,
             step=0.1,
-            description="Select new pH:",
-            layout={"width": "max-content"},
-            style={"description_width": "initial"},
+            description='Select new pH:',
+            layout={'width': 'max-content'},
+            style={'description_width': 'initial'},
         )
 
         self.temperature_checkbox = Checkbox(
             value=True,
-            description="Keep temperature?",
+            description='Keep temperature?',
             indent=False,
             disabled=True,
         )
@@ -2435,29 +2435,29 @@ class MeasurementCreator:
             min=0.0,
             max=1000.0,
             step=0.1,
-            description="Select new temperature:",
-            layout={"width": "max-content"},
-            style={"description_width": "initial"},
+            description='Select new temperature:',
+            layout={'width': 'max-content'},
+            style={'description_width': 'initial'},
         )
         self.temperature_unit_combobox = Combobox(
             options=self.T_units,
-            value="K",
-            description="Select temperature unit:",
+            value='K',
+            description='Select temperature unit:',
             ensure_option=False,
-            placeholder="Select or type unit",
-            layout={"width": "max-content"},
-            style={"description_width": "initial"},
+            placeholder='Select or type unit',
+            layout={'width': 'max-content'},
+            style={'description_width': 'initial'},
         )
 
         self.initial_checkbox = Checkbox(
             value=False,
-            description="Keep initial conditions?",
+            description='Keep initial conditions?',
             indent=False,
             disabled=True,
         )
         self.initial_tabs = self._create_initial_tabs()
 
-        self.warning_html = HTML(value="")
+        self.warning_html = HTML(value='')
 
         self.general_tab = VBox(
             [
@@ -2498,40 +2498,40 @@ class MeasurementCreator:
             initial_condition_tab = InitialConditionTab(
                 species_id = enzymeml_species.id,
                 title = str(enzymeml_species.id),
-                header = HTML(value=f"<b>Set initial conditions for {format_species_string(enzymeml_species)}</b>"),
+                header = HTML(value=f'<b>Set initial conditions for {format_species_string(enzymeml_species)}</b>'),
                 textbox = BoundedFloatText(
                     value=0.0,
                     min=0.0,
                     max=1000.0,
                     step=0.01,
-                    description="Initial condition:",
-                    layout={"width": "max-content"},
-                    style={"description_width": "initial"},
+                    description='Initial condition:',
+                    layout={'width': 'max-content'},
+                    style={'description_width': 'initial'},
                 ),
                 data_type_dropdown = Dropdown(
-                    options=[(data_type.name.capitalize().replace("_", " "), data_type) for data_type in pyenzyme.DataTypes],
-                    description="Data type of initial condition:",
+                    options=[(data_type.name.capitalize().replace('_', ' '), data_type) for data_type in pyenzyme.DataTypes],
+                    description='Data type of initial condition:',
                     value=pyenzyme.DataTypes.CONCENTRATION,
-                    layout={"width": "max-content"},
-                    style={"description_width": "initial"},
+                    layout={'width': 'max-content'},
+                    style={'description_width': 'initial'},
                 ),
                 data_unit_combobox = Combobox(
                     options=self.c_units,
-                    description="Unit of initial condition:",
-                    value="mM",
+                    description='Unit of initial condition:',
+                    value='mM',
                     ensure_option=False,
-                    placeholder="Select or type unit",
-                    layout={"width": "max-content"},
-                    style={"description_width": "initial"},
+                    placeholder='Select or type unit',
+                    layout={'width': 'max-content'},
+                    style={'description_width': 'initial'},
                 ),
                 time_unit_combobox = Combobox(
                     options=self.t_units,
-                    description="Unit of time course:",
-                    value="s",
+                    description='Unit of time course:',
+                    value='s',
                     ensure_option=False,
-                    placeholder="Select or type unit",
-                    layout={"width": "max-content"},
-                    style={"description_width": "initial"},
+                    placeholder='Select or type unit',
+                    layout={'width': 'max-content'},
+                    style={'description_width': 'initial'},
                 )
             )
             initial_tabs[initial_condition_tab.species_id] = initial_condition_tab
@@ -2594,7 +2594,7 @@ class MeasurementCreator:
         # Create widget layout and display
         tab_children = [self.general_tab]
         tab_children.extend(initial_tab.as_vbox() for initial_tab in self.initial_tabs.values())
-        tab_titles = ["General"]
+        tab_titles = ['General']
         tab_titles.extend(initial_tab.title for initial_tab in self.initial_tabs.values())
         self.tab = Tab(
             children=tab_children,
@@ -2613,30 +2613,30 @@ class MeasurementCreator:
         for species in get_species_from_enzymeml(self.fid_array.enzymeml_document):
             enzymeml_species = species
             self._missing_initial_conditions.append(format_species_string(enzymeml_species))
-        self.warning_html.value = f"<b>WARNING:</b> Initial conditions for {', '.join(self._missing_initial_conditions)} are still missing!"
+        self.warning_html.value = f'<b>WARNING:</b> Initial conditions for {', '.join(self._missing_initial_conditions)} are still missing!'
 
     def _handle_name_change(self, event):
         # Enable the name_textbox when the name_checkbox is checked
-        if event["type"] == "change" and event["name"] == "value":
-            if event["new"]:
+        if event['type'] == 'change' and event['name'] == 'value':
+            if event['new']:
                 self.new_measurement.name = self.name_textbox.value
             else:
                 self.new_measurement.name = self._initial_name
 
     def _handle_id_check(self, event):
         # Enable the id_textbox when the id_checkbox is checked
-        if event["type"] == "change" and event["name"] == "value":
-            if event["new"]:
+        if event['type'] == 'change' and event['name'] == 'value':
+            if event['new']:
                 self.id_textbox.disabled = False
             else:
                 self.id_textbox.disabled = True
-                self.id_textbox.value = ""
+                self.id_textbox.value = ''
                 self.new_measurement.id = self._initial_id
 
     def _handle_id_change(self, event):
         # Enable the id_textbox when the id_checkbox is checked
-        if event["type"] == "change" and event["name"] == "value":
-            if event["new"]:
+        if event['type'] == 'change' and event['name'] == 'value':
+            if event['new']:
                 self.new_measurement.id = self.id_textbox.value
             else:
                 self.new_measurement.id = self._initial_id
@@ -2644,8 +2644,8 @@ class MeasurementCreator:
     def _handle_template_check(self, event):
         # Enable the template dropdown when the template checkbox is
         # checked
-        if event["type"] == "change" and event["name"] == "value":
-            if event["new"]:               
+        if event['type'] == 'change' and event['name'] == 'value':
+            if event['new']:               
                 self.template_dropdown.options = [
                     (format_measurement_string(measurement), measurement.id)
                     for measurement in self.measurements
@@ -2677,8 +2677,8 @@ class MeasurementCreator:
     def _handle_template_change(self, event):
         # Populate template_measurement attribute with measurement of
         # selected ID if template_checkbox is checked.
-        if event["type"] == "change" and event["name"] == "value":
-            selected_option = event["new"]
+        if event['type'] == 'change' and event['name'] == 'value':
+            selected_option = event['new']
             for measurement in self.measurements:
                 if measurement.id == selected_option:
                     self.template_measurement = measurement.model_copy(deep=True)
@@ -2702,8 +2702,8 @@ class MeasurementCreator:
 
     def _handle_ph_check(self, event):
         # Enable the ph_checkbox when the template checkbox is checked
-        if event["type"] == "change" and event["name"] == "value":
-            if event["new"]:
+        if event['type'] == 'change' and event['name'] == 'value':
+            if event['new']:
                 self.ph_textbox.disabled = True
                 self.new_measurement.ph = self.template_measurement.ph
             else:
@@ -2712,15 +2712,15 @@ class MeasurementCreator:
 
     def _handle_ph_change(self, event):
         # Enable the ph_textbox when the ph_checkbox is checked
-        if event["type"] == "change" and event["name"] == "value":
-            if event["new"]:
+        if event['type'] == 'change' and event['name'] == 'value':
+            if event['new']:
                 self.new_measurement.ph = self.ph_textbox.value
 
     def _handle_temperature_check(self, event):
         # Enable the temperature_checkbox when the template checkbox is
         # checked
-        if event["type"] == "change" and event["name"] == "value":
-            if event["new"]:
+        if event['type'] == 'change' and event['name'] == 'value':
+            if event['new']:
                 self.temperature_textbox.disabled = True
                 self.temperature_unit_combobox.disabled = True
                 self.new_measurement.temperature = self.template_measurement.temperature
@@ -2734,8 +2734,8 @@ class MeasurementCreator:
     def _handle_temperature_change(self, event):
         # Enable the temperature_textbox when the temperature_checkbox is
         # checked
-        if event["type"] == "change" and event["name"] == "value":
-            if event["new"]:
+        if event['type'] == 'change' and event['name'] == 'value':
+            if event['new']:
                 self.new_measurement.temperature = self.temperature_textbox.value
                 self.new_measurement.temperature_unit = self.temperature_unit_combobox.value
 
@@ -2745,8 +2745,8 @@ class MeasurementCreator:
         # chosen according to Hodkinson P., Modern Methods in Solid-
         # state NMR: A Practitioner's Guide (2018), pp. 262, as the
         # highest temperature yet reported for NMR experiments.
-        if event["type"] == "change" and event["name"] == "value":
-            if event["new"]:
+        if event['type'] == 'change' and event['name'] == 'value':
+            if event['new']:
                 current_value = self.temperature_textbox.value
                 new_unit = self.temperature_unit_combobox.value
                 old_unit = self._current_temp_unit
@@ -2754,7 +2754,7 @@ class MeasurementCreator:
                 if old_unit == new_unit:
                     return  # No conversion needed
 
-                if new_unit == "K":
+                if new_unit == 'K':
                     # Converting from °C to K
                     converted_value = current_value + 273.15
                     self.temperature_textbox.min = 0.0
@@ -2763,7 +2763,7 @@ class MeasurementCreator:
                     self.new_measurement.temperature = converted_value
                     self.new_measurement.temperature_unit = new_unit
 
-                elif new_unit == "C":
+                elif new_unit == 'C':
                     # Converting from K to °C
                     converted_value = current_value - 273.15
                     self.temperature_textbox.min = -273.15
@@ -2774,8 +2774,8 @@ class MeasurementCreator:
 
                 else:
                     print(
-                        f"Invalid temperature unit. Valid units are K and C, "
-                        f"got {new_unit} instead."
+                        f'Invalid temperature unit. Valid units are K and C, '
+                        f'got {new_unit} instead.'
                     )
                     
                 self._current_temp_unit = new_unit
@@ -2783,11 +2783,11 @@ class MeasurementCreator:
     def _handle_initial_check(self, event):
         # Enable the initial_checkbox when the template checkbox is
         # checked
-        if event["type"] == "change" and event["name"] == "value":
-            if event["new"]:
+        if event['type'] == 'change' and event['name'] == 'value':
+            if event['new']:
                 for new_datum, template_datum, initial_tab in zip(self.new_measurement.species_data, self.template_measurement.species_data, self.initial_tabs.values()):
                     initial_tab.textbox.value = template_datum.initial
-                    initial_tab.data_type_dropdown.options = [(template_datum.data_type.name.capitalize().replace("_", " "), template_datum.data_type)]
+                    initial_tab.data_type_dropdown.options = [(template_datum.data_type.name.capitalize().replace('_', ' '), template_datum.data_type)]
                     initial_tab.data_type_dropdown.value = template_datum.data_type
                     initial_tab.data_unit_combobox.options = [template_datum.data_unit.name]
                     initial_tab.data_unit_combobox.value = template_datum.data_unit.name
@@ -2800,12 +2800,12 @@ class MeasurementCreator:
             else:
                 for new_datum, initial_tab in zip(self.new_measurement.species_data, self.initial_tabs.values()):
                     initial_tab.textbox.value = 0.0
-                    initial_tab.data_type_dropdown.options = [(data_type.name.capitalize().replace("_", " "), data_type) for data_type in pyenzyme.DataTypes]
+                    initial_tab.data_type_dropdown.options = [(data_type.name.capitalize().replace('_', ' '), data_type) for data_type in pyenzyme.DataTypes]
                     initial_tab.data_type_dropdown.value = pyenzyme.DataTypes.CONCENTRATION
                     initial_tab.data_unit_combobox.options = self.c_units
-                    initial_tab.data_unit_combobox.value = "mM"
+                    initial_tab.data_unit_combobox.value = 'mM'
                     initial_tab.time_unit_combobox.options = self.t_units
-                    initial_tab.time_unit_combobox.value = "s"
+                    initial_tab.time_unit_combobox.value = 's'
                     new_datum.initial = None
                     new_datum.data_type = None
                     new_datum.data_unit = None
@@ -2815,19 +2815,19 @@ class MeasurementCreator:
     def _handle_initial_condition_change(self, event, initial_tab):
         # Enable the initial_checkbox when the template checkbox is
         # checked
-        if event["type"] == "change" and event["name"] == "value":
-            if event["new"]:
+        if event['type'] == 'change' and event['name'] == 'value':
+            if event['new']:
                 if not self.new_measurement.species_data:
                     self.new_measurement.add_to_species_data(
                             species_id=initial_tab.species_id,
-                            initial=event["new"],
+                            initial=event['new'],
                             data_type=initial_tab.data_type_dropdown.value,
                             data_unit=initial_tab.data_unit_combobox.value,
                             time_unit=initial_tab.time_unit_combobox.value
                         )
                 for species_datum in self.new_measurement.species_data:
                     if species_datum.species_id == initial_tab.species_id:
-                        species_datum.initial = event["new"]
+                        species_datum.initial = event['new']
                     for species in get_species_from_enzymeml(self.fid_array.enzymeml_document):
                         if species.id == species_datum.species_id:
                             enzymeml_species = species
@@ -2835,42 +2835,42 @@ class MeasurementCreator:
                                 self._missing_initial_conditions.remove(format_species_string(enzymeml_species))
                             break
                     if len(self._missing_initial_conditions) == 0:
-                        self.warning_html.value = "All initial conditions have been set!"
+                        self.warning_html.value = 'All initial conditions have been set!'
                     else:
-                        self.warning_html.value = f"<b>WARNING:</b> Initial conditions for {', '.join(self._missing_initial_conditions)} are still missing!"
+                        self.warning_html.value = f'<b>WARNING:</b> Initial conditions for {', '.join(self._missing_initial_conditions)} are still missing!'
 
     def _handle_data_type_change(self, event, initial_tab):
         # Enable the data_type_dropdown when the data_type_checkbox is
         # checked
-        if event["type"] == "change" and event["name"] == "value":
-            if event["new"]:
+        if event['type'] == 'change' and event['name'] == 'value':
+            if event['new']:
                 for species_datum in self.new_measurement.species_data:
                     if species_datum.species_id == initial_tab.species_id:
-                        species_datum.data_type = event["new"]
+                        species_datum.data_type = event['new']
     
     def _handle_data_unit_change(self, event, initial_tab):
         # Enable the data_unit_combobox when the data_unit_checkbox is
         # checked
-        if event["type"] == "change" and event["name"] == "value":
-            if event["new"]:
+        if event['type'] == 'change' and event['name'] == 'value':
+            if event['new']:
                 for species_datum in self.new_measurement.species_data:
                     if species_datum.species_id == initial_tab.species_id:
                         try:
-                            species_datum.data_unit = event["new"]
+                            species_datum.data_unit = event['new']
                         except Exception:
-                            print(f"Invalid data unit: {event['new']}")
+                            print(f'Invalid data unit: {event['new']}')
 
     def _handle_time_unit_change(self, event, initial_tab):
         # Enable the time_unit_combobox when the time_unit_checkbox is
         # checked
-        if event["type"] == "change" and event["name"] == "value":
-            if event["new"]:
+        if event['type'] == 'change' and event['name'] == 'value':
+            if event['new']:
                 for species_datum in self.new_measurement.species_data:
                     if species_datum.species_id == initial_tab.species_id:
                         try:
-                            species_datum.time_unit = event["new"]
+                            species_datum.time_unit = event['new']
                         except Exception:
-                            print(f"Invalid time unit: {event['new']}")
+                            print(f'Invalid time unit: {event['new']}')
 
 
 if __name__ == '__main__':

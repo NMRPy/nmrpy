@@ -26,7 +26,7 @@ try:
     from pyenzyme import EnzymeMLDocument, Measurement
     from nmrpy.utils import T0Logic, create_enzymeml, create_enzymeml_measurement, fill_enzymeml_measurement, get_species_from_enzymeml
 except ImportError as ex:
-    print(f"Optional dependency import failed for data_objects.py: {ex}")
+    print(f'Optional dependency import failed for data_objects.py: {ex}')
     pyenzyme = None
 
 
@@ -274,10 +274,9 @@ class Base():
 
 
 class Fid(Base):
-    '''
-    The basic FID (Free Induction Decay) class contains all the data for a single spectrum (:attr:`~nmrpy.data_objects.Fid.data`), and the
+    """The basic FID (Free Induction Decay) class contains all the data for a single spectrum (:attr:`~nmrpy.data_objects.Fid.data`), and the
     necessary methods to process these data.
-    '''    
+    """    
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -295,8 +294,8 @@ class Fid(Base):
         self.enzymeml_species = None
         self._deconvoluted_peaks = None
         self._flags = {
-            "ft": False,
-            "assigned": False,
+            'ft': False,
+            'assigned': False,
         }
 
     def __str__(self):
@@ -434,7 +433,7 @@ class Fid(Base):
     def enzymeml_species(self, enzymeml_species):
         if pyenzyme is None:
             raise RuntimeError(
-                "The `pyenzyme` package is required to use NMRpy with an EnzymeML document. Please install it via `pip install nmrpy[enzymeml]`."
+                'The `pyenzyme` package is required to use NMRpy with an EnzymeML document. Please install it via `pip install nmrpy[enzymeml]`.'
             )
         if enzymeml_species is None:
             self.__enzymeml_species = None
@@ -1415,20 +1414,20 @@ Ctrl+Alt+Right - assign
             return
         if self.peaks is None or len(self.peaks) == 0:
             raise RuntimeError(
-                "`fid.peaks` is required but still empty. "
-                "Please assign them manually or with the `peakpicker` method."
+                '`fid.peaks` is required but still empty. '
+                'Please assign them manually or with the `peakpicker` method.'
             )
         if self.ranges is None or len(self.ranges) == 0:
             raise RuntimeError(
-                "`fid.ranges` is required but still empty. "
-                "Please assign them manually or with the `rangepicker` method."
+                '`fid.ranges` is required but still empty. '
+                'Please assign them manually or with the `rangepicker` method.'
             )
  
         def normalize_range(range_group):
             start, end = range_group[0], range_group[1]
             return {
-                "start": float(min(start, end)),
-                "end": float(max(start, end))
+                'start': float(min(start, end)),
+                'end': float(max(start, end))
             }
             
         # Create or update Peak objects in data model
@@ -1467,12 +1466,12 @@ Ctrl+Alt+Right - assign
         """
         if (pyenzyme is None) and (isinstance(species_list, EnzymeMLDocument)):
             raise RuntimeError(
-                "The `pyenzyme` package is required to use NMRpy with an EnzymeML document. Please install it via `pip install nmrpy[enzymeml]`."
+                'The `pyenzyme` package is required to use NMRpy with an EnzymeML document. Please install it via `pip install nmrpy[enzymeml]`.'
             )
         self._assigner_widget = PeakAssigner(
             fid=self,
             species_list=species_list,
-            title="Assign species for {}".format(self.id),
+            title='Assign species for {}'.format(self.id),
         )
 
     def clear_assigned_peaks(self):
@@ -1487,9 +1486,7 @@ Ctrl+Alt+Right - assign
         self._assigner_widget = None
  
 class FidArray(Base):
-    '''
-
-    This object collects several :class:`~nmrpy.data_objects.Fid` objects into
+    """This object collects several :class:`~nmrpy.data_objects.Fid` objects into
     an array, and it contains all the processing methods necessary for bulk
     processing of these FIDs. It should be considered the parent object for any
     project. The class methods :meth:`~nmrpy.data_objects.FidArray.from_path` and
@@ -1499,14 +1496,13 @@ class FidArray(Base):
     in the array will appear as an attribute of
     :class:`~nmrpy.data_objects.FidArray` with a unique ID of the form 'fidXX',
     where 'XX' is an increasing integer .
-
-    '''
+    """
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.data_model = NMRpy(
             datetime_created=str(datetime.now().isoformat()),
-            experiment=Experiment(name="NMR experiment"),
+            experiment=Experiment(name='NMR experiment'),
         )
         self.enzymeml_document = None
         self.concentrations = None
@@ -1559,7 +1555,7 @@ class FidArray(Base):
             return
         if (pyenzyme is None):
             raise RuntimeError(
-                "The `pyenzyme` package is required to use NMRpy with an EnzymeML document. Please install it via `pip install nmrpy[enzymeml]`."
+                'The `pyenzyme` package is required to use NMRpy with an EnzymeML document. Please install it via `pip install nmrpy[enzymeml]`.'
             )
         if not isinstance(enzymeml_document, EnzymeMLDocument):
             raise AttributeError(
@@ -1686,7 +1682,7 @@ class FidArray(Base):
         t = None
         if nfids > 0:
             try:
-                if "acqtime_array" in self._params.keys():
+                if 'acqtime_array' in self._params.keys():
                     # New NMRpy _params structure
                     t = self._params['acqtime_array']
                 else:
@@ -1753,9 +1749,9 @@ class FidArray(Base):
                 idx = fids.index(fid_id)
                 delattr(self, fid_id)
                 if hasattr(self, '_params') and self._params is not None:
-                    at = list(self._params['acqtime_array']) if "acqtime_array" in self._params.keys() else list(self._params['acqtime'])
+                    at = list(self._params['acqtime_array']) if 'acqtime_array' in self._params.keys() else list(self._params['acqtime'])
                     at.pop(idx)
-                    if "acqtime_array" in self._params.keys():
+                    if 'acqtime_array' in self._params.keys():
                         # New NMRpy _params structure
                         self._params['acqtime_array'] = at
                     else:
@@ -1833,7 +1829,7 @@ class FidArray(Base):
         """
         if (pyenzyme is None):
             raise RuntimeError(
-                "The `pyenzyme` package is required to use NMRpy with an EnzymeML document. Please install it via `pip install nmrpy[enzymeml]`."
+                'The `pyenzyme` package is required to use NMRpy with an EnzymeML document. Please install it via `pip install nmrpy[enzymeml]`.'
             )
         self.enzymeml_document = pyenzyme.read_enzymeml(
             path=path_to_enzymeml_document
@@ -2509,7 +2505,7 @@ Ctrl+Alt+Right - assign
 
     def calculate_concentrations(self):
         raise NotImplementedError(
-            "Widget for calculating concentrations is currently under heavy construction. Please calculate and assign concentrations manually."
+            'Widget for calculating concentrations is currently under heavy construction. Please calculate and assign concentrations manually.'
         )
 
     def save_to_file(self, filename=None, overwrite=False, keep_data_model=False, keep_enzymeml=True):
@@ -2617,11 +2613,11 @@ Ctrl+Alt+Right - assign
         """
         if (pyenzyme is None):
             raise RuntimeError(
-                "The `pyenzyme` package is required to use NMRpy with an EnzymeML document. Please install it via `pip install nmrpy[enzymeml]`."
+                'The `pyenzyme` package is required to use NMRpy with an EnzymeML document. Please install it via `pip install nmrpy[enzymeml]`.'
             )
         if len(self.enzymeml_document.measurements) == 0:
             raise ValueError(
-                "No measurements found in EnzymeML document. At least one measurement is required."
+                'No measurements found in EnzymeML document. At least one measurement is required.'
             )
         if gui:
             _ = T0Adder(
@@ -2647,7 +2643,7 @@ Ctrl+Alt+Right - assign
                 else:
                     missing.add(sid)
             if missing:
-                print(f"WARNING: {len(missing)} species ID(s) missing in t0: {sorted(missing)}")
+                print(f'WARNING: {len(missing)} species ID(s) missing in t0: {sorted(missing)}')
 
         if offset is not None:
             logic.apply_offset(float(offset))
@@ -2667,22 +2663,22 @@ Ctrl+Alt+Right - assign
 
         if (pyenzyme is None):
             raise RuntimeError(
-                "The `pyenzyme` package is required to use NMRpy with an EnzymeML document. Please install it via `pip install nmrpy[enzymeml]`."
+                'The `pyenzyme` package is required to use NMRpy with an EnzymeML document. Please install it via `pip install nmrpy[enzymeml]`.'
             )
         if not self.enzymeml_document:
             raise AttributeError(
-                "No EnzymeML document found. Please add one using `parse_enzymeml_document()`."
+                'No EnzymeML document found. Please add one using `parse_enzymeml_document()`.'
             )
         if len(self.enzymeml_document.measurements) == 0:
             raise ValueError(
-                "No measurements found in EnzymeML document. At least one measurement is required."
+                'No measurements found in EnzymeML document. At least one measurement is required.'
             )
         if any(len(measurement.species_data) == 0 for measurement in self.enzymeml_document.measurements):
             raise ValueError(
-                "No species data found in at least one EnzymeML measurement. Species data is required for each measurement."
+                'No species data found in at least one EnzymeML measurement. Species data is required for each measurement.'
             )
         if not template_measurement and (keep_ph or keep_temperature or keep_initial):
-            print("Warning: Without a template measurement, there are no pH, temperature, or initial values to keep.")
+            print('Warning: Without a template measurement, there are no pH, temperature, or initial values to keep.')
 
         if gui:
             self._measurement_creator = MeasurementCreator(
@@ -2722,11 +2718,11 @@ Ctrl+Alt+Right - assign
         """
         if (pyenzyme is None):
             raise RuntimeError(
-                "The `pyenzyme` package is required to use NMRpy with an EnzymeML document. Please install it via `pip install nmrpy[enzymeml]`."
+                'The `pyenzyme` package is required to use NMRpy with an EnzymeML document. Please install it via `pip install nmrpy[enzymeml]`.'
             )
         if not self.concentrations:
             raise RuntimeError(
-                "No concentrations found. Please calculate concentrations first."
+                'No concentrations found. Please calculate concentrations first.'
             )
         # If no enzymeml_document is provided, use the one stored in the
         # FidArray

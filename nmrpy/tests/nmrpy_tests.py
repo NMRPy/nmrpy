@@ -7,7 +7,7 @@ try:
     import pyenzyme
     from pyenzyme import Measurement
 except ImportError as ex:
-    print(f"Optional dependency import failed for nmrpy_tests.py: {ex}")
+    print(f'Optional dependency import failed for nmrpy_tests.py: {ex}')
     pyenzyme = None
 
 
@@ -761,7 +761,7 @@ class TestDataModels(unittest.TestCase):
     def setUp(self):
         if pyenzyme is None:
             self.skipTest(
-                "The `pyenzyme` package is required to use NMRpy with an EnzymeML document. Please install it via `pip install nmrpy[enzymeml]` or choose a different set of tests to run."
+                'The `pyenzyme` package is required to use NMRpy with an EnzymeML document. Please install it via `pip install nmrpy[enzymeml]` or choose a different set of tests to run.'
             )
         # Load Bruker test data
         path_bruker = os.path.join(testpath, 'test_data', 'bruker1')
@@ -806,7 +806,7 @@ class TestDataModels(unittest.TestCase):
         # Create data model objects
         self.data_model = NMRpy(
             datetime_created='2025-01-01T00:00:00',
-            experiment=Experiment(name="Test experiment object")
+            experiment=Experiment(name='Test experiment object')
         )
         self.fid_object = FIDObject(
             raw_data=[],
@@ -956,8 +956,8 @@ class TestUtilsModule(unittest.TestCase):
     def setUp(self):
         if pyenzyme is None:
             self.skipTest((
-                "The `pyenzyme` package is required to test utils functions. "
-                "Please install it via `pip install nmrpy[enzymeml]`."
+                'The `pyenzyme` package is required to test utils functions. '
+                'Please install it via `pip install nmrpy[enzymeml]`.'
             ))
         
         # Create test EnzymeML document
@@ -1209,8 +1209,8 @@ class TestPlottingWidgets(unittest.TestCase):
     def setUp(self):
         if pyenzyme is None:
             self.skipTest((
-                "The `pyenzyme` package is required to test plotting widgets. "
-                "Please install it via `pip install nmrpy[enzymeml]`."
+                'The `pyenzyme` package is required to test plotting widgets. '
+                'Please install it via `pip install nmrpy[enzymeml]`.'
             ))
         
         # Load test FID data
