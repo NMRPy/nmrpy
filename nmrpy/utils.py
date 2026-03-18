@@ -106,9 +106,9 @@ def get_initial_concentration_by_species_id(
         )
     intial_concentration = float("nan")
     for measurement in enzymeml_document.measurements:
-        for measurement_datum in measurement.species:
+        for measurement_datum in measurement.species_data:
             if measurement_datum.species_id == species_id:
-                intial_concentration = measurement_datum.init_conc
+                intial_concentration = measurement_datum.initial
                 break
     return intial_concentration
 
@@ -458,19 +458,11 @@ def fill_enzymeml_measurement(
     # Temperature and unit
     if "temperature" in kwargs:
         measurement.temperature = float(kwargs["temperature"])
-        if "temperature_unit" in kwargs:
-            if hasattr(pyenzyme.units.predefined, kwargs["temperature_unit"]):
-                measurement.temperature_unit = getattr(
-                    pyenzyme.units.predefined, kwargs["temperature_unit"]
-                )
-            else:
-                raise ValueError(
-                    "The `temperature_unit` keyword argument must be a valid EnzymeML temperature unit."
-                )
-        else:
+        if "temperature_unit" not in kwargs:
             raise ValueError(
                 "The `temperature_unit` keyword argument is required when setting a new temperature value."
             )
+        measurement.temperature_unit = kwargs["temperature_unit"]
     elif kwargs["keep_temperature"] and kwargs["template_measurement"]:
         pass
     else:
@@ -495,19 +487,9 @@ def fill_enzymeml_measurement(
                     f"The `data_type` keyword argument must be a valid EnzymeML data type. Valid types are: {', '.join([data_type.name for data_type in pyenzyme.DataTypes])}."
                 )
         if "data_unit" in kwargs:
-            if hasattr(pyenzyme.units.predefined, kwargs["data_unit"]):
-                _data_unit = getattr(pyenzyme.units.predefined, kwargs["data_unit"])
-            else:
-                raise ValueError(
-                    "The `data_unit` keyword argument must be a valid EnzymeML data unit."
-                )
+            _data_unit = kwargs["data_unit"]
         if "time_unit" in kwargs:
-            if hasattr(pyenzyme.units.predefined, kwargs["time_unit"]):
-                _time_unit = getattr(pyenzyme.units.predefined, kwargs["time_unit"])
-            else:
-                raise ValueError(
-                    "The `time_unit` keyword argument must be a valid EnzymeML time unit."
-                )
+            _time_unit = kwargs["time_unit"]
         if kwargs["template_measurement"]:
             for species_datum in measurement.species_data:
                 if species_datum.species_id in kwargs["initial"]:
