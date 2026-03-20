@@ -6,9 +6,7 @@
 
 NMRPy is a Python 3 module for the processing and analysis of NMR spectra. The
 functionality of NMRPy is structured to make the analysis of arrayed NMR
-spectra more intuitive.
-
-Read the docs at http://nmrpy.readthedocs.io/
+spectra more intuitive.Read the docs at http://nmrpy.readthedocs.io/
 
 ## Installation
 
@@ -23,6 +21,9 @@ For installation with pip:
 
 For installation with conda:    
 `conda install -c bioconda -c conda-forge -c jmrohwer nmrpy`
+
+For EnzymeML support, install with the `enzymeml` extra:    
+`pip install nmrpy[enzymeml]`
 
 Detailed installation instructions are available at
 https://nmrpy.readthedocs.io/en/latest/installation.html

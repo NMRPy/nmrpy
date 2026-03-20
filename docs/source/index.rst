@@ -16,6 +16,7 @@ Contents:
     quickstart
     data_objects
     plotting_objects
+    utility_objects
 
 Indices and tables
 ==================
