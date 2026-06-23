@@ -12,9 +12,9 @@ jobs:
     name: Build Anaconda package
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - name: Setup conda
-        uses: s-weigand/setup-conda@v1
+        uses: s-weigand/setup-conda@v1.6.0
         with:
           update-conda: false
           python-version: 3.9
@@ -28,7 +28,7 @@ jobs:
       - name: Build packages
         run: mamba build --no-anaconda-upload --output-folder ./build_output ./packaging/conda
       
-      - uses: actions/upload-artifact@v2
+      - uses: actions/upload-artifact@v4
         with:
           name: build_outputs
           path: ./build_output/*/nmrpy*.tar.bz2
