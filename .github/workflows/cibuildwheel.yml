@@ -20,7 +20,7 @@ jobs:
 
       - name: Build sdist and wheel
         run: |
-          pip install wheel
+          pip install wheel build
           python -m build -s -w -o dist/ .
 
       - name: Test
