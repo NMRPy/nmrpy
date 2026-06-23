@@ -1,6 +1,5 @@
 from typing import Mapping, Optional
 
-from pyenzyme.versions.v2 import Protein
 import nmrpy.data_objects
 import logging, traceback
 import numpy
@@ -20,6 +19,7 @@ from nmrpy.utils import T0Logic, T0Tab, format_species_string
 try:
     import pyenzyme
     from pyenzyme import EnzymeMLDocument, Measurement
+    from pyenzyme.versions.v2 import Protein
     from nmrpy.utils import (
         get_ordered_list_of_species_names,
         get_species_from_enzymeml,

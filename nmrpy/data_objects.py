@@ -818,10 +818,10 @@ class Fid(Base):
             if not data.dtype in Fid._complex_dtypes:
                 raise TypeError('data must be complex.')
             # convert to radians
-            p0 = p0*numpy.pi/180.0
-            p1 = p1*numpy.pi/180.0
+            p0rad = p0*numpy.pi/180.0
+            p1rad= p1*numpy.pi/180.0
             size = len(data)
-            ph = numpy.exp(1.0j*(p0+(p1*numpy.arange(size)/size)))
+            ph = numpy.exp(1.0j*(p0rad+(p1rad*numpy.arange(size)/size)))
             return ph*data, p0, p1
 
     def ps(self, p0=0.0, p1=0.0):
@@ -838,10 +838,10 @@ class Fid(Base):
         if not self.data.dtype in self._complex_dtypes:
             raise TypeError('data must be complex.')
         # convert to radians
-        p0 = p0*numpy.pi/180.0
-        p1 = p1*numpy.pi/180.0
+        p0rad = p0*numpy.pi/180.0
+        p1rad = p1*numpy.pi/180.0
         size = len(self.data)
-        ph = numpy.exp(1.0j*(p0+(p1*numpy.arange(size)/size)))
+        ph = numpy.exp(1.0j*(p0rad+(p1rad*numpy.arange(size)/size)))
         self.data = ph*self.data
         # Update data model
         if getattr(self, 'fid_object', None) is not None:
@@ -1987,7 +1987,7 @@ class FidArray(Base):
                 fid.data = datum[0]
                 # Update data model
                 if getattr(fid, 'fid_object', None) is not None:
-                    fid.fid_object.processed_data = [str(data) for data in datum]
+                    fid.fid_object.processed_data = [str(d) for d in datum[0]]
                     fid.fid_object.processing_steps.is_phased = True
                     fid.fid_object.processing_steps.zero_order_phase = datum[1]
                     fid.fid_object.processing_steps.first_order_phase = datum[2]
@@ -2516,7 +2516,7 @@ Ctrl+Alt+Right - assign
 
         :keyword overwrite: if True, overwrite existing file
 
-        :keyword keep_data_model: if True, keep the NMRpy data model (default is True)
+        :keyword keep_data_model: if True, keep the NMRpy data model (default is False)
 
         :keyword keep_enzymeml: if True, keep the EnzymeML document (default is True)
         """

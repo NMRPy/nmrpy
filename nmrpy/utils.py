@@ -511,7 +511,7 @@ def fill_enzymeml_measurement(
                 )
             if not _time_unit:
                 raise ValueError(
-                    'The `timec_unit` keyword argument is required when creating a new measurement without a template measurement.'
+                    'The `time_unit` keyword argument is required when creating a new measurement without a template measurement.'
                 )
             for species_type in ['small_molecules', 'proteins', 'complexes']:
                 for species in getattr(enzymeml_document, species_type):
