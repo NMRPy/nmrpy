@@ -22,6 +22,10 @@ classifiers = [
   "Operating System :: Microsoft :: Windows",
   "Operating System :: POSIX :: Linux",
   "Operating System :: MacOS",
+  "License :: OSI Approved :: BSD License",
+  "Programming Language :: Python",
+  "Programming Language :: Markdown",
+  "Topic :: Scientific/Engineering :: Chemistry",
 ]
 dependencies = [
     "numpy",
