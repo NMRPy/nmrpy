@@ -25,7 +25,8 @@ jobs:
 
       - name: Test
         run: |
-          pip install 'dist/nmrpy*.whl[enzymeml]'
+          W=$(ls dist/nmrpy*.whl)
+          pip install ${W}"[enzymeml]"
           python -s -c "import nmrpy; nmrpy.test('noplot')"
 
       - uses: actions/upload-artifact@v7
