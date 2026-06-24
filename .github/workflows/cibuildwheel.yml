@@ -25,10 +25,10 @@ jobs:
 
       - name: Test
         run: |
-          pip install dist/nmrpy*.whl
+          pip install dist/nmrpy*.whl"[enzymeml]"
           python -s -c "import nmrpy; nmrpy.test('noplot')"
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         name: Upload build artifacts
         with:
           name: wheel_and_tarball
