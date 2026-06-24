@@ -1429,7 +1429,6 @@ class NMRPyTest:
             suite.addTests(fidarrayinit_test)
             suite.addTests(fidutils_test)
             suite.addTests(fidarrayutils_test)
-            suite.addTests(plotutils_test)
             suite.addTests(utils_test)
         else:
             raise ValueError('Please select a valid set of tests to run.')

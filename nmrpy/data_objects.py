@@ -291,7 +291,8 @@ class Fid(Base):
             nmr_parameters=Parameters(),
             processing_steps=ProcessingSteps(),
         )
-        self.enzymeml_species = None
+        if pyenzyme:
+            self.enzymeml_species = None
         self._deconvoluted_peaks = None
         self._flags = {
             'ft': False,
@@ -742,7 +743,7 @@ class Fid(Base):
                 raise ValueError('ppm must be within spectral width.')
             indices = len(data)*(sw_left-ppm)/sw
             if conv_to_int:
-                return int(numpy.ceil(indices))
+                return int(numpy.ceil(indices)[0])
             return numpy.array(numpy.ceil(indices), dtype=int)
     
     def phase_correct(self, method='leastsq', verbose = True):
