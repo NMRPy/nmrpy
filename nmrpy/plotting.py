@@ -15,7 +15,6 @@ from matplotlib.widgets import Cursor
 from ipywidgets import FloatText, Output, VBox, HBox, Button, Combobox, Dropdown, Label, Checkbox, HTML, Tab, BoundedFloatText, Text
 from IPython.display import display
 
-from nmrpy.utils import T0Logic, T0Tab, format_species_string
 try:
     import pyenzyme
     from pyenzyme import EnzymeMLDocument, Measurement
@@ -23,10 +22,13 @@ try:
     from nmrpy.utils import (
         get_ordered_list_of_species_names,
         get_species_from_enzymeml,
-        format_measurement_string,        
+        format_measurement_string,
         create_enzymeml_measurement,
         fill_enzymeml_measurement,
         InitialConditionTab,
+        T0Logic,
+        T0Tab,
+        format_species_string,
     )
 except ImportError as ex:
     print(f'Optional dependency import failed for plotting.py: {ex}')

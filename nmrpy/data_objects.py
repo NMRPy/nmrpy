@@ -28,7 +28,7 @@ try:
 except ImportError as ex:
     print(f'Optional dependency import failed for data_objects.py: {ex}')
     pyenzyme = None
-
+    EnzymeMLDocument = None
 
 class Base():
     _complex_dtypes = [
