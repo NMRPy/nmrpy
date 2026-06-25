@@ -8,12 +8,16 @@ This is a "quickstart" tutorial for NMRPy in which an Agilent (Varian) NMR
 dataset will be processed. The following topics are explored:
 
     * :ref:`quickstart_importing`
+
+        * :ref:`quickstart_data_model`
+
     * :ref:`quickstart_apodisation`
     * :ref:`quickstart_phasecorrection`
     * :ref:`quickstart_calibration`
     * :ref:`quickstart_peakpicking`
     * :ref:`quickstart_deconvolution`
     * :ref:`quickstart_exporting`
+    * :ref:`enzymeml_support`
     * :ref:`quickstart_script`
 
 This tutorial will use the test data in the nmrpy install directory: ::
@@ -59,7 +63,21 @@ several attributes, most of which are of the form ``fidXX`` where *XX* is
 a number starting at 00. These are the individual arrayed
 :class:`~nmrpy.data_objects.Fid` objects.
 
+.. _quickstart_data_model:
 
+Data model
+----------
+
+The ``md-models``-based data model is woven into the core NMRPy data objects and
+is used to store all relevant NMR data and metadata in a structured way. The full
+model is stored in :attr:`~nmrpy.data_objects.FidArray.data_model` of the
+:class:`~nmrpy.data_objects.FidArray` object, while each individual
+:class:`~nmrpy.data_objects.Fid` has a subset of the model, the
+:class:`~nmrpy.nmrpy_model.FidObject`, stored in its
+:attr:`~nmrpy.data_objects.Fid.fid_object` attribute of
+:class:`~nmrpy.data_objects.Fid`. You can use the full quickstart tutorial
+without directly interacting with the model internals. However, at any time you may
+call the ``data_model`` attribute to retrieve the current state of the model.
 
 .. _quickstart_apodisation:
 
@@ -444,6 +462,97 @@ The :class:`~nmrpy.data_objects.FidArray` can be reloaded using
 
     >>> fid_array = nmrpy.from_path(fid_path='fidarray.nmrpy')
 
+
+.. _enzymeml_support:
+
+Working with EnzymeML
+====================
+
+To utilise the EnzymeML-related capabilities of NMRPy, the optional EnzymeML
+dependencies need to be installed. This can be achieved by installing NMRPy
+with the `enzymeml` extra: ::
+
+    >>> pip install nmrpy[enzymeml]
+
+EnzymeML documents can be created in a number of ways, e.g. with the ``PyEnzyme``
+Python package, with the ``EnzymeML Suite`` application, or even using the EnzymeML
+Excel template. Once you have an EnzymeML document, it can be loaded into NMRPy and
+linked to the :class:`~nmrpy.data_objects.FidArray` using the 
+:attr:`~nmrpy.data_objects.FidArray.link_enzymeml` property: ::
+
+    >>> import pyenzyme as pe
+    >>> edoc = pe.EnzymeMLDocument.read_enzymeml('my_enzymeml_document.json')
+
+    >>> fid_array.enzymeml_document = edoc
+
+Having loaded the EnzymeML document, the species information contained in the EnzymeML
+document can be linked to the picked peaks in the spectra. For this, the methods
+:meth:`~nmrpy.data_objects.FidArray.assign_species` and
+:meth:`~nmrpy.data_objects.Fid.assign_species` can be used to assign species to
+previously picked peaks for the whole array or for individual Fids, respectively.
+Both methods have a GUI widget that allows the user to conveniently select peaks and
+assign species from the EnzymeML document to these peaks. Alternatively, species can be
+assigned programmatically by providing the appropriate arguments to the methods. ::
+
+    >>> fid_array.assign_species()
+
+.. image:: _static/quickstart_16.png
+   :width: 75%
+   :align: center
+
+After concentrations have been calculated from the deconvoluted peak integrals,
+these have to be assigned to the :attr:`~nmrpy.data_objects.FidArray.concentrations`
+attribute of the :class:`~nmrpy.data_objects.FidArray` for use in kinetic calculations,
+using the species IDs from the EnzymeML document as keys to the dictionary of concentrations.
+
+Sometimes it may be necessary to adjust the first time point t0, as the first spectrum may
+have been acquired separately from the rest of the array, or because the time array from
+the spectrometer does not reflect the actual time-course of the reaction. The time array can
+be adjusted with the :meth:`~nmrpy.data_objects.FidArray.add_t0_to_enzymeml` method of
+:class:`~nmrpy.data_objects.FidArray`, which allows to shift the time array by a specified
+offset, use t1 as t0, or set t0 manually. Again, a GUI widget is provided for this method,
+but the time array can also be adjusted programmatically by providing the appropriate
+arguments to the method. ::
+
+    >>> fid_array.add_t0_to_enzymeml(measurement_id=1)
+
+.. image:: _static/quickstart_17.png
+   :width: 75%
+   :align: center
+
+.. image:: _static/quickstart_18.png
+   :width: 75%
+   :align: center
+
+Usually, there are multiple measurements to be processed for one experiment. The necessary
+``Measurement`` objects within the EnzymeML document can be conviently created at the end
+of an NMRPy workflow with the
+:meth:`~nmrpy.data_objects.FidArray.create_new_enzymeml_measurements` method, preparing
+the EnzymeML document and Jupyter Notebook for the next run for the next measurement. Using
+the method, a new ``Measurement`` is created either based on a template measurement in the
+EnzymeML document that the user chooses, or without a template from scratch. In the former
+case, the new measurement inherits all metadata from the template but can be adjusted as 
+needed. In the latter case all metadata needs to be added manually. Again, a GUI widget is
+provided for this method, but it can also be run programmatically by providing the
+appropriate arguments to the method. ::
+
+    >>> fid_array.create_new_enzymeml_measurements()
+
+.. image:: _static/quickstart_19.png
+   :width: 75%
+   :align: center
+
+.. image:: _static/quickstart_20.png
+   :width: 75%
+   :align: center
+
+The updated EnzymeML measurement can be extracted from NMRPy and appended to any EnzymeML
+document using the :meth:`~nmrpy.data_objects.FidArray.apply_to_enzymeml` method and 
+subsequently saved using pyenzyme's `write_enzymeml` method: ::
+
+    >>> edoc = fid_array.apply_to_enzymeml(measurement_id=1)
+
+    >>> pe.write_enzymeml(edoc, 'my_enzymeml_document.json')
 
 .. _quickstart_script:
 

@@ -1,0 +1,59 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "nmrpy"
+dynamic = ["version"]
+description = "A suite of tools for processing and analysing NMR spectra in Python."
+readme = "README.md"
+license = "BSD-3-Clause"
+authors = [
+    {name = "Johann Eicher", email = "johanneicher@gmail.com"},
+    {name = "Johann Rohwer", email = "j.m.rohwer@gmail.com"},
+    {name = "Torsten Giess", email = "torsten.giess@ibtb.uni-stuttgart.de"}
+]
+maintainers = [
+    {name = "Johann Rohwer", email = "j.m.rohwer@gmail.com"}
+]
+requires-python = ">=3.7"
+keywords = ["NMR", "spectra", "processing", "analysis", "time series"]
+classifiers = [
+  "Operating System :: Microsoft :: Windows",
+  "Operating System :: POSIX :: Linux",
+  "Operating System :: MacOS",
+  "Programming Language :: Python",
+  "Programming Language :: Markdown",
+  "Topic :: Scientific/Engineering :: Chemistry",
+]
+dependencies = [
+    "numpy",
+    "scipy",
+    "matplotlib>=3.9.0",
+    "ipympl>=0.9.5",
+    "jupyterlab",
+    "ipython>=8.0.0",
+    "lmfit>=1.3.0",
+    "nmrglue @ git+https://github.com/jjhelmus/nmrglue.git",
+    "pydantic"
+]
+
+[project.optional-dependencies]
+enzymeml = [
+    "pyenzyme>=2.1.0",
+    "sympy"
+]
+
+[project.urls]
+Homepage = "https://github.com/NMRPy/nmrpy"
+Repository = "https://github.com/NMRPy/nmrpy"
+
+[tool.setuptools]
+packages = ["nmrpy", "nmrpy.tests"]
+
+[tool.setuptools.package-data]
+"nmrpy.tests" = ["test_data/**/*"]
+"nmrpy" = ["docs/*"]
+
+[tool.setuptools.dynamic]
+version = {attr = "nmrpy.version.__version__"}

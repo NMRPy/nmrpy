@@ -168,6 +168,20 @@ into your virtual environment using ``pip``.
 
     (nmr) $ pip install nmrpy
 
+Optional EnzymeML dependencies
+==============================
+
+EnzymeML integration features are optional and are not required for standard
+NMRPy workflows. If you want to use EnzymeML-specific functionality, install
+the optional extra dependencies with:
+
+.. code:: bash
+
+    (nmr) $ pip install nmrpy[enzymeml]
+
+This extra installs ``pyenzyme`` and ``sympy`` in addition to the core
+dependencies.
+
 Testing the installation
 ========================
 
@@ -192,6 +206,10 @@ Only a specific subset of tests can be run by providing an additional argument:
 When testing the plotting utilities, a number of ``matplotlib`` plots will 
 appear. This tests that the peak and range selection widgets are working 
 properly; the plot windows can be safely closed.
+
+EnzymeML-related capabilities and tests require the optional EnzymeML
+dependencies to be installed. Core NMRPy tests and workflows do not depend on
+these optional packages.
     
 Working with NMRPy
 ==================
