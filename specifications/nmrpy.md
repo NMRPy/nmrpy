@@ -1,12 +1,12 @@
-# NMRpy data model
+# NMRPy data model
 
-Python object model specifications based on the [md-models](https://github.com/FAIRChemistry/md-models) Rust library. The NMRpy data model is designed to store both raw and processed NMR data, as well as the parameters used for processing. As NMRpy is primarily used for the analysis of time-course data, often for determining (enzyme) kinetics, the data model is designed for maximum compatibility with the [EnzymeML](https://enzymeml.github.io/services/) standard, which provides a standardised data exchange format for kinetics data from biocatalysis, enzymology, and beyond. Therefore, relevant fields that are mandatory in the EnzymeML standard are also mandatory in this NMRpy data model.
+Python object model specifications based on the [md-models](https://github.com/FAIRChemistry/md-models) Rust library. The NMRPy data model is designed to store both raw and processed NMR data, as well as the parameters used for processing. As NMRPy is primarily used for the analysis of time-course data, often for determining (enzyme) kinetics, the data model is designed for maximum compatibility with the [EnzymeML](https://enzymeml.github.io/services/) standard, which provides a standardised data exchange format for kinetics data from biocatalysis, enzymology, and beyond. Therefore, relevant fields that are mandatory in the EnzymeML standard are also mandatory in this NMRPy data model.
 
 ## Core objects
 
-### NMRpy
+### NMRPy
 
-Root element of the NMRpy data model. Following the specifications of the EnzymeML standard, the `datetime_created` field is mandatory. Since each NMRpy instance is meant to hold a single experiment (e.g., one time-course), the data model reflects this by only allowing a single `experiment` object.
+Root element of the NMRPy data model. Following the specifications of the EnzymeML standard, the `datetime_created` field is mandatory. Since each NMRPy instance is meant to hold a single experiment (e.g., one time-course), the data model reflects this by only allowing a single `experiment` object.
 
 - __datetime_created__
   - Type: string
@@ -132,11 +132,11 @@ Container for processing steps performed, as well as parameter for them. Process
   - Description: Maximum value of the dataset used for Normalisation.
 - is_deconvoluted
   - Type: boolean
-  - Description: Whether or not Deconvolution was performed.
+  - Description: Whether or not Deconvolution was performed. Retained for backward compatibility; quantification of individual peaks by deconvolution is recorded per peak in Quantification, together with the fitted parameters.
   - Default: False
 - is_baseline_corrected
   - Type: boolean
-  - Description: Whether or not Baseline correction was performed.
+  - Description: Whether or not global Baseline correction was performed.
   - Default: False
 
 ### Peak
@@ -145,39 +145,163 @@ Container for a single peak in the NMR spectrum, associated with a species from 
 
 - __peak_index__
   - Type: integer
-  - Description: Index of the peak in the NMR spectrum, counted from left to right.
+  - Description: Index of the peak in the NMR spectrum, counted from left to right (in ppm from higher chemical shift values to lower).
 - peak_position
   - Type: float
-  - Description: Position of the peak in the NMR spectrum.
+  - Description: Position of the peak in the NMR spectrum. For a range spanning a complete multiplet, this is the position of one of the peaks in the multiplet, counted from left to right.
 - peak_range
   - Type: [PeakRange](#peakrange)
-  - Description: Range of the peak, given as a start and end value.
-- peak_integral
-  - Type: float
-  - Description: Integral of the peak, resulting from the position and range given.
+  - Description: Range of the peak, given as a start and end value. Under numeric integration this is the interval that was integrated; under deconvolution it is the range within which the picked peak was found to lie.
+- peak_quantification
+  - Type: [Quantification](#quantification)
+  - Description: Method and parameters by which the peak area was obtained, together with the resulting area.
 - species_id
   - Type: string
   - Description: ID of an EnzymeML species.
 
 ### PeakRange
 
-Container for the peak range of one peak.
+Container for the peak range of one peak or multiplet.
 
 - __start__
   - Type: float
-  - Description: Start value of the peak range.
+  - Description: Start value of the peak range. In ppm, this is the left edge of the peak range towards higher chemical shift values.
 - __end__
   - Type: float
-  - Description: End value of the peak range.
+  - Description: End value of the peak range. In ppm, this is the right edge of the peak range towards lower chemical shift values.
+- proton_count
+  - Type: integer
+  - Description: Number of protons giving rise to the multiplet, used to weight the area when calculating concentrations.
+
+### Quantification
+
+Record of how the area of a peak was obtained. The `method` field determines which of the method-specific fields are populated: `lineshape` for deconvolution, `quadrature` for numeric integration.
+
+- __method__
+  - Type: [QuantificationMethods](#quantificationmethods)
+  - Description: Method used to quantify the peak.
+- peak_area
+  - Type: float
+  - Description: Area of the peak resulting from the quantification.
+- local_baseline
+  - Type: [Baseline](#baseline)
+  - Description: Local baseline subtracted from the spectral data before quantification.
+- lineshape
+  - Type: [Lineshape](#lineshape)
+  - Description: Fitted lineshape, populated when the peak was quantified by deconvolution.
+- quadrature
+  - Type: [Quadrature](#quadrature)
+  - Description: Quadrature rule applied, populated when the peak was quantified by numeric integration.
+
+### Baseline
+
+Local baseline subtracted from the spectral data before quantification. For the `LOCAL_LINEAR` method a straight line is fitted through the mean of the anchor points at each edge of the peak range and subtracted from the data within that range.
+
+- __method__
+  - Type: [BaselineMethods](#baselinemethods)
+  - Description: Method used to determine the local baseline.
+- anchor_points_start
+  - Type: float[]
+  - Description: Positions of the spectral data points at the left-position edge (higher ppm) of the peak range used to anchor the baseline. Note that this anchor region lies inside the integrated range and may therefore contain peak tails.
+- anchor_points_end
+  - Type: float[]
+  - Description: Positions of the spectral data points at the right-position edge (lower ppm) of the peak range used to anchor the baseline.
+- slope
+  - Type: float
+  - Description: Slope of the fitted baseline.
+- intercept
+  - Type: float
+  - Description: Intercept of the fitted baseline.
+
+### Lineshape
+
+Lineshape fitted to a peak during deconvolution, with the parameters resulting from the fit.
+
+- __model__
+  - Type: [LineshapeModels](#lineshapemodels)
+  - Description: Lineshape model fitted to the peak.
+- fitting_method
+  - Type: string
+  - Description: Optimization algorithm used to fit the lineshape, as passed to the underlying fitting routine (e.g. `leastsq` for Levenberg-Marquardt).
+- formula
+  - Type: string
+  - Description: Implemented formula of the fitted model, corresponding to the sequence of fitting parameters.
+- amplitude
+  - Type: float
+  - Description: Amplitude of the fitted model curve.
+- center
+  - Type: float
+  - Description: Center of the fitted model curve.
+- gaussian_width
+  - Type: float
+  - Description: Width of the Gaussian component of the fitted model curve.
+- lorentzian_width
+  - Type: float
+  - Description: Width of the Lorentzian component of the fitted model curve.
+- fraction_lorentzian
+  - Type: float
+  - Description: Fraction of the Lorentzian component of the fitted model curve.
+  - Min: 0
+  - Max: 1
+
+### Quadrature
+
+Quadrature rule applied when a peak was quantified by numeric integration of the spectral data over its range.
+
+- __rule__
+  - Type: [QuadratureRules](#quadraturerules)
+  - Description: Quadrature rule used for the numeric integration.
+- n_points
+  - Type: integer
+  - Description: Number of spectral data points within the peak range that entered the numeric integration, determined by the acquisition and the range width rather than chosen.
 
 ## Enumerations
 
 ### FileFormats
 
-Enumeration containing the file formats accepted by the NMRpy library. `NONE` corresponds either to a pickled .nmrpy file or a pre-loaded nmrglue array.
+Enumeration containing the file formats accepted by the NMRPy library. `NONE` corresponds either to a pickled .nmrpy file or a pre-loaded nmrglue array.
 
 ```python
 VARIAN = "varian"
 BRUKER = "bruker"
+SPINSOLVE = "spinsolve"
 NONE = None
+```
+
+### QuantificationMethods
+
+Enumeration containing the methods by which a peak area can be obtained.
+
+```python
+DECONVOLUTION = "deconvolution"
+NUMERIC_INTEGRATION = "numeric_integration"
+```
+
+### BaselineMethods
+
+Enumeration containing the methods by which a local baseline can be determined. `NONE` indicates that no local baseline was subtracted before quantification.
+
+```python
+NONE = "none"
+LOCAL_LINEAR = "local_linear"
+```
+
+### LineshapeModels
+
+Enumeration containing the lineshape models available for deconvolution.
+
+```python
+GAUSSIAN = "Gaussian"
+LORENTZIAN = "Lorentzian"
+PSEUDO_VOIGT = "pseudo-Voigt"
+```
+
+### QuadratureRules
+
+Enumeration containing the quadrature rules available for numeric integration.
+
+```python
+RECTANGULAR = "rectangular"
+TRAPEZOIDAL = "trapezoidal"
+SIMPSON = "Simpson"
 ```

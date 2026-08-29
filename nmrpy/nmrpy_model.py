@@ -99,7 +99,7 @@ def validate_prefix(term: str | dict, prefix: str):
 
 # Model Definitions
 
-class NMRpy(BaseModel):
+class NMRPy(BaseModel):
 
     model_config: ConfigDict = ConfigDict( # type: ignore
         validate_assignment = True,
@@ -121,18 +121,19 @@ class NMRpy(BaseModel):
     # JSON-LD fields
     ld_id: str = Field(
         serialization_alias="@id",
-        default_factory=lambda: "md:NMRpy/" + str(uuid4())
+        default_factory=lambda: "md:NMRPy/" + str(uuid4())
     )
     ld_type: list[str] = Field(
         serialization_alias="@type",
         default_factory = lambda: [
-            "md:NMRpy",
+            "md:NMRPy",
         ],
     )
     ld_context: dict[str, str | dict] = Field(
         serialization_alias="@context",
         default_factory = lambda: {
-            "md": "http://mdmodel.net/",
+            "md": "http://mdmodel.net",
+            "Experiment": "http://mdmodel.net#Experiment/",
         }
     )
 
@@ -233,7 +234,8 @@ class Experiment(BaseModel):
     ld_context: dict[str, str | dict] = Field(
         serialization_alias="@context",
         default_factory = lambda: {
-            "md": "http://mdmodel.net/",
+            "md": "http://mdmodel.net",
+            "FIDObject": "http://mdmodel.net#FIDObject/",
         }
     )
 
@@ -388,7 +390,10 @@ class FIDObject(BaseModel):
     ld_context: dict[str, str | dict] = Field(
         serialization_alias="@context",
         default_factory = lambda: {
-            "md": "http://mdmodel.net/",
+            "md": "http://mdmodel.net",
+            "Parameters": "http://mdmodel.net#Parameters/",
+            "ProcessingSteps": "http://mdmodel.net#ProcessingSteps/",
+            "Peak": "http://mdmodel.net#Peak/",
         }
     )
 
@@ -477,7 +482,7 @@ class FIDObject(BaseModel):
         peak_index: int,
         peak_position: Optional[float]= None,
         peak_range: Optional[PeakRange]= None,
-        peak_integral: Optional[float]= None,
+        peak_quantification: Optional[Quantification]= None,
         species_id: Optional[str]= None,
         **kwargs,
     ):
@@ -485,7 +490,7 @@ class FIDObject(BaseModel):
             "peak_index": peak_index,
             "peak_position": peak_position,
             "peak_range": peak_range,
-            "peak_integral": peak_integral,
+            "peak_quantification": peak_quantification,
             "species_id": species_id
         }
 
@@ -575,7 +580,7 @@ class Parameters(BaseModel):
     ld_context: dict[str, str | dict] = Field(
         serialization_alias="@context",
         default_factory = lambda: {
-            "md": "http://mdmodel.net/",
+            "md": "http://mdmodel.net",
         }
     )
 
@@ -703,11 +708,17 @@ class ProcessingSteps(BaseModel):
     )
     is_deconvoluted: Optional[bool] = Field(
         default= False,
-        description="""Whether or not Deconvolution was performed.""",
+        description="""Whether or not Deconvolution was performed.
+        Retained for backward compatibility;
+        quantification of individual peaks by
+        deconvolution is recorded per peak in
+        Quantification, together with the fitted
+        parameters.""",
     )
     is_baseline_corrected: Optional[bool] = Field(
         default= False,
-        description="""Whether or not Baseline correction was performed.""",
+        description="""Whether or not global Baseline correction was
+        performed.""",
     )
 
     # JSON-LD fields
@@ -724,7 +735,7 @@ class ProcessingSteps(BaseModel):
     ld_context: dict[str, str | dict] = Field(
         serialization_alias="@context",
         default_factory = lambda: {
-            "md": "http://mdmodel.net/",
+            "md": "http://mdmodel.net",
         }
     )
 
@@ -805,20 +816,29 @@ class Peak(BaseModel):
     peak_index: int = Field(
         default=...,
         description="""Index of the peak in the NMR spectrum, counted
-        from left to right.""",
+        from left to right (in ppm from higher
+        chemical shift values to lower).""",
     )
     peak_position: Optional[float] = Field(
         default=None,
-        description="""Position of the peak in the NMR spectrum.""",
+        description="""Position of the peak in the NMR spectrum. For a
+        range spanning a complete multiplet, this
+        is the position of one of the peaks in the
+        multiplet, counted from left to right.""",
     )
     peak_range: Optional[PeakRange] = Field(
         default=None,
-        description="""Range of the peak, given as a start and end value.""",
+        description="""Range of the peak, given as a start and end
+        value. Under numeric integration this is
+        the interval that was integrated; under
+        deconvolution it is the range within which
+        the picked peak was found to lie.""",
     )
-    peak_integral: Optional[float] = Field(
+    peak_quantification: Optional[Quantification] = Field(
         default=None,
-        description="""Integral of the peak, resulting from the position
-        and range given.""",
+        description="""Method and parameters by which the peak area was
+        obtained, together with the resulting
+        area.""",
     )
     species_id: Optional[str] = Field(
         default=None,
@@ -839,7 +859,9 @@ class Peak(BaseModel):
     ld_context: dict[str, str | dict] = Field(
         serialization_alias="@context",
         default_factory = lambda: {
-            "md": "http://mdmodel.net/",
+            "md": "http://mdmodel.net",
+            "PeakRange": "http://mdmodel.net#PeakRange/",
+            "Quantification": "http://mdmodel.net#Quantification/",
         }
     )
 
@@ -919,11 +941,21 @@ class PeakRange(BaseModel):
 
     start: float = Field(
         default=...,
-        description="""Start value of the peak range.""",
+        description="""Start value of the peak range. In ppm, this is the
+        left edge of the peak range towards higher
+        chemical shift values.""",
     )
     end: float = Field(
         default=...,
-        description="""End value of the peak range.""",
+        description="""End value of the peak range. In ppm, this is the
+        right edge of the peak range towards lower
+        chemical shift values.""",
+    )
+    proton_count: Optional[int] = Field(
+        default=None,
+        description="""Number of protons giving rise to the multiplet,
+        used to weight the area when calculating
+        concentrations.""",
     )
 
     # JSON-LD fields
@@ -940,7 +972,487 @@ class PeakRange(BaseModel):
     ld_context: dict[str, str | dict] = Field(
         serialization_alias="@context",
         default_factory = lambda: {
-            "md": "http://mdmodel.net/",
+            "md": "http://mdmodel.net",
+        }
+    )
+
+
+    def set_attr_term(
+        self,
+        attr: str,
+        term: str | dict,
+        prefix: str | None = None,
+        iri: str | None = None
+    ):
+        """Sets the term for a given attribute in the JSON-LD object
+
+        Example:
+            # Using an IRI term
+            >> obj.set_attr_term("name", "http://schema.org/givenName")
+
+            # Using a prefix and term
+            >> obj.set_attr_term("name", "schema:givenName", "schema", "http://schema.org")
+
+            # Usinng a dictionary term
+            >> obj.set_attr_term("name", {"@id": "http://schema.org/givenName", "@type": "@id"})
+
+        Args:
+            attr (str): The attribute to set the term for
+            term (str | dict): The term to set for the attribute
+
+        Raises:
+            AssertionError: If the attribute is not found in the model
+        """
+
+        assert attr in self.model_fields, f"Attribute {attr} not found in {self.__class__.__name__}"
+
+        if prefix:
+            validate_prefix(term, prefix)
+
+        add_namespace(self, prefix, iri)
+        self.ld_context[attr] = term
+
+    def add_type_term(
+        self,
+        term: str,
+        prefix: str | None = None,
+        iri: str | None = None
+    ):
+        """Adds a term to the @type field of the JSON-LD object
+
+        Example:
+            # Using a term
+            >> obj.add_type_term("https://schema.org/Person")
+
+            # Using a prefixed term
+            >> obj.add_type_term("schema:Person", "schema", "https://schema.org/Person")
+
+        Args:
+            term (str): The term to add to the @type field
+            prefix (str, optional): The prefix to use for the term. Defaults to None.
+            iri (str, optional): The IRI to use for the term prefix. Defaults to None.
+
+        Raises:
+            ValueError: If prefix is provided but iri is not
+            ValueError: If iri is provided but prefix is not
+        """
+
+        if prefix:
+            validate_prefix(term, prefix)
+
+        add_namespace(self, prefix, iri)
+        self.ld_type.append(term)
+
+
+class Quantification(BaseModel):
+
+    model_config: ConfigDict = ConfigDict( # type: ignore
+        validate_assignment = True,
+    ) # type: ignore
+
+    method: QuantificationMethods = Field(
+        default=...,
+        description="""Method used to quantify the peak.""",
+    )
+    peak_area: Optional[float] = Field(
+        default=None,
+        description="""Area of the peak resulting from the
+        quantification.""",
+    )
+    local_baseline: Optional[Baseline] = Field(
+        default=None,
+        description="""Local baseline subtracted from the spectral data
+        before quantification.""",
+    )
+    lineshape: Optional[Lineshape] = Field(
+        default=None,
+        description="""Fitted lineshape, populated when the peak was
+        quantified by deconvolution.""",
+    )
+    quadrature: Optional[Quadrature] = Field(
+        default=None,
+        description="""Quadrature rule applied, populated when the peak
+        was quantified by numeric integration.""",
+    )
+
+    # JSON-LD fields
+    ld_id: str = Field(
+        serialization_alias="@id",
+        default_factory=lambda: "md:Quantification/" + str(uuid4())
+    )
+    ld_type: list[str] = Field(
+        serialization_alias="@type",
+        default_factory = lambda: [
+            "md:Quantification",
+        ],
+    )
+    ld_context: dict[str, str | dict] = Field(
+        serialization_alias="@context",
+        default_factory = lambda: {
+            "md": "http://mdmodel.net",
+            "QuantificationMethods": "http://mdmodel.net#QuantificationMethods/",
+            "Baseline": "http://mdmodel.net#Baseline/",
+            "Lineshape": "http://mdmodel.net#Lineshape/",
+            "Quadrature": "http://mdmodel.net#Quadrature/",
+        }
+    )
+
+
+    def set_attr_term(
+        self,
+        attr: str,
+        term: str | dict,
+        prefix: str | None = None,
+        iri: str | None = None
+    ):
+        """Sets the term for a given attribute in the JSON-LD object
+
+        Example:
+            # Using an IRI term
+            >> obj.set_attr_term("name", "http://schema.org/givenName")
+
+            # Using a prefix and term
+            >> obj.set_attr_term("name", "schema:givenName", "schema", "http://schema.org")
+
+            # Usinng a dictionary term
+            >> obj.set_attr_term("name", {"@id": "http://schema.org/givenName", "@type": "@id"})
+
+        Args:
+            attr (str): The attribute to set the term for
+            term (str | dict): The term to set for the attribute
+
+        Raises:
+            AssertionError: If the attribute is not found in the model
+        """
+
+        assert attr in self.model_fields, f"Attribute {attr} not found in {self.__class__.__name__}"
+
+        if prefix:
+            validate_prefix(term, prefix)
+
+        add_namespace(self, prefix, iri)
+        self.ld_context[attr] = term
+
+    def add_type_term(
+        self,
+        term: str,
+        prefix: str | None = None,
+        iri: str | None = None
+    ):
+        """Adds a term to the @type field of the JSON-LD object
+
+        Example:
+            # Using a term
+            >> obj.add_type_term("https://schema.org/Person")
+
+            # Using a prefixed term
+            >> obj.add_type_term("schema:Person", "schema", "https://schema.org/Person")
+
+        Args:
+            term (str): The term to add to the @type field
+            prefix (str, optional): The prefix to use for the term. Defaults to None.
+            iri (str, optional): The IRI to use for the term prefix. Defaults to None.
+
+        Raises:
+            ValueError: If prefix is provided but iri is not
+            ValueError: If iri is provided but prefix is not
+        """
+
+        if prefix:
+            validate_prefix(term, prefix)
+
+        add_namespace(self, prefix, iri)
+        self.ld_type.append(term)
+
+
+class Baseline(BaseModel):
+
+    model_config: ConfigDict = ConfigDict( # type: ignore
+        validate_assignment = True,
+    ) # type: ignore
+
+    method: BaselineMethods = Field(
+        default=...,
+        description="""Method used to determine the local baseline.""",
+    )
+    anchor_points_start: list[float] = Field(
+        default_factory=list,
+        description="""Positions of the spectral data points at the left-
+        position edge (higher ppm) of the peak
+        range used to anchor the baseline. Note
+        that this anchor region lies inside the
+        integrated range and may therefore contain
+        peak tails.""",
+    )
+    anchor_points_end: list[float] = Field(
+        default_factory=list,
+        description="""Positions of the spectral data points at the
+        right-position edge (lower ppm) of the
+        peak range used to anchor the baseline.""",
+    )
+    slope: Optional[float] = Field(
+        default=None,
+        description="""Slope of the fitted baseline.""",
+    )
+    intercept: Optional[float] = Field(
+        default=None,
+        description="""Intercept of the fitted baseline.""",
+    )
+
+    # JSON-LD fields
+    ld_id: str = Field(
+        serialization_alias="@id",
+        default_factory=lambda: "md:Baseline/" + str(uuid4())
+    )
+    ld_type: list[str] = Field(
+        serialization_alias="@type",
+        default_factory = lambda: [
+            "md:Baseline",
+        ],
+    )
+    ld_context: dict[str, str | dict] = Field(
+        serialization_alias="@context",
+        default_factory = lambda: {
+            "md": "http://mdmodel.net",
+            "BaselineMethods": "http://mdmodel.net#BaselineMethods/",
+        }
+    )
+
+
+    def set_attr_term(
+        self,
+        attr: str,
+        term: str | dict,
+        prefix: str | None = None,
+        iri: str | None = None
+    ):
+        """Sets the term for a given attribute in the JSON-LD object
+
+        Example:
+            # Using an IRI term
+            >> obj.set_attr_term("name", "http://schema.org/givenName")
+
+            # Using a prefix and term
+            >> obj.set_attr_term("name", "schema:givenName", "schema", "http://schema.org")
+
+            # Usinng a dictionary term
+            >> obj.set_attr_term("name", {"@id": "http://schema.org/givenName", "@type": "@id"})
+
+        Args:
+            attr (str): The attribute to set the term for
+            term (str | dict): The term to set for the attribute
+
+        Raises:
+            AssertionError: If the attribute is not found in the model
+        """
+
+        assert attr in self.model_fields, f"Attribute {attr} not found in {self.__class__.__name__}"
+
+        if prefix:
+            validate_prefix(term, prefix)
+
+        add_namespace(self, prefix, iri)
+        self.ld_context[attr] = term
+
+    def add_type_term(
+        self,
+        term: str,
+        prefix: str | None = None,
+        iri: str | None = None
+    ):
+        """Adds a term to the @type field of the JSON-LD object
+
+        Example:
+            # Using a term
+            >> obj.add_type_term("https://schema.org/Person")
+
+            # Using a prefixed term
+            >> obj.add_type_term("schema:Person", "schema", "https://schema.org/Person")
+
+        Args:
+            term (str): The term to add to the @type field
+            prefix (str, optional): The prefix to use for the term. Defaults to None.
+            iri (str, optional): The IRI to use for the term prefix. Defaults to None.
+
+        Raises:
+            ValueError: If prefix is provided but iri is not
+            ValueError: If iri is provided but prefix is not
+        """
+
+        if prefix:
+            validate_prefix(term, prefix)
+
+        add_namespace(self, prefix, iri)
+        self.ld_type.append(term)
+
+
+class Lineshape(BaseModel):
+
+    model_config: ConfigDict = ConfigDict( # type: ignore
+        validate_assignment = True,
+    ) # type: ignore
+
+    model: LineshapeModels = Field(
+        default=...,
+        description="""Lineshape model fitted to the peak.""",
+    )
+    fitting_method: Optional[str] = Field(
+        default=None,
+        description="""Optimization algorithm used to fit the lineshape,
+        as passed to the underlying fitting routine (e.g. `leastsq` for
+        Levenberg-Marquardt).""",
+    )
+    formula: Optional[str] = Field(
+        default=None,
+        description="""Implemented formula of the fitted model,
+        corresponding to the sequence of fitting
+        parameters.""",
+    )
+    amplitude: Optional[float] = Field(
+        default=None,
+        description="""Amplitude of the fitted model curve.""",
+    )
+    center: Optional[float] = Field(
+        default=None,
+        description="""Center of the fitted model curve.""",
+    )
+    gaussian_width: Optional[float] = Field(
+        default=None,
+        description="""Width of the Gaussian component of the fitted
+        model curve.""",
+    )
+    lorentzian_width: Optional[float] = Field(
+        default=None,
+        description="""Width of the Lorentzian component of the fitted
+        model curve.""",
+    )
+    fraction_lorentzian: Optional[float] = Field(
+        default=None,
+        description="""Fraction of the Lorentzian component of the fitted
+        model curve.""",
+    )
+
+    # JSON-LD fields
+    ld_id: str = Field(
+        serialization_alias="@id",
+        default_factory=lambda: "md:Lineshape/" + str(uuid4())
+    )
+    ld_type: list[str] = Field(
+        serialization_alias="@type",
+        default_factory = lambda: [
+            "md:Lineshape",
+        ],
+    )
+    ld_context: dict[str, str | dict] = Field(
+        serialization_alias="@context",
+        default_factory = lambda: {
+            "md": "http://mdmodel.net",
+            "LineshapeModels": "http://mdmodel.net#LineshapeModels/",
+        }
+    )
+
+
+    def set_attr_term(
+        self,
+        attr: str,
+        term: str | dict,
+        prefix: str | None = None,
+        iri: str | None = None
+    ):
+        """Sets the term for a given attribute in the JSON-LD object
+
+        Example:
+            # Using an IRI term
+            >> obj.set_attr_term("name", "http://schema.org/givenName")
+
+            # Using a prefix and term
+            >> obj.set_attr_term("name", "schema:givenName", "schema", "http://schema.org")
+
+            # Usinng a dictionary term
+            >> obj.set_attr_term("name", {"@id": "http://schema.org/givenName", "@type": "@id"})
+
+        Args:
+            attr (str): The attribute to set the term for
+            term (str | dict): The term to set for the attribute
+
+        Raises:
+            AssertionError: If the attribute is not found in the model
+        """
+
+        assert attr in self.model_fields, f"Attribute {attr} not found in {self.__class__.__name__}"
+
+        if prefix:
+            validate_prefix(term, prefix)
+
+        add_namespace(self, prefix, iri)
+        self.ld_context[attr] = term
+
+    def add_type_term(
+        self,
+        term: str,
+        prefix: str | None = None,
+        iri: str | None = None
+    ):
+        """Adds a term to the @type field of the JSON-LD object
+
+        Example:
+            # Using a term
+            >> obj.add_type_term("https://schema.org/Person")
+
+            # Using a prefixed term
+            >> obj.add_type_term("schema:Person", "schema", "https://schema.org/Person")
+
+        Args:
+            term (str): The term to add to the @type field
+            prefix (str, optional): The prefix to use for the term. Defaults to None.
+            iri (str, optional): The IRI to use for the term prefix. Defaults to None.
+
+        Raises:
+            ValueError: If prefix is provided but iri is not
+            ValueError: If iri is provided but prefix is not
+        """
+
+        if prefix:
+            validate_prefix(term, prefix)
+
+        add_namespace(self, prefix, iri)
+        self.ld_type.append(term)
+
+
+class Quadrature(BaseModel):
+
+    model_config: ConfigDict = ConfigDict( # type: ignore
+        validate_assignment = True,
+    ) # type: ignore
+
+    rule: QuadratureRules = Field(
+        default=...,
+        description="""Quadrature rule used for the numeric integration.""",
+    )
+    n_points: Optional[int] = Field(
+        default=None,
+        description="""Number of spectral data points within the
+        peak range that entered the numeric
+        integration, determined by the acquisition
+        and the range width rather than chosen.""",
+    )
+
+    # JSON-LD fields
+    ld_id: str = Field(
+        serialization_alias="@id",
+        default_factory=lambda: "md:Quadrature/" + str(uuid4())
+    )
+    ld_type: list[str] = Field(
+        serialization_alias="@type",
+        default_factory = lambda: [
+            "md:Quadrature",
+        ],
+    )
+    ld_context: dict[str, str | dict] = Field(
+        serialization_alias="@context",
+        default_factory = lambda: {
+            "md": "http://mdmodel.net",
+            "QuadratureRules": "http://mdmodel.net#QuadratureRules/",
         }
     )
 
@@ -1015,4 +1527,23 @@ class PeakRange(BaseModel):
 class FileFormats(Enum):
     BRUKER = "bruker"
     NONE = "None"
+    SPINSOLVE = "spinsolve"
     VARIAN = "varian"
+
+class QuantificationMethods(Enum):
+    DECONVOLUTION = "deconvolution"
+    NUMERIC_INTEGRATION = "numeric_integration"
+
+class BaselineMethods(Enum):
+    LOCAL_LINEAR = "local_linear"
+    NONE = "none"
+
+class LineshapeModels(Enum):
+    GAUSSIAN = "Gaussian"
+    LORENTZIAN = "Lorentzian"
+    PSEUDO_VOIGT = "pseudo-Voigt"
+
+class QuadratureRules(Enum):
+    RECTANGULAR = "rectangular"
+    SIMPSON = "Simpson"
+    TRAPEZOIDAL = "trapezoidal"

@@ -13,13 +13,21 @@ from IPython.display import display
 from datetime import datetime
 
 from nmrpy.nmrpy_model import (
-    NMRpy,
+    NMRPy,
     Experiment,
     FIDObject,
     Parameters,
     ProcessingSteps,
     Peak,
     PeakRange,
+    Quantification,
+    Baseline,
+    Lineshape,
+    Quadrature,
+    QuantificationMethods,
+    BaselineMethods,
+    LineshapeModels,
+    QuadratureRules
 )
 try:
     import pyenzyme
@@ -434,7 +442,7 @@ class Fid(Base):
     def enzymeml_species(self, enzymeml_species):
         if pyenzyme is None:
             raise RuntimeError(
-                'The `pyenzyme` package is required to use NMRpy with an EnzymeML document. Please install it via `pip install nmrpy[enzymeml]`.'
+                'The `pyenzyme` package is required to use NMRPy with an EnzymeML document. Please install it via `pip install nmrpy[enzymeml]`.'
             )
         if enzymeml_species is None:
             self.__enzymeml_species = None
@@ -560,11 +568,6 @@ class Fid(Base):
                 int_lorentz = (1-peak[-1])*Fid._f_lorentz_int(peak[3], peak[2])
                 integral = int_gauss+int_lorentz
                 integrals.append(integral)
-                # Update data model
-                if getattr(self, 'fid_object', None) is not None:
-                    peak_object = self.fid_object.peaks[i]
-                    if peak_object.peak_integral != integral:
-                        peak_object.peak_integral = float(integral)
             return integrals
 
     def _get_plots(self):
@@ -1288,7 +1291,6 @@ Ctrl+Alt+Right - assign
             params.append(current_params)
         return params
 
-
     @classmethod
     def _deconv_datum(cls, list_parameters):
         if len(list_parameters) != 5:
@@ -1320,6 +1322,37 @@ Ctrl+Alt+Right - assign
             f = f.transpose()
             fit.append(f)
         return fit
+
+    def _record_deconvolution(self, integrals, method):
+        if getattr(self, 'fid_object', None) is None:
+            return
+        peaks = self.fid_object.peaks
+        for i, (params, integral) in enumerate(zip(self._deconvoluted_peaks, integrals)):
+            if i >= len(peaks):
+                break
+            if params is None or len(params) != 5:
+                continue
+            offset, gauss_sigma, lorentz_hwhm, amplitude, frac_gauss = (float(v) for v in params)
+            if not numpy.isfinite([offset, gauss_sigma, lorentz_hwhm, amplitude, integral]).all():
+                continue
+
+            q = peaks[i].peak_quantification or Quantification(method=QuantificationMethods.DECONVOLUTION)
+            if q.method != QuantificationMethods.DECONVOLUTION:
+                q.method=QuantificationMethods.DECONVOLUTION
+            q.peak_area = float(integral)
+            q.lineshape = Lineshape(
+                model=(LineshapeModels.LORENTZIAN if frac_gauss == 0.0
+                    else LineshapeModels.GAUSSIAN if frac_gauss == 1.0
+                    else LineshapeModels.PSEUDO_VOIGT),
+                formula="frac_gauss*A*exp(-(x-offset)^2/(2*gauss_sigma^2)) + "
+                        "(1-frac_gauss)*A*lorentz_hwhm^2/(lorentz_hwhm^2 + (x-offset)^2)",
+                amplitude=amplitude,
+                center=float(self._ppm[int(round(offset))]),
+                gaussian_width=gauss_sigma,
+                lorentzian_width=lorentz_hwhm,
+                fraction_lorentzian=1.0 - frac_gauss,
+            )
+            peaks[i].peak_quantification = q
 
     def deconv(self, method='leastsq', frac_gauss=0.0):
         """
@@ -1358,7 +1391,9 @@ Ctrl+Alt+Right - assign
         print('deconvoluting {}'.format(self.id))
         list_parameters = [self.data, self._grouped_index_peaklist, self._index_ranges, frac_gauss, method]
         self._deconvoluted_peaks = numpy.array([j for i in Fid._deconv_datum(list_parameters) for j in i])
-        print(self.deconvoluted_integrals)
+        integrals = self.deconvoluted_integrals
+        print(integrals)
+        self._record_deconvolution(integrals, method)
         # Update data model
         if getattr(self, 'fid_object', None) is not None:
             self.fid_object.processing_steps.is_deconvoluted = True
@@ -1467,7 +1502,7 @@ Ctrl+Alt+Right - assign
         """
         if (pyenzyme is None) and (isinstance(species_list, EnzymeMLDocument)):
             raise RuntimeError(
-                'The `pyenzyme` package is required to use NMRpy with an EnzymeML document. Please install it via `pip install nmrpy[enzymeml]`.'
+                'The `pyenzyme` package is required to use NMRPy with an EnzymeML document. Please install it via `pip install nmrpy[enzymeml]`.'
             )
         self._assigner_widget = PeakAssigner(
             fid=self,
@@ -1501,7 +1536,7 @@ class FidArray(Base):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.data_model = NMRpy(
+        self.data_model = NMRPy(
             datetime_created=str(datetime.now().isoformat()),
             experiment=Experiment(name='NMR experiment'),
         )
@@ -1529,9 +1564,9 @@ class FidArray(Base):
         if data_model is None:
             self.__data_model = None
             return
-        if not isinstance(data_model, NMRpy):
+        if not isinstance(data_model, NMRPy):
             raise AttributeError(
-                f'Parameter `data_model` has to be of type `NMRpy`, got {type(data_model)} instead.'
+                f'Parameter `data_model` has to be of type `NMRPy`, got {type(data_model)} instead.'
             )
         self.__data_model = data_model
         self.__data_model.datetime_modified = str(datetime.now().isoformat())
@@ -1556,7 +1591,7 @@ class FidArray(Base):
             return
         if (pyenzyme is None):
             raise RuntimeError(
-                'The `pyenzyme` package is required to use NMRpy with an EnzymeML document. Please install it via `pip install nmrpy[enzymeml]`.'
+                'The `pyenzyme` package is required to use NMRPy with an EnzymeML document. Please install it via `pip install nmrpy[enzymeml]`.'
             )
         if not isinstance(enzymeml_document, EnzymeMLDocument):
             raise AttributeError(
@@ -1684,10 +1719,10 @@ class FidArray(Base):
         if nfids > 0:
             try:
                 if 'acqtime_array' in self._params.keys():
-                    # New NMRpy _params structure
+                    # New NMRPy _params structure
                     t = self._params['acqtime_array']
                 else:
-                    # Old NMRpy _params structure
+                    # Old NMRPy _params structure
                     t = self._params['acqtime']
             except:
                 t = numpy.arange(len(self.get_fids()))
@@ -1753,10 +1788,10 @@ class FidArray(Base):
                     at = list(self._params['acqtime_array']) if 'acqtime_array' in self._params.keys() else list(self._params['acqtime'])
                     at.pop(idx)
                     if 'acqtime_array' in self._params.keys():
-                        # New NMRpy _params structure
+                        # New NMRPy _params structure
                         self._params['acqtime_array'] = at
                     else:
-                        # Old NMRpy _params structure
+                        # Old NMRPy _params structure
                         self._params['acqtime'] = at
             else:
                 raise AttributeError('{} is not an FID object.'.format(fid_id))
@@ -1830,7 +1865,7 @@ class FidArray(Base):
         """
         if (pyenzyme is None):
             raise RuntimeError(
-                'The `pyenzyme` package is required to use NMRpy with an EnzymeML document. Please install it via `pip install nmrpy[enzymeml]`.'
+                'The `pyenzyme` package is required to use NMRPy with an EnzymeML document. Please install it via `pip install nmrpy[enzymeml]`.'
             )
         self.enzymeml_document = pyenzyme.read_enzymeml(
             path=path_to_enzymeml_document
@@ -2105,11 +2140,9 @@ Ctrl+Alt+Right - assign
                     int_lorentz = (1 - peak[-1]) * Fid._f_lorentz_int(peak[3], peak[2])
                     integral = int_gauss + int_lorentz
                     integrals.append(integral)
+                    deconv_integrals = fid.deconvoluted_integrals                    
                     # Update data model
-                    if getattr(fid, 'fid_object', None) is not None:
-                        peak_object = fid.fid_object.peaks[i]
-                        if peak_object.peak_integral != integral:
-                            peak_object.peak_integral = float(integral)
+                    fid._record_deconvolution(deconv_integrals, method)                    
                 if getattr(fid, 'fid_object', None) is not None:
                     fid.fid_object.processing_steps.is_deconvoluted = True
         else:
@@ -2486,7 +2519,7 @@ Ctrl+Alt+Right - assign
         """
         if (pyenzyme is None) and (isinstance(species_list, EnzymeMLDocument)):
             raise RuntimeError(
-                "The `pyenzyme` package is required to use NMRpy with an EnzymeML document. Please install it via `pip install nmrpy[enzymeml]`."
+                "The `pyenzyme` package is required to use NMRPy with an EnzymeML document. Please install it via `pip install nmrpy[enzymeml]`."
             )
         self._assigner_widget = PeakRangeAssigner(
             fid_array=self, species_list=species_list, index_list=index_list
@@ -2517,7 +2550,7 @@ Ctrl+Alt+Right - assign
 
         :keyword overwrite: if True, overwrite existing file
 
-        :keyword keep_data_model: if True, keep the NMRpy data model (default is False)
+        :keyword keep_data_model: if True, keep the NMRPy data model (default is False)
 
         :keyword keep_enzymeml: if True, keep the EnzymeML document (default is True)
         """
@@ -2554,7 +2587,7 @@ Ctrl+Alt+Right - assign
 
     def save_data_model(self, format: str = 'json', filename=None, overwrite=False):
         """
-        Save the NMRpy data model to a file.
+        Save the NMRPy data model to a file.
 
         :keyword format: format of the file to save the data model to (default is 'json')
 
@@ -2614,7 +2647,7 @@ Ctrl+Alt+Right - assign
         """
         if (pyenzyme is None):
             raise RuntimeError(
-                'The `pyenzyme` package is required to use NMRpy with an EnzymeML document. Please install it via `pip install nmrpy[enzymeml]`.'
+                'The `pyenzyme` package is required to use NMRPy with an EnzymeML document. Please install it via `pip install nmrpy[enzymeml]`.'
             )
         if len(self.enzymeml_document.measurements) == 0:
             raise ValueError(
@@ -2664,7 +2697,7 @@ Ctrl+Alt+Right - assign
 
         if (pyenzyme is None):
             raise RuntimeError(
-                'The `pyenzyme` package is required to use NMRpy with an EnzymeML document. Please install it via `pip install nmrpy[enzymeml]`.'
+                'The `pyenzyme` package is required to use NMRPy with an EnzymeML document. Please install it via `pip install nmrpy[enzymeml]`.'
             )
         if not self.enzymeml_document:
             raise AttributeError(
@@ -2719,7 +2752,7 @@ Ctrl+Alt+Right - assign
         """
         if (pyenzyme is None):
             raise RuntimeError(
-                'The `pyenzyme` package is required to use NMRpy with an EnzymeML document. Please install it via `pip install nmrpy[enzymeml]`.'
+                'The `pyenzyme` package is required to use NMRPy with an EnzymeML document. Please install it via `pip install nmrpy[enzymeml]`.'
             )
         if not self.concentrations:
             raise RuntimeError(
