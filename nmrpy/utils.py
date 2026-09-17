@@ -406,7 +406,7 @@ def fill_enzymeml_measurement(
             keep_ph (bool): Whether to keep the pH of the template measurement.
             keep_temperature (bool): Whether to keep the temperature of the
               template measurement.
-            keep_initial (bool): Whether to keep the initial concentrations of
+            keep_prepared (bool): Whether to keep the prepared concentrations of
               the template measurement.
             id (str): The ID of the measurement.
             name (str): The name of the measurement.
@@ -414,8 +414,8 @@ def fill_enzymeml_measurement(
             temperature (float): The temperature of the measurement.
             temperature_unit (str): The unit of the temperature of the
               measurement.
-            initial (dict): A dictionary with species IDs (as they are defined
-              in the EnzymeML document) as keys and initial values as values.
+            prepared (dict): A dictionary with species IDs (as they are defined
+              in the EnzymeML document) as keys and prepared values as values.
             data_type (str): The type of data to be stored in the measurement.
             data_unit (str): The unit of the data to be stored in the
               measurement.
@@ -423,8 +423,8 @@ def fill_enzymeml_measurement(
               measurement.
 
     Raises:
-        ValueError: If no value for `ph`, `temperature`, or `initial` is
-          provided but `keep_ph`, `keep_temperature`, or `keep_initial` is set
+        ValueError: If no value for `ph`, `temperature`, or `prepared` is
+          provided but `keep_ph`, `keep_temperature`, or `keep_prepared` is set
           to `False`.
         ValueError: If a temperature value is provided but no
           `temperature_unit`.
@@ -492,8 +492,8 @@ def fill_enzymeml_measurement(
             _time_unit = kwargs['time_unit']
         if kwargs['template_measurement']:
             for species_datum in measurement.species_data:
-                if species_datum.species_id in kwargs['initial']:
-                    species_datum.initial = kwargs['initial'][species_datum.species_id]
+                if species_datum.species_id in kwargs['prepared']:
+                    species_datum.prepared = kwargs['prepared'][species_datum.species_id]
                     if _data_type:
                         species_datum.data_type = _data_type
                     if _data_unit:
@@ -517,16 +517,16 @@ def fill_enzymeml_measurement(
                 for species in getattr(enzymeml_document, species_type):
                     measurement.add_to_species_data(
                         species_id=species.id,
-                        initial=kwargs['initial'][species.id],
+                        prepared=kwargs['prepared'][species.id],
                         data_type=_data_type,
                         data_unit=_data_unit,
                         time_unit=_time_unit,
                     )
-    elif kwargs['keep_initial'] and kwargs['template_measurement']:
+    elif kwargs['keep_prepared'] and kwargs['template_measurement']:
         pass
     else:
         raise ValueError(
-            'The `measurement.species_data.initial` field is required in the EnzymeML standard. Please provide a dictionary with species IDs (as they are defined in the EnzymeML document) as keys and initial values as values using the `initial` keyword argument.'
+            'The `measurement.species_data.prepared` field is required in the EnzymeML standard. Please provide a dictionary with species IDs (as they are defined in the EnzymeML document) as keys and prepared values as values using the `prepared` keyword argument.'
         )
 
     return measurement

@@ -2364,7 +2364,7 @@ class MeasurementCreator:
         self._initial_name = None
         self._initial_id = None
         self._current_temp_unit = 'K'
-        self._missing_initial_conditions = []
+        self._missing_prepared_conditions = []
 
         self.create_widgets()
         self.setup_callbacks()
@@ -2451,13 +2451,13 @@ class MeasurementCreator:
             style={'description_width': 'initial'},
         )
 
-        self.initial_checkbox = Checkbox(
+        self.prepared_checkbox = Checkbox(
             value=False,
-            description='Keep initial conditions?',
+            description='Keep prepared conditions?',
             indent=False,
             disabled=True,
         )
-        self.initial_tabs = self._create_initial_tabs()
+        self.prepared_tabs = self._create_prepared_tabs()
 
         self.warning_html = HTML(value='')
 
@@ -2478,15 +2478,15 @@ class MeasurementCreator:
                 self.temperature_textbox,
                 self.temperature_unit_combobox,
                 self.spacer,
-                self.initial_checkbox,
+                self.prepared_checkbox,
                 self.spacer,
                 self.spacer,
                 self.warning_html,
             ]
         )
 
-    def _create_initial_tabs(self):
-        initial_tabs = {}
+    def _create_prepared_tabs(self):
+        prepared_tabs = {}
         if self.template_measurement:
             selected_measurement = self.template_measurement.model_copy(deep=True)
         else:
@@ -2497,29 +2497,29 @@ class MeasurementCreator:
                     enzymeml_species = species
                     break
             
-            initial_condition_tab = InitialConditionTab(
+            prepared_condition_tab = PreparedConditionTab(
                 species_id = enzymeml_species.id,
                 title = str(enzymeml_species.id),
-                header = HTML(value=f'<b>Set initial conditions for {format_species_string(enzymeml_species)}</b>'),
+                header = HTML(value=f'<b>Set prepared conditions for {format_species_string(enzymeml_species)}</b>'),
                 textbox = BoundedFloatText(
                     value=0.0,
                     min=0.0,
                     max=1000.0,
                     step=0.01,
-                    description='Initial condition:',
+                    description='Prepared condition:',
                     layout={'width': 'max-content'},
                     style={'description_width': 'initial'},
                 ),
                 data_type_dropdown = Dropdown(
                     options=[(data_type.name.capitalize().replace('_', ' '), data_type) for data_type in pyenzyme.DataTypes],
-                    description='Data type of initial condition:',
+                    description='Data type of prepared condition:',
                     value=pyenzyme.DataTypes.CONCENTRATION,
                     layout={'width': 'max-content'},
                     style={'description_width': 'initial'},
                 ),
                 data_unit_combobox = Combobox(
                     options=self.c_units,
-                    description='Unit of initial condition:',
+                    description='Unit of prepared condition:',
                     value='mM',
                     ensure_option=False,
                     placeholder='Select or type unit',
@@ -2536,8 +2536,8 @@ class MeasurementCreator:
                     style={'description_width': 'initial'},
                 )
             )
-            initial_tabs[initial_condition_tab.species_id] = initial_condition_tab
-        return initial_tabs
+            prepared_tabs[prepared_condition_tab.species_id] = prepared_condition_tab
+        return prepared_tabs
 
     def setup_callbacks(self):
         # Set up all widget callbacks
@@ -2556,12 +2556,12 @@ class MeasurementCreator:
         self.temperature_textbox.observe(self._handle_temperature_change)
         self.temperature_unit_combobox.observe(self._handle_temperature_unit_change)
 
-        self.initial_checkbox.observe(self._handle_initial_check)
-        for initial_tab in self.initial_tabs.values():
-            initial_tab.textbox.observe(lambda event, initial_tab=initial_tab: self._handle_initial_condition_change(event, initial_tab))
-            initial_tab.data_type_dropdown.observe(lambda event, initial_tab=initial_tab: self._handle_data_type_change(event, initial_tab))
-            initial_tab.data_unit_combobox.observe(lambda event, initial_tab=initial_tab: self._handle_data_unit_change(event, initial_tab))
-            initial_tab.time_unit_combobox.observe(lambda event, initial_tab=initial_tab: self._handle_time_unit_change(event, initial_tab))
+        self.prepared_checkbox.observe(self._handle_prepared_check)
+        for prepared_tab in self.prepared_tabs.values():
+            prepared_tab.textbox.observe(lambda event, prepared_tab=prepared_tab: self._handle_prepared_condition_change(event, prepared_tab))
+            prepared_tab.data_type_dropdown.observe(lambda event, prepared_tab=prepared_tab: self._handle_data_type_change(event, prepared_tab))
+            prepared_tab.data_unit_combobox.observe(lambda event, prepared_tab=prepared_tab: self._handle_data_unit_change(event, prepared_tab))
+            prepared_tab.time_unit_combobox.observe(lambda event, prepared_tab=prepared_tab: self._handle_time_unit_change(event, prepared_tab))
 
     def initialize_measurement(self):
         # Initialize the new measurement
@@ -2578,7 +2578,7 @@ class MeasurementCreator:
         self._initial_name = self.new_measurement.name
         self._initial_id = self.new_measurement.id
         self.fid_array.enzymeml_document.measurements.append(self.new_measurement)
-        self._initialize_missing_initial_conditions()
+        self._initialize_missing_prepared_conditions()
         self.initialized = True
 
     def clear_species_data(self, measurement):
@@ -2587,7 +2587,7 @@ class MeasurementCreator:
         measurement.temperature = None
         measurement.temperature_unit = None
         for species_datum in measurement.species_data:
-            del species_datum.initial
+            del species_datum.prepared
             del species_datum.data_type
             del species_datum.data_unit
             del species_datum.time_unit
@@ -2595,9 +2595,9 @@ class MeasurementCreator:
     def layout_widgets(self):
         # Create widget layout and display
         tab_children = [self.general_tab]
-        tab_children.extend(initial_tab.as_vbox() for initial_tab in self.initial_tabs.values())
+        tab_children.extend(prepared_tab.as_vbox() for prepared_tab in self.prepared_tabs.values())
         tab_titles = ['General']
-        tab_titles.extend(initial_tab.title for initial_tab in self.initial_tabs.values())
+        tab_titles.extend(prepared_tab.title for prepared_tab in self.prepared_tabs.values())
         self.tab = Tab(
             children=tab_children,
             titles=tab_titles,
@@ -2610,12 +2610,12 @@ class MeasurementCreator:
         )
         display(self.container)
 
-    def _initialize_missing_initial_conditions(self):
-        self._missing_initial_conditions = []
+    def _initialize_missing_prepared_conditions(self):
+        self._missing_prepared_conditions = []
         for species in get_species_from_enzymeml(self.fid_array.enzymeml_document):
             enzymeml_species = species
-            self._missing_initial_conditions.append(format_species_string(enzymeml_species))
-        self.warning_html.value = f'<b>WARNING:</b> Initial conditions for {', '.join(self._missing_initial_conditions)} are still missing!'
+            self._missing_prepared_conditions.append(format_species_string(enzymeml_species))
+        self.warning_html.value = f'<b>WARNING:</b> Prepared conditions for {', '.join(self._missing_prepared_conditions)} are still missing!'
 
     def _handle_name_change(self, event):
         # Enable the name_textbox when the name_checkbox is checked
@@ -2659,7 +2659,7 @@ class MeasurementCreator:
                 self.temperature_checkbox.disabled = False
                 self.temperature_textbox.disabled = True
                 self.temperature_unit_combobox.disabled = True
-                self.initial_checkbox.disabled = False
+                self.prepared_checkbox.disabled = False
             else:
                 self.template_dropdown.options = []
                 self.template_dropdown.disabled = True
@@ -2668,7 +2668,7 @@ class MeasurementCreator:
                 self.temperature_checkbox.disabled = True
                 self.temperature_textbox.disabled = False
                 self.temperature_unit_combobox.disabled = False
-                self.initial_checkbox.disabled = True
+                self.prepared_checkbox.disabled = True
                 self.template_measurement = None
                 current_name = self.new_measurement.name
                 current_id = self.new_measurement.id
@@ -2782,93 +2782,93 @@ class MeasurementCreator:
                     
                 self._current_temp_unit = new_unit
 
-    def _handle_initial_check(self, event):
-        # Enable the initial_checkbox when the template checkbox is
+    def _handle_prepared_check(self, event):
+        # Enable the prepared_checkbox when the template checkbox is
         # checked
         if event['type'] == 'change' and event['name'] == 'value':
             if event['new']:
-                for new_datum, template_datum, initial_tab in zip(self.new_measurement.species_data, self.template_measurement.species_data, self.initial_tabs.values()):
-                    initial_tab.textbox.value = template_datum.initial
-                    initial_tab.data_type_dropdown.options = [(template_datum.data_type.name.capitalize().replace('_', ' '), template_datum.data_type)]
-                    initial_tab.data_type_dropdown.value = template_datum.data_type
-                    initial_tab.data_unit_combobox.options = [template_datum.data_unit.name]
-                    initial_tab.data_unit_combobox.value = template_datum.data_unit.name
-                    initial_tab.time_unit_combobox.options = [template_datum.time_unit.name]
-                    initial_tab.time_unit_combobox.value = template_datum.time_unit.name
-                    new_datum.initial = template_datum.initial
+                for new_datum, template_datum, prepared_tab in zip(self.new_measurement.species_data, self.template_measurement.species_data, self.prepared_tabs.values()):
+                    prepared_tab.textbox.value = template_datum.prepared
+                    prepared_tab.data_type_dropdown.options = [(template_datum.data_type.name.capitalize().replace('_', ' '), template_datum.data_type)]
+                    prepared_tab.data_type_dropdown.value = template_datum.data_type
+                    prepared_tab.data_unit_combobox.options = [template_datum.data_unit.name]
+                    prepared_tab.data_unit_combobox.value = template_datum.data_unit.name
+                    prepared_tab.time_unit_combobox.options = [template_datum.time_unit.name]
+                    prepared_tab.time_unit_combobox.value = template_datum.time_unit.name
+                    new_datum.prepared = template_datum.prepared
                     new_datum.data_type = template_datum.data_type
                     new_datum.data_unit = template_datum.data_unit.name
                     new_datum.time_unit = template_datum.time_unit.name
             else:
-                for new_datum, initial_tab in zip(self.new_measurement.species_data, self.initial_tabs.values()):
-                    initial_tab.textbox.value = 0.0
-                    initial_tab.data_type_dropdown.options = [(data_type.name.capitalize().replace('_', ' '), data_type) for data_type in pyenzyme.DataTypes]
-                    initial_tab.data_type_dropdown.value = pyenzyme.DataTypes.CONCENTRATION
-                    initial_tab.data_unit_combobox.options = self.c_units
-                    initial_tab.data_unit_combobox.value = 'mM'
-                    initial_tab.time_unit_combobox.options = self.t_units
-                    initial_tab.time_unit_combobox.value = 's'
-                    new_datum.initial = None
+                for new_datum, prepared_tab in zip(self.new_measurement.species_data, self.prepared_tabs.values()):
+                    prepared_tab.textbox.value = 0.0
+                    prepared_tab.data_type_dropdown.options = [(data_type.name.capitalize().replace('_', ' '), data_type) for data_type in pyenzyme.DataTypes]
+                    prepared_tab.data_type_dropdown.value = pyenzyme.DataTypes.CONCENTRATION
+                    prepared_tab.data_unit_combobox.options = self.c_units
+                    prepared_tab.data_unit_combobox.value = 'mM'
+                    prepared_tab.time_unit_combobox.options = self.t_units
+                    prepared_tab.time_unit_combobox.value = 's'
+                    new_datum.prepared = None
                     new_datum.data_type = None
                     new_datum.data_unit = None
                     new_datum.time_unit = None
-                self._initialize_missing_initial_conditions()
+                self._initialize_missing_prepared_conditions()
 
-    def _handle_initial_condition_change(self, event, initial_tab):
-        # Enable the initial_checkbox when the template checkbox is
+    def _handle_prepared_condition_change(self, event, prepared_tab):
+        # Enable the prepared_checkbox when the template checkbox is
         # checked
         if event['type'] == 'change' and event['name'] == 'value':
             if event['new']:
                 if not self.new_measurement.species_data:
                     self.new_measurement.add_to_species_data(
-                            species_id=initial_tab.species_id,
-                            initial=event['new'],
-                            data_type=initial_tab.data_type_dropdown.value,
-                            data_unit=initial_tab.data_unit_combobox.value,
-                            time_unit=initial_tab.time_unit_combobox.value
+                            species_id=prepared_tab.species_id,
+                            prepared=event['new'],
+                            data_type=prepared_tab.data_type_dropdown.value,
+                            data_unit=prepared_tab.data_unit_combobox.value,
+                            time_unit=prepared_tab.time_unit_combobox.value
                         )
                 for species_datum in self.new_measurement.species_data:
-                    if species_datum.species_id == initial_tab.species_id:
-                        species_datum.initial = event['new']
+                    if species_datum.species_id == prepared_tab.species_id:
+                        species_datum.prepared = event['new']
                     for species in get_species_from_enzymeml(self.fid_array.enzymeml_document):
                         if species.id == species_datum.species_id:
                             enzymeml_species = species
-                            if format_species_string(enzymeml_species) in self._missing_initial_conditions:
-                                self._missing_initial_conditions.remove(format_species_string(enzymeml_species))
+                            if format_species_string(enzymeml_species) in self._missing_prepared_conditions:
+                                self._missing_prepared_conditions.remove(format_species_string(enzymeml_species))
                             break
-                    if len(self._missing_initial_conditions) == 0:
-                        self.warning_html.value = 'All initial conditions have been set!'
+                    if len(self._missing_prepared_conditions) == 0:
+                        self.warning_html.value = 'All prepared conditions have been set!'
                     else:
-                        self.warning_html.value = f'<b>WARNING:</b> Initial conditions for {', '.join(self._missing_initial_conditions)} are still missing!'
+                        self.warning_html.value = f'<b>WARNING:</b> Prepared conditions for {', '.join(self._missing_prepared_conditions)} are still missing!'
 
-    def _handle_data_type_change(self, event, initial_tab):
+    def _handle_data_type_change(self, event, prepared_tab):
         # Enable the data_type_dropdown when the data_type_checkbox is
         # checked
         if event['type'] == 'change' and event['name'] == 'value':
             if event['new']:
                 for species_datum in self.new_measurement.species_data:
-                    if species_datum.species_id == initial_tab.species_id:
+                    if species_datum.species_id == prepared_tab.species_id:
                         species_datum.data_type = event['new']
-    
-    def _handle_data_unit_change(self, event, initial_tab):
+
+    def _handle_data_unit_change(self, event, prepared_tab):
         # Enable the data_unit_combobox when the data_unit_checkbox is
         # checked
         if event['type'] == 'change' and event['name'] == 'value':
             if event['new']:
                 for species_datum in self.new_measurement.species_data:
-                    if species_datum.species_id == initial_tab.species_id:
+                    if species_datum.species_id == prepared_tab.species_id:
                         try:
                             species_datum.data_unit = event['new']
                         except Exception:
                             print(f'Invalid data unit: {event['new']}')
 
-    def _handle_time_unit_change(self, event, initial_tab):
+    def _handle_time_unit_change(self, event, prepared_tab):
         # Enable the time_unit_combobox when the time_unit_checkbox is
         # checked
         if event['type'] == 'change' and event['name'] == 'value':
             if event['new']:
                 for species_datum in self.new_measurement.species_data:
-                    if species_datum.species_id == initial_tab.species_id:
+                    if species_datum.species_id == prepared_tab.species_id:
                         try:
                             species_datum.time_unit = event['new']
                         except Exception:
