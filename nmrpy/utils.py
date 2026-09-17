@@ -365,7 +365,7 @@ def create_enzymeml_measurement(
         if kwargs['template_id']:
             for measurement in enzymeml_document.measurements:
                 if measurement.id == kwargs['template_id']:
-                    new_measurement = measurement.model_copy()
+                    new_measurement = measurement.model_copy(deep=True)
                     new_measurement.id = (
                         f'm{len(enzymeml_document.measurements) + 1}'
                     )
@@ -378,7 +378,7 @@ def create_enzymeml_measurement(
                     f'Measurement with ID {kwargs['template_id']} not found.'
                 )
         else:
-            new_measurement = enzymeml_document.measurements[-1].model_copy()
+            new_measurement = enzymeml_document.measurements[-1].model_copy(deep=True)
             new_measurement.id = f'm{len(enzymeml_document.measurements) + 1}'
             new_measurement.name = (
                 f'Measurement no. {len(enzymeml_document.measurements) + 1}'
