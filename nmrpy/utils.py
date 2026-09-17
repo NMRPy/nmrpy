@@ -429,7 +429,7 @@ def fill_enzymeml_measurement(
         ValueError: If a temperature value is provided but no
           `temperature_unit`.
         ValueError: If the provided `temperature_unit` is not a valid unit.
-        ValueError: If the value for `initial` is not a dictionary.
+        ValueError: If the value for `prepared` is not a dictionary.
         ValueError: If `data_type`, `data_unit`, or `time_unit` is provided but
           is not a valid EnzymeML data type, data unit, or time unit.
         ValueError: If no template measurement is provided but no value for
@@ -471,10 +471,10 @@ def fill_enzymeml_measurement(
         )
 
     # Initial
-    if 'initial' in kwargs:
-        if not isinstance(kwargs['initial'], dict):
+    if 'prepared' in kwargs:
+        if not isinstance(kwargs['prepared'], dict):
             raise ValueError(
-                'The `initial` keyword argument must be a dictionary with species IDs (as they are defined in the EnzymeML document) as keys and initial values as values.'
+                'The `prepared` keyword argument must be a dictionary with species IDs (as they are defined in the EnzymeML document) as keys and prepared values as values.'
             )
         _data_type = None
         _data_unit = None
