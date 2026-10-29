@@ -397,7 +397,11 @@ class Fid(Base):
     def fid_object(self):
         try:
             self.__fid_object.raw_data = [str(datum) for datum in self.raw_data]
-            self.__fid_object.processed_data = [float(datum) for datum in self.data]
+            data = numpy.asarray(self.data)
+            if numpy.iscomplexobj(data):
+                self.__fid_object.processed_data = [str(datum) for datum in data]
+            else:
+                self.__fid_object.processed_data = [float(datum) for datum in data]
         except AttributeError:
             print('Warning: Fid.data is not yet set. Processed data will not be updated.')
         if not isinstance(self._params.get('acqtime'), float):
@@ -1500,7 +1504,7 @@ Ctrl+Alt+Right - assign
         Raises:
             RuntimeError: If EnzymeML document is provided but the `pyenzyme` package is not installed.
         """
-        if (pyenzyme is None) and (isinstance(species_list, EnzymeMLDocument)):
+        if (pyenzyme is None) and not isinstance(species_list, (list, type(None))):
             raise RuntimeError(
                 'The `pyenzyme` package is required to use NMRPy with an EnzymeML document. Please install it via `pip install nmrpy[enzymeml]`.'
             )
@@ -2517,7 +2521,7 @@ Ctrl+Alt+Right - assign
         containing species defined in EnzymeML. When satisfied with
         assignment, press Assign button to apply.
         """
-        if (pyenzyme is None) and (isinstance(species_list, EnzymeMLDocument)):
+        if (pyenzyme is None) and not isinstance(species_list, (list, type(None))):
             raise RuntimeError(
                 "The `pyenzyme` package is required to use NMRPy with an EnzymeML document. Please install it via `pip install nmrpy[enzymeml]`."
             )

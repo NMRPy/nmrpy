@@ -28,11 +28,13 @@ try:
         InitialConditionTab,
         T0Logic,
         T0Tab,
-        format_species_string,
     )
 except ImportError as ex:
     print(f'Optional dependency import failed for plotting.py: {ex}')
     pyenzyme = None
+    EnzymeMLDocument = None
+    Protein = None
+from nmrpy.utils import format_species_string
 
 class Plot():
     """
@@ -1763,7 +1765,7 @@ class PeakAssigner:
                     self.available_species.append(species.id)
             return
         # Check for EnzymeML document
-        elif isinstance(species_source, EnzymeMLDocument):
+        elif EnzymeMLDocument is not None and isinstance(species_source, EnzymeMLDocument):
             self.available_species = get_species_from_enzymeml(
                 species_source,
                 proteins=False,
@@ -1940,7 +1942,7 @@ class PeakRangeAssigner:
             )
             return
         # Check for EnzymeML document
-        elif isinstance(species_source, EnzymeMLDocument):
+        elif EnzymeMLDocument is not None and isinstance(species_source, EnzymeMLDocument):
             self.available_species = get_species_from_enzymeml(
                 species_source,
                 proteins=False,

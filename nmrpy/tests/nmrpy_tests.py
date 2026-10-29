@@ -804,7 +804,7 @@ class TestDataModels(unittest.TestCase):
         self.enzml_doc = enzml_doc
 
         # Create data model objects
-        self.data_model = NMRpy(
+        self.data_model = NMRPy(
             datetime_created='2025-01-01T00:00:00',
             experiment=Experiment(name='Test experiment object')
         )
@@ -887,7 +887,7 @@ class TestDataModels(unittest.TestCase):
     
     # Test FidArray properties
     def test_fid_array_data_model_setter(self):
-        self.assertIsInstance(self.fid_array.data_model, NMRpy)
+        self.assertIsInstance(self.fid_array.data_model, NMRPy)
         self.fid_array.data_model = self.data_model
         self.assertEqual(self.fid_array.data_model, self.data_model)
         self.fid_array.data_model = None

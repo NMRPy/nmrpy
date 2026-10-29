@@ -11,6 +11,9 @@ except ImportError as ex:
     print(f'Optional dependency import failed for utils.py: {ex}')
     sympy = None
     pyenzyme = None
+    EnzymeMLDocument = None
+    Measurement = None
+    MeasurementData = None
 
 
 ##### Getters #####
@@ -482,7 +485,7 @@ def fill_enzymeml_measurement(
         if 'data_type' in kwargs:
             try:
                 _data_type = pyenzyme.DataTypes[kwargs['data_type'].upper()]
-            except ValueError:
+            except KeyError:
                 raise ValueError(
                     f'The `data_type` keyword argument must be a valid EnzymeML data type. Valid types are: {', '.join([data_type.name for data_type in pyenzyme.DataTypes])}.'
                 )
@@ -578,10 +581,16 @@ def create_enzymeml(
             'A measurement ID is required to create an EnzymeML document. Please provide a measurement ID using the `measurement_id` keyword argument.'
         )
     global_time = ([float(x) for x in fid_array.t],)
-    measurement = next(
-        measurement for measurement in enzymeml_document.measurements
-            if measurement.id == measurement_id
-    )
+    try:
+        measurement = next(
+            measurement for measurement in enzymeml_document.measurements
+                if measurement.id == measurement_id
+        )
+    except StopIteration as ex:
+        available_ids = [m.id for m in enzymeml_document.measurements]
+        raise ValueError(
+            f'Measurement ID `{measurement_id}` not found in the EnzymeML document. Available measurement IDs are: {", ".join(available_ids)}.'
+        ) from ex
     print(f'Selected measurement: {measurement}')
     for measured_species, concentrations in fid_array.concentrations.items():
         for available_species in measurement.species_data:
