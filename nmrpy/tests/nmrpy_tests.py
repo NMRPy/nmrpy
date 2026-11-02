@@ -1192,15 +1192,50 @@ class TestUtilsModule(unittest.TestCase):
             ph=7.0,
             temperature=298.15,
             temperature_unit='K',
-            initial={'s0': 1.0, 's1': 2.0, 'p0': 0.5},
+            prepared={'s0': 1.0, 's1': 2.0, 'p0': 0.5},
             data_type='concentration',
             data_unit='mol/l',
             time_unit='s'
         )
-        
+
         self.assertEqual(filled_measurement.id, 'filled_m')
         self.assertEqual(filled_measurement.name, 'Filled measurement')
         self.assertEqual(filled_measurement.ph, 7.0)
+        self.assertEqual(
+            {sd.species_id: sd.prepared for sd in filled_measurement.species_data},
+            {'s0': 1.0, 's1': 2.0, 'p0': 0.5}
+        )
+
+    def test_fill_enzymeml_measurement_from_template_leaves_template_untouched(self):
+        """Test that a measurement created from a template gets its own prepared values"""
+        from nmrpy.utils import fill_enzymeml_measurement, create_enzymeml_measurement
+
+        template = self.enzml_doc.measurements[0]
+        template_prepared = {sd.species_id: sd.prepared for sd in template.species_data}
+
+        measurement = create_enzymeml_measurement(
+            self.enzml_doc,
+            template_measurement=True,
+            template_id=template.id
+        )
+        filled_measurement = fill_enzymeml_measurement(
+            self.enzml_doc,
+            measurement,
+            template_measurement=True,
+            template_id=template.id,
+            keep_ph=True,
+            keep_temperature=True,
+            keep_prepared=False,
+            prepared={'s0': 9.0}
+        )
+
+        new_prepared = {sd.species_id: sd.prepared for sd in filled_measurement.species_data}
+        self.assertEqual(new_prepared['s0'], 9.0)
+        self.assertEqual(
+            {sd.species_id: sd.prepared for sd in template.species_data},
+            template_prepared
+        )
+        self.assertIsNot(filled_measurement.species_data, template.species_data)
 
 
 class TestPlottingWidgets(unittest.TestCase):

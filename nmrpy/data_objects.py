@@ -2695,7 +2695,7 @@ Ctrl+Alt+Right - assign
             template_id: str = None,
             keep_ph: bool = True,
             keep_temperature: bool = True,
-            keep_initial: bool = False,
+            keep_prepared: bool = False,
             **kwargs
         ) -> None:
 
@@ -2715,8 +2715,8 @@ Ctrl+Alt+Right - assign
             raise ValueError(
                 'No species data found in at least one EnzymeML measurement. Species data is required for each measurement.'
             )
-        if not template_measurement and (keep_ph or keep_temperature or keep_initial):
-            print('Warning: Without a template measurement, there are no pH, temperature, or initial values to keep.')
+        if not template_measurement and (keep_ph or keep_temperature or keep_prepared):
+            print('Warning: Without a template measurement, there are no pH, temperature, or prepared values to keep.')
 
         if gui:
             self._measurement_creator = MeasurementCreator(
@@ -2735,7 +2735,7 @@ Ctrl+Alt+Right - assign
                 template_id=template_id,                
                 keep_ph=keep_ph,
                 keep_temperature=keep_temperature,
-                keep_initial=keep_initial,
+                keep_prepared=keep_prepared,
                 **kwargs
             )
             self.enzymeml_document.measurements.append(new_measurement)
