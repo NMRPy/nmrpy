@@ -1,2 +1,9 @@
+line-length = 90
+
+[lint.flake8-quotes]
+docstring-quotes = "double"
+inline-quotes = "single"
+
 [format]
+# Prefer single quotes over double quotes
 quote-style = "single"

@@ -1,5 +1,5 @@
-{% set data = load_setup_py_data() %}
-{% set version =  data.get('version') %}
+{% set version_match = load_file_regex(load_file="./nmrpy/version.py", regex_pattern="^__version__\s*=\s*'(.*)'") %}
+{% set version = version_match[1] %}
 
 package:
   name: nmrpy
@@ -20,24 +20,30 @@ build:
 
 requirements:
   host:
-    - ipympl >=0.4.0
-    - lmfit >=0.9.10
-    - matplotlib >=3.0.0
-    - nmrglue >=0.6
-    - notebook >=6.0.0
-    - numpy >=1.15
-    - python >=3.5
+    - numpy
     - scipy
+    - jupyterlab
+    - matplotlib >=3.9.0
+    - ipympl >=0.9.5
+    - lmfit >=1.3.0
+    - nmrglue >0.11
+    - ipython >=8.0.0
+    - python >=3.12
+    - pydantic
     - pip
+    - setuptools
+    - wheel
   run:
-    - ipympl >=0.4.0
-    - lmfit >=0.9.10
-    - matplotlib >=3.0.0
-    - nmrglue >=0.6
-    - notebook >=6.0.0
-    - numpy >=1.15
-    - python >=3.5
+    - numpy
     - scipy
+    - jupyterlab
+    - matplotlib >=3.9.0
+    - ipympl >=0.9.5
+    - lmfit >=1.3.0
+    - nmrglue >0.11
+    - ipython >=8.0.0
+    - python >=3.12
+    - pydantic
 
 test:
   imports:
@@ -48,7 +54,7 @@ test:
 
 about:
   home: "https://github.com/NMRPy/nmrpy"
-  license: New BSD
+  license: BSD-3-Clause
   license_family: BSD
   license_file: LICENSE.txt 
   summary: "A suite of tools for processing and analysing NMR spectra in Python."

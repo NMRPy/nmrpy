@@ -11,24 +11,27 @@ jobs:
     name: Build pure Python wheel and source distribution
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-python@v2
+      - uses: actions/setup-python@v6
         name: Install Python
         with:
-          python-version: '3.9'
+          python-version: '3.13'
 
       - name: Build sdist and wheel
         run: |
-          pip install wheel
-          python setup.py sdist bdist_wheel
+          pip install wheel build
+          python -m build -s -w -o dist/ .
 
       - name: Test
         run: |
-          pip install dist/nmrpy*.whl
+          W=$(ls dist/nmrpy*.whl)
+          pip install ${W}
           python -s -c "import nmrpy; nmrpy.test('noplot')"
+          pip install ${W}"[enzymeml]"
+          python -s -c "import nmrpy; nmrpy.test('datamodels'); nmrpy.test('utils')"
 
-      - uses: actions/upload-artifact@v2
+      - uses: actions/upload-artifact@v7
         name: Upload build artifacts
         with:
           name: wheel_and_tarball
@@ -40,12 +43,12 @@ jobs:
     # to publish when a GitHub Release is created:
     if: github.event_name == 'release' && github.event.action == 'released'
     steps:
-      - uses: actions/download-artifact@v4.1.7
+      - uses: actions/download-artifact@v8
         with:
           name: wheel_and_tarball
           path: dist
 
-      - uses: pypa/gh-action-pypi-publish@v1.13.0
+      - uses: pypa/gh-action-pypi-publish@v1.14.0
         with:
           user: __token__
           password: ${{ secrets.PYPI_TOKEN }}
