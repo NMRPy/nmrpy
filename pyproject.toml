@@ -16,7 +16,7 @@ authors = [
 maintainers = [
     {name = "Johann Rohwer", email = "j.m.rohwer@gmail.com"}
 ]
-requires-python = ">=3.12,<3.14"
+requires-python = ">=3.12"
 keywords = ["NMR", "spectra", "processing", "analysis", "time series"]
 classifiers = [
   "Operating System :: Microsoft :: Windows",
@@ -40,7 +40,7 @@ dependencies = [
 
 [project.optional-dependencies]
 enzymeml = [
-    "pyenzyme>=2.1.0",
+    "pyenzyme>=2.3.0",
     "sympy"
 ]
 
