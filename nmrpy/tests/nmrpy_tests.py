@@ -1115,6 +1115,30 @@ class TestUtilsModule(unittest.TestCase):
         self.assertIn('s0', species_ids)
         self.assertIn('s1', species_ids)
 
+    def test_t0_logic_update_initials(self):
+        """Test T0Logic.update_initials sets initial to the t0 value"""
+        from nmrpy.utils import T0Logic
+
+        self.enzml_doc.add_to_small_molecules(
+            id='s2',
+            name='Constant small molecule',
+            vessel_id='v0',
+            constant=True
+        )
+        measurement = self.enzml_doc.measurements[0]
+        measurement.add_to_species_data(species_id='s2', prepared=0.3)
+        species_data = {sd.species_id: sd for sd in measurement.species_data}
+        species_data['s0'].time = [0.0, 1.0]
+        species_data['s0'].data = [0.8, 0.4]
+        species_data['s1'].prepared = 2.5
+
+        T0Logic(self.enzml_doc).update_initials()
+
+        self.assertEqual(species_data['s0'].initial, 0.8)
+        self.assertEqual(species_data['s2'].initial, 0.3)
+        # Not constant and without data: no t0 value is known, so it is left alone
+        self.assertEqual(species_data['s1'].initial, 2.0)
+
     def test_t0_logic_set_t0_value(self):
         """Test T0Logic.set_t0_value method"""
         from nmrpy.utils import T0Logic
@@ -1231,6 +1255,10 @@ class TestUtilsModule(unittest.TestCase):
 
         new_prepared = {sd.species_id: sd.prepared for sd in filled_measurement.species_data}
         self.assertEqual(new_prepared['s0'], 9.0)
+        for sd in filled_measurement.species_data:
+            self.assertIsNone(sd.initial)
+            self.assertEqual(sd.data, [])
+            self.assertEqual(sd.time, [])
         self.assertEqual(
             {sd.species_id: sd.prepared for sd in template.species_data},
             template_prepared

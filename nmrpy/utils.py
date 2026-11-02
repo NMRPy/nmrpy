@@ -322,10 +322,19 @@ class T0Logic:
         self._previous_offset = new_offset
 
     def update_initials(self) -> None:
-        """Set `initial` to data[0] for all species where available."""
+        """Set `initial` to the t0 value of every species where one is
+        known: data[0] for species with data, and `prepared` for constant
+        species without data, whose concentration does not change.
+        """
+        constant = {
+            s.id for s in get_species_from_enzymeml(self.doc)
+            if getattr(s, 'constant', False)
+        }
         for sd in self.measurement.species_data:
             if sd.data:
                 sd.initial = sd.data[0]
+            elif sd.species_id in constant and sd.prepared is not None:
+                sd.initial = sd.prepared
 
 
 @dataclass
@@ -391,6 +400,14 @@ def create_enzymeml_measurement(
             id=f'm{len(enzymeml_document.measurements) + 1}',
             name=f'Measurement no. {len(enzymeml_document.measurements) + 1}',
         )
+
+    if kwargs['template_measurement']:
+        # A template provides conditions, not results: initial values are
+        # derived from the new measurement's own t0 data later on.
+        for species_datum in new_measurement.species_data:
+            species_datum.initial = None
+            species_datum.time = []
+            species_datum.data = []
 
     return new_measurement
 
