@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Optional
 
 from ipywidgets import BoundedFloatText, Button, Checkbox, Combobox, Dropdown, HTML, VBox
@@ -14,6 +15,24 @@ except ImportError as ex:
     EnzymeMLDocument = None
     Measurement = None
     MeasurementData = None
+
+
+##### Timestamps #####
+
+def touch_enzymeml_document(enzymeml_document: EnzymeMLDocument) -> None:
+    """Record that NMRPy has just written to an EnzymeML document.
+
+    Sets `modified` to the current time and, if the document has no
+    `created` date yet, sets `created` to the same time. Only code that
+    changes the document calls this; reading a document must not.
+
+    Args:
+        enzymeml_document (EnzymeMLDocument): The document that was changed.
+    """
+    now = datetime.now().isoformat()
+    enzymeml_document.modified = now
+    if not enzymeml_document.created:
+        enzymeml_document.created = now
 
 
 ##### Getters #####
@@ -285,6 +304,7 @@ class T0Logic:
             t0 = sd.time[0]
             if t0 != 0.0:
                 sd.time = [t - t0 for t in sd.time]
+                touch_enzymeml_document(self.doc)
 
     def set_t0_value(self, species_id: str, value: float) -> None:
         """Ensure there is a data point at time 0.0 for a species; set
@@ -304,6 +324,7 @@ class T0Logic:
         else:
             sd.time.insert(0, 0.0)
             sd.data.insert(0, value)
+        touch_enzymeml_document(self.doc)
 
     def apply_offset(self, new_offset: float) -> None:
         """Apply an absolute offset to times (per species), keeping
@@ -319,6 +340,8 @@ class T0Logic:
                 head = sd.time[0]
                 tail = [t + delta for t in sd.time[1:]]
                 sd.time = [head, *tail]
+        if new_offset != prev:
+            touch_enzymeml_document(self.doc)
         self._previous_offset = new_offset
 
     def update_initials(self) -> None:
@@ -335,6 +358,7 @@ class T0Logic:
                 sd.initial = sd.data[0]
             elif sd.species_id in constant and sd.prepared is not None:
                 sd.initial = sd.prepared
+        touch_enzymeml_document(self.doc)
 
 
 @dataclass
@@ -616,5 +640,6 @@ def create_enzymeml(
             else:
                 available_species.time = [float(x) for x in global_time[0]]
                 available_species.data = [float(x) for x in concentrations]
-    
+    touch_enzymeml_document(enzymeml_document)
+
     return enzymeml_document

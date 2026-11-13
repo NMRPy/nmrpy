@@ -28,6 +28,7 @@ try:
         InitialConditionTab,
         T0Logic,
         T0Tab,
+        touch_enzymeml_document,
     )
 except ImportError as ex:
     print(f'Optional dependency import failed for plotting.py: {ex}')
@@ -2565,6 +2566,26 @@ class MeasurementCreator:
             prepared_tab.data_unit_combobox.observe(lambda event, prepared_tab=prepared_tab: self._handle_data_unit_change(event, prepared_tab))
             prepared_tab.time_unit_combobox.observe(lambda event, prepared_tab=prepared_tab: self._handle_time_unit_change(event, prepared_tab))
 
+        # Every edit made in this widget changes the new measurement, which
+        # is already part of the document: record it after the handlers ran.
+        edit_widgets = [
+            self.name_textbox, self.id_checkbox, self.id_textbox,
+            self.template_checkbox, self.template_dropdown,
+            self.ph_checkbox, self.ph_textbox,
+            self.temperature_checkbox, self.temperature_textbox, self.temperature_unit_combobox,
+            self.prepared_checkbox,
+        ]
+        for prepared_tab in self.prepared_tabs.values():
+            edit_widgets += [
+                prepared_tab.textbox, prepared_tab.data_type_dropdown,
+                prepared_tab.data_unit_combobox, prepared_tab.time_unit_combobox,
+            ]
+        for widget in edit_widgets:
+            widget.observe(self._touch_document, names='value')
+
+    def _touch_document(self, event):
+        touch_enzymeml_document(self.fid_array.enzymeml_document)
+
     def initialize_measurement(self):
         # Initialize the new measurement
         if self.initialized:
@@ -2580,6 +2601,7 @@ class MeasurementCreator:
         self._initial_name = self.new_measurement.name
         self._initial_id = self.new_measurement.id
         self.fid_array.enzymeml_document.measurements.append(self.new_measurement)
+        touch_enzymeml_document(self.fid_array.enzymeml_document)
         self._initialize_missing_prepared_conditions()
         self.initialized = True
 

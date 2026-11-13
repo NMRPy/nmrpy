@@ -32,7 +32,7 @@ from nmrpy.nmrpy_model import (
 try:
     import pyenzyme
     from pyenzyme import EnzymeMLDocument, Measurement
-    from nmrpy.utils import T0Logic, create_enzymeml, create_enzymeml_measurement, fill_enzymeml_measurement, get_species_from_enzymeml
+    from nmrpy.utils import T0Logic, create_enzymeml, create_enzymeml_measurement, fill_enzymeml_measurement, get_species_from_enzymeml, touch_enzymeml_document
 except ImportError as ex:
     print(f'Optional dependency import failed for data_objects.py: {ex}')
     pyenzyme = None
@@ -1558,7 +1558,6 @@ class FidArray(Base):
                     self.__data_model.experiment.fid_array.append(fid.fid_object)
                 else:
                     self.__data_model.experiment.fid_array[self.__data_model.experiment.fid_array.index(fid.fid_object)].ld_id = fid.fid_object.ld_id
-            self.__data_model.datetime_modified = str(datetime.now().isoformat())
         except AttributeError:
             print('Warning: FidArray.data_model is not yet set.')
         return self.__data_model
@@ -1573,7 +1572,6 @@ class FidArray(Base):
                 f'Parameter `data_model` has to be of type `NMRPy`, got {type(data_model)} instead.'
             )
         self.__data_model = data_model
-        self.__data_model.datetime_modified = str(datetime.now().isoformat())
 
     @data_model.deleter
     def data_model(self):
@@ -1582,11 +1580,16 @@ class FidArray(Base):
 
     @property
     def enzymeml_document(self):
+        # Reading the document must not change it: `modified` is set only
+        # where NMRPy writes into it (see utils.touch_enzymeml_document).
         try:
-            self.__enzymeml_document.modified = str(datetime.now().isoformat())
+            enzymeml_document = self.__enzymeml_document
         except AttributeError:
             print('Warning: FidArray.enzymeml_document is not yet set.')
-        return self.__enzymeml_document
+            raise
+        if enzymeml_document is None:
+            print('Warning: FidArray.enzymeml_document is not yet set.')
+        return enzymeml_document
 
     @enzymeml_document.setter
     def enzymeml_document(self, enzymeml_document):
@@ -1606,7 +1609,6 @@ class FidArray(Base):
                 'EnzymeML document must contain at least one measurement.'
             )
         self.__enzymeml_document = enzymeml_document
-        self.__enzymeml_document.modified = str(datetime.now().isoformat())
         self.__data_model.experiment.name = self.__enzymeml_document.name
         for fid in self.get_fids():
             fid.enzymeml_species = get_species_from_enzymeml(self.__enzymeml_document)
@@ -2621,7 +2623,10 @@ Ctrl+Alt+Right - assign
             # of floats instead
             else:
                 fid.fid_object.processed_data = fid.data.tolist()
-        self.data_model.datetime_modified = datetime.now().isoformat()
+        now = datetime.now().isoformat()
+        self.data_model.datetime_modified = now
+        if not self.data_model.datetime_created:
+            self.data_model.datetime_created = now
 
         # Save the data model
         if format == 'json':
@@ -2739,6 +2744,7 @@ Ctrl+Alt+Right - assign
                 **kwargs
             )
             self.enzymeml_document.measurements.append(new_measurement)
+            touch_enzymeml_document(self.enzymeml_document)
 
 
     def apply_to_enzymeml(self, enzymeml_document = None, measurement_id = None) -> EnzymeMLDocument:

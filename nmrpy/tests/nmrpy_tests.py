@@ -923,6 +923,44 @@ class TestDataModels(unittest.TestCase):
         with self.assertRaises(AttributeError):
             self.fid_array.enzymeml_document = True
     
+    def test_reading_enzymeml_document_keeps_its_dates(self):
+        self.enzml_doc.created = '2025-05-27T16:27:40.186749'
+        self.enzml_doc.modified = '2026-01-13T09:40:11.339031'
+        self.fid_array.enzymeml_document = self.enzml_doc
+        for _ in range(3):
+            _ = self.fid_array.enzymeml_document.measurements
+        self.assertEqual(self.fid_array.enzymeml_document.created, '2025-05-27T16:27:40.186749')
+        self.assertEqual(self.fid_array.enzymeml_document.modified, '2026-01-13T09:40:11.339031')
+
+    def test_reading_data_model_keeps_datetime_modified(self):
+        self.data_model.datetime_modified = '2026-01-13T09:21:38.704183'
+        self.fid_array.data_model = self.data_model
+        for _ in range(3):
+            _ = self.fid_array.data_model.experiment
+        self.assertEqual(self.fid_array.data_model.datetime_created, '2025-01-01T00:00:00')
+        self.assertEqual(self.fid_array.data_model.datetime_modified, '2026-01-13T09:21:38.704183')
+
+    def test_create_new_enzymeml_measurement_stamps_modified(self):
+        self.enzml_doc.created = '2025-05-27T16:27:40.186749'
+        self.enzml_doc.modified = '2026-01-13T09:40:11.339031'
+        self.fid_array.enzymeml_document = self.enzml_doc
+        self.fid_array.create_new_enzymeml_measurement(
+            gui=False,
+            template_measurement=False,
+            keep_ph=False,
+            keep_temperature=False,
+            ph=7.0,
+            temperature=298.15,
+            temperature_unit='K',
+            prepared={'test_variable_small_molecule': 1.0, 'test_constant_small_molecule': 1.0},
+            data_type='concentration',
+            data_unit='mol/l',
+            time_unit='s',
+        )
+        self.assertEqual(len(self.enzml_doc.measurements), 2)
+        self.assertEqual(self.enzml_doc.created, '2025-05-27T16:27:40.186749')
+        self.assertNotEqual(self.enzml_doc.modified, '2026-01-13T09:40:11.339031')
+
     def test_fid_array_concentrations_setter(self):
         for fid in self.fid_array.get_fids():
             fid.species = ['test_variable_small_molecule', 'test_variable_small_molecule', 'test_variable_small_molecule', 'test_constant_small_molecule']
@@ -1264,6 +1302,35 @@ class TestUtilsModule(unittest.TestCase):
             template_prepared
         )
         self.assertIsNot(filled_measurement.species_data, template.species_data)
+
+
+    def test_touch_enzymeml_document_fills_created_only_when_missing(self):
+        """touch_enzymeml_document sets modified, and created only if absent"""
+        from nmrpy.utils import touch_enzymeml_document
+
+        self.enzml_doc.created = None
+        self.enzml_doc.modified = None
+        touch_enzymeml_document(self.enzml_doc)
+        self.assertIsNotNone(self.enzml_doc.modified)
+        self.assertEqual(self.enzml_doc.created, self.enzml_doc.modified)
+
+        self.enzml_doc.created = '2025-05-27T16:27:40.186749'
+        touch_enzymeml_document(self.enzml_doc)
+        self.assertEqual(self.enzml_doc.created, '2025-05-27T16:27:40.186749')
+
+    def test_t0_logic_stamps_modified_on_write_only(self):
+        """T0Logic stamps modified when it writes, not when it reads"""
+        from nmrpy.utils import T0Logic
+
+        self.enzml_doc.created = '2025-05-27T16:27:40.186749'
+        self.enzml_doc.modified = '2026-01-13T09:40:11.339031'
+        logic = T0Logic(self.enzml_doc)
+        logic.nonconstant_species_ids()
+        logic.species_data_by_id()
+        self.assertEqual(self.enzml_doc.modified, '2026-01-13T09:40:11.339031')
+        logic.update_initials()
+        self.assertNotEqual(self.enzml_doc.modified, '2026-01-13T09:40:11.339031')
+        self.assertEqual(self.enzml_doc.created, '2025-05-27T16:27:40.186749')
 
 
 class TestPlottingWidgets(unittest.TestCase):
