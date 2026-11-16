@@ -632,7 +632,7 @@ def create_enzymeml(
         raise ValueError(
             f'Measurement ID `{measurement_id}` not found in the EnzymeML document. Available measurement IDs are: {", ".join(available_ids)}.'
         ) from ex
-    print(f'Selected measurement: {measurement}')
+    print(f'Selected measurement: {measurement.id} ({measurement.name})')
     for measured_species, concentrations in fid_array.concentrations.items():
         for available_species in measurement.species_data:
             if not available_species.species_id == measured_species:
