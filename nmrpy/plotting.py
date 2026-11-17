@@ -1,45 +1,43 @@
-import asyncio
-import logging
-import traceback
-from datetime import datetime
-from typing import List, Union
+from typing import Mapping, Optional
 
+import nmrpy.data_objects
+import logging, traceback
 import numpy
-import sympy as sp
-from IPython.display import display
-from ipywidgets import (
-    HTML,
-    Button,
-    Combobox,
-    Dropdown,
-    FloatText,
-    Label,
-    Output,
-    Text,
-    VBox,
-)
 from matplotlib import pyplot as plt
-from matplotlib.backend_bases import Event, NavigationToolbar2
-from matplotlib.collections import PolyCollection
+from datetime import datetime
 from matplotlib.figure import Figure
+from matplotlib.collections import PolyCollection
+
 from matplotlib.patches import Rectangle
 from matplotlib.transforms import blended_transform_factory
 from matplotlib.widgets import Cursor
 
-from pyenzyme.model import EnzymeMLDocument
+from ipywidgets import FloatText, Output, VBox, HBox, Button, Combobox, Dropdown, Label, Checkbox, HTML, Tab, BoundedFloatText, Text
+from IPython.display import display
 
-import nmrpy.data_objects
+try:
+    import pyenzyme
+    from pyenzyme import EnzymeMLDocument, Measurement
+    from pyenzyme.versions.v2 import Protein
+    from nmrpy.utils import (
+        get_ordered_list_of_species_names,
+        get_species_from_enzymeml,
+        format_measurement_string,
+        create_enzymeml_measurement,
+        fill_enzymeml_measurement,
+        InitialConditionTab,
+        T0Logic,
+        T0Tab,
+        touch_enzymeml_document,
+    )
+except ImportError as ex:
+    print(f'Optional dependency import failed for plotting.py: {ex}')
+    pyenzyme = None
+    EnzymeMLDocument = None
+    Protein = None
+from nmrpy.utils import format_species_string
 
-from .utils import (
-    format_species_string,
-    get_initial_concentration_by_species_id,
-    get_ordered_list_of_species_names,
-    get_species_from_enzymeml,
-    get_species_name_by_id,
-)
-
-
-class Plot:
+class Plot():
     """
     Basic 'plot' class containing functions for various types of plots.
     """
@@ -48,7 +46,7 @@ class Plot:
 
     def __init__(self):
         self._time = datetime.now()
-        self.id = "plot_{}".format(Plot._plot_id_num)
+        self.id = 'plot_{}'.format(Plot._plot_id_num)
         Plot._plot_id_num += 1
         self.fig = None
 
@@ -69,134 +67,118 @@ class Plot:
         if fig is None or isinstance(fig, Figure):
             self._fig = fig
         else:
-            raise TypeError("fig must be of type matplotlib.figure.Figure.")
+            raise TypeError('fig must be of type matplotlib.figure.Figure.')
 
-    def _plot_ppm(
-        self,
-        fid,
-        upper_ppm=None,
-        lower_ppm=None,
-        color="k",
-        lw=1,
-        filename=None,
-    ):
+    def _plot_ppm(self, fid,
+            upper_ppm=None, 
+            lower_ppm=None, 
+            color='k', 
+            lw=1,
+            filename=None):
         data = fid.data
         params = fid._params
-        ft = fid._flags["ft"]
-        if not Plot._is_flat_iter(data):
-            raise AttributeError("data must be flat iterable.")
+        ft=fid._flags['ft']
+        if not Plot._is_flat_iter(data): 
+            raise AttributeError('data must be flat iterable.')
         if upper_ppm is not None and lower_ppm is not None:
             if upper_ppm == lower_ppm or upper_ppm < lower_ppm:
-                raise ValueError("ppm range specified is invalid.")
-        sw_left = params["sw_left"]
-        sw = params["sw"]
+                raise ValueError('ppm range specified is invalid.')
+        sw_left = params['sw_left']
+        sw = params['sw']
 
         if upper_ppm is None:
             upper_ppm = sw_left
         if lower_ppm is None:
-            lower_ppm = sw_left - sw
+            lower_ppm = sw_left-sw
 
-        ppm = numpy.linspace(sw_left - sw, sw_left, len(data))[::-1]
+        ppm = numpy.linspace(sw_left-sw, sw_left, len(data))[::-1]
         ppm_bool_index = (ppm < upper_ppm) * (ppm > lower_ppm)
         ppm = ppm[ppm_bool_index]
         data = data[ppm_bool_index]
 
-        self.fig = plt.figure(figsize=[9, 5])
+        self.fig = plt.figure(figsize=[9,5])
         ax = self.fig.add_subplot(111)
         if ft:
             ax.plot(ppm, data, color=color, lw=lw)
             ax.invert_xaxis()
             ax.set_xlim([upper_ppm, lower_ppm])
             ax.grid()
-            ax.set_xlabel("PPM (%.2f MHz)" % (params["reffrq"]))
+            ax.set_xlabel('PPM (%.2f MHz)'%(params['reffrq']))
         elif not ft:
-            at = params["at"] * 1000  # ms
+            at = params['at']*1000 # ms
             t = numpy.linspace(0, at, len(data))
             ax.plot(t, data, color=color, lw=lw)
             ax.set_xlim([0, at])
             ax.grid()
-            ax.set_xlabel("Time (ms)")
-        # self.fig.show()
+            ax.set_xlabel('Time (ms)')
+        #self.fig.show()
         if filename is not None:
-            self.fig.savefig(filename, format="pdf")
+            self.fig.savefig(filename, format='pdf')
 
-    def _deconv_generator(
-        self,
-        fid,
-        upper_ppm=None,
-        lower_ppm=None,
-    ):
+    def _deconv_generator(self, fid,
+            upper_ppm=None, 
+            lower_ppm=None, 
+            ):
+
         data = fid.data
         params = fid._params
 
-        if not Plot._is_flat_iter(data):
-            raise AttributeError("data must be flat iterable.")
+        if not Plot._is_flat_iter(data): 
+            raise AttributeError('data must be flat iterable.')
 
-        peakshapes = fid._f_pks_list(fid._deconvoluted_peaks, numpy.arange(len(data)))
+        peakshapes = fid._f_pks_list(fid._deconvoluted_peaks, numpy.arange(len(data))) 
 
-        if not Plot._is_iter_of_iters(peakshapes):
-            raise AttributeError("data must be flat iterable.")
+        if not Plot._is_iter_of_iters(peakshapes): 
+            raise AttributeError('data must be flat iterable.')
         if upper_ppm is not None and lower_ppm is not None:
             if upper_ppm == lower_ppm or upper_ppm < lower_ppm:
-                raise ValueError("ppm range specified is invalid.")
-        sw_left = params["sw_left"]
-        sw = params["sw"]
+                raise ValueError('ppm range specified is invalid.')
+        sw_left = params['sw_left']
+        sw = params['sw']
 
         if upper_ppm is None:
             upper_ppm = sw_left
         if lower_ppm is None:
-            lower_ppm = sw_left - sw
+            lower_ppm = sw_left-sw
 
-        ppm = numpy.linspace(sw_left - sw, sw_left, len(data))[::-1]
+        ppm = numpy.linspace(sw_left-sw, sw_left, len(data))[::-1]
         ppm_bool_index = (ppm <= upper_ppm) * (ppm >= lower_ppm)
         ppm = ppm[ppm_bool_index]
         data = data[ppm_bool_index]
         peakshapes = peakshapes[:, ppm_bool_index]
         summed_peaks = peakshapes.sum(0)
-        residual = data - summed_peaks
-        return (
-            ppm,
-            data,
-            peakshapes,
-            summed_peaks,
-            residual,
-            upper_ppm,
-            lower_ppm,
-        )
+        residual = data-summed_peaks
+        return ppm, data, peakshapes, summed_peaks, residual, upper_ppm, lower_ppm
 
-    def _plot_deconv(
-        self,
-        fid,
-        upper_ppm=None,
-        lower_ppm=None,
-        colour="k",
-        peak_colour="b",
-        summed_peak_colour="r",
-        residual_colour="g",
-        lw=1,
-        show_labels=False,
-    ):
-        # validation takes place in self._deconv_generator
-        (
-            ppm,
-            data,
-            peakshapes,
-            summed_peaks,
-            residual,
-            upper_ppm,
-            lower_ppm,
-        ) = self._deconv_generator(fid, upper_ppm=upper_ppm, lower_ppm=lower_ppm)
+    def _plot_deconv(self, fid,
+            upper_ppm=None, 
+            lower_ppm=None, 
+            colour='k', 
+            peak_colour='b', 
+            summed_peak_colour='r', 
+            residual_colour='g', 
+            lw=1,
+            show_labels=False
+            ):
 
-        self.fig = plt.figure(figsize=[9, 5])
+        #validation takes place in self._deconv_generator
+        ppm, data, peakshapes, summed_peaks, residual, upper_ppm, \
+            lower_ppm = self._deconv_generator(fid, 
+                                               upper_ppm=upper_ppm, 
+                                               lower_ppm=lower_ppm)
+
+        self.fig = plt.figure(figsize=[9,5])
         ax = self.fig.add_subplot(111)
         ax.plot(ppm, residual, color=residual_colour, lw=lw)
         ax.plot(ppm, data, color=colour, lw=lw)
-        ax.plot(ppm, summed_peaks, "--", color=summed_peak_colour, lw=lw)
-        label_pad = 0.02 * peakshapes.max()
+        ax.plot(ppm, summed_peaks, '--', color=summed_peak_colour, lw=lw)
+        label_pad = 0.02*peakshapes.max()
         for n in range(len(peakshapes)):
             peak = peakshapes[n]
-            ax.plot(ppm, peak, "-", color=peak_colour, lw=lw)
-            if (fid._flags["assigned"]) and (show_labels):
+            ax.plot(ppm, peak, '-', color=peak_colour, lw=lw)
+            ax.text(ppm[numpy.argmax(peak)], label_pad+peak.max(), str(n), ha='center')
+            is_assigned = getattr(fid, '_flags', {}).get('assigned', False)
+            if (is_assigned) and (show_labels):
                 ax.text(
                     ppm[numpy.argmax(peak)],
                     label_pad + peak.max(),
@@ -205,46 +187,42 @@ class Plot:
                         if fid.fid_object.peaks
                         else str(n)
                     ),
-                    ha="center",
+                    ha='center',
                 )
         ax.invert_xaxis()
         ax.set_xlim([upper_ppm, lower_ppm])
         ax.grid()
-        ax.set_xlabel("PPM (%.2f MHz)" % (fid._params["reffrq"]))
-
-    def _plot_deconv_array(
-        self,
-        fids,
-        upper_index=None,
-        lower_index=None,
-        upper_ppm=None,
-        lower_ppm=None,
-        data_colour="k",
-        summed_peak_colour="r",
-        residual_colour="g",
-        data_filled=False,
-        summed_peak_filled=True,
-        residual_filled=False,
-        figsize=[9, 6],
-        lw=0.3,
-        azim=-90,
-        elev=20,
-        filename=None,
-    ):
+        ax.set_xlabel('PPM (%.2f MHz)'%(fid._params['reffrq']))
+        
+    def _plot_deconv_array(self, fids,
+            upper_index=None, 
+            lower_index=None, 
+            upper_ppm=None, 
+            lower_ppm=None, 
+            data_colour='k', 
+            summed_peak_colour='r', 
+            residual_colour='g', 
+            data_filled=False,
+            summed_peak_filled=True,
+            residual_filled=False,
+            figsize=[9, 6],
+            lw=0.3, 
+            azim=-90, 
+            elev=20,
+            roll=0,
+            filename=None):
         if lower_index is None:
             lower_index = 0
         if upper_index is None:
             upper_index = len(fids)
         if lower_index >= upper_index:
-            raise ValueError("upper_index must exceed lower_index")
-        fids = fids[lower_index:upper_index]
+            raise ValueError('upper_index must exceed lower_index')
+        fids = fids[lower_index: upper_index]
         generated_deconvs = []
         for fid in fids:
-            generated_deconvs.append(
-                self._deconv_generator(fid, upper_ppm=upper_ppm, lower_ppm=lower_ppm)
-            )
-
-        params = fids[0]._params
+            generated_deconvs.append(self._deconv_generator(fid, upper_ppm=upper_ppm, lower_ppm=lower_ppm))
+      
+        params = fids[0]._params 
         ppm = generated_deconvs[0][0]
         data = [i[1] for i in generated_deconvs]
         peakshapes = [i[2] for i in generated_deconvs]
@@ -253,87 +231,93 @@ class Plot:
         upper_ppm = generated_deconvs[0][5]
         lower_ppm = generated_deconvs[0][6]
 
-        plot_data = numpy.array(
-            [
-                residuals,
-                data,
-                summed_peaks,
-            ]
-        )
+        plot_data = numpy.array([
+                    residuals, 
+                    data, 
+                    summed_peaks,
+                    ])
         colours_list = [
-            [residual_colour] * len(residuals),
-            [data_colour] * len(data),
-            [summed_peak_colour] * len(summed_peaks),
-        ]
+                    [residual_colour]*len(residuals),
+                    [data_colour]*len(data), 
+                    [summed_peak_colour]*len(summed_peaks), 
+                    ]
         filled_list = [
-            residual_filled,
-            data_filled,
-            summed_peak_filled,
-        ]
+                    residual_filled,
+                    data_filled, 
+                    summed_peak_filled, 
+                    ] 
 
-        xlabel = "PPM (%.2f MHz)" % (params["reffrq"])
-        ylabel = "min."
-        acqtime = fids[0]._params["acqtime"]
-        minutes = acqtime[lower_index:upper_index]
-        self.fig = self._generic_array_plot(
-            ppm,
-            minutes,
-            plot_data,
-            colours_list=colours_list,
-            filled_list=filled_list,
-            figsize=figsize,
-            xlabel=xlabel,
-            ylabel=ylabel,
-            lw=lw,
-            azim=azim,
-            elev=elev,
-        )
+        xlabel = 'PPM (%.2f MHz)'%(params['reffrq'])
+        ylabel = 'min.'
+        if type(fids[0]._params['acqtime']) in (float, numpy.float64):
+            # New NMRpy _params structure
+            minutes = [fids[i]._params['acqtime'] for i in range(lower_index, upper_index)]
+        else:
+            # Old NMRpy _params structure
+            minutes = fids[0]._params['acqtime'][lower_index:upper_index]
+        self.fig = self._generic_array_plot(ppm, minutes, plot_data, 
+                                            colours_list=colours_list,
+                                            filled_list=filled_list,
+                                            figsize=figsize, 
+                                            xlabel=xlabel,
+                                            ylabel=ylabel,
+                                            lw=lw, 
+                                            azim=azim, 
+                                            elev=elev,
+                                            roll=roll,
+                                            )
         if filename is not None:
-            self.fig.savefig(filename, format="pdf")
+            self.fig.savefig(filename, format='pdf')
         plt.show()
+          
+        
 
-    def _plot_array(
-        self,
-        data,
-        params,
-        upper_index=None,
-        lower_index=None,
-        upper_ppm=None,
-        lower_ppm=None,
-        figsize=(9, 6),
-        lw=0.3,
-        azim=-90,
-        elev=20,
-        filled=False,
-        show_zticks=False,
-        labels=None,
-        colour=True,
-        filename=None,
-    ):
+    def _plot_array(self, data, params, 
+                upper_index=None, 
+                lower_index=None, 
+                upper_ppm=None, 
+                lower_ppm=None,
+                figsize=(9, 6),
+                lw=0.3, 
+                azim=-90, 
+                elev=20,
+                roll=0,
+                filled=False, 
+                show_zticks=False, 
+                labels=None, 
+                colour=True,
+                filename=None,
+                ):
         if not Plot._is_iter_of_iters(data):
-            raise AttributeError("data must be 2D.")
+            raise AttributeError('data must be 2D.')
         if upper_ppm is not None and lower_ppm is not None:
             if upper_ppm == lower_ppm or upper_ppm < lower_ppm:
-                raise ValueError("ppm range specified is invalid.")
+                raise ValueError('ppm range specified is invalid.')
         if upper_index is not None and lower_index is not None:
             if upper_index == lower_index or upper_index < lower_index:
-                raise ValueError("index range specified is invalid.")
+                raise ValueError('index range specified is invalid.')
 
-        sw_left = params["sw_left"]
-        sw = params["sw"]
+
+        sw_left = params['sw_left']
+        sw = params['sw']
 
         if upper_index is None:
             upper_index = len(data)
         if lower_index is None:
             lower_index = 0
-
+        
         if upper_ppm is None:
             upper_ppm = sw_left
         if lower_ppm is None:
-            lower_ppm = sw_left - sw
+            lower_ppm = sw_left-sw
 
-        acqtime = params["acqtime"]
-        ppm = numpy.linspace(sw_left - sw, sw_left, data.shape[1])[::-1]
+        if 'acqtime_array' in params.keys():
+            # New NMRpy _params structure
+            acqtime = params['acqtime_array']
+        else:
+            # Old NMRpy _params structure
+            acqtime = params['acqtime']
+        ppm = numpy.linspace(sw_left-sw, sw_left, data.shape[1])[::-1]
         ppm_bool_index = (ppm < upper_ppm) * (ppm > lower_ppm)
         ppm = ppm[ppm_bool_index]
         if len(data) > 1:
@@ -348,23 +332,21 @@ class Plot:
         else:
             colours_list = None
 
-        xlabel = "PPM (%.2f MHz)" % (params["reffrq"])
-        ylabel = "min."
-        self.fig = self._generic_array_plot(
-            ppm,
-            minutes,
-            [data],
-            colours_list=colours_list,
-            filled_list=[filled],
-            figsize=figsize,
-            xlabel=xlabel,
-            ylabel=ylabel,
-            lw=lw,
-            azim=azim,
-            elev=elev,
-        )
+        xlabel = 'PPM (%.2f MHz)'%(params['reffrq'])
+        ylabel = 'min.'
+        self.fig = self._generic_array_plot(ppm, minutes, [data], 
+                                            colours_list=colours_list,
+                                            filled_list=[filled],
+                                            figsize=figsize, 
+                                            xlabel=xlabel,
+                                            ylabel=ylabel,
+                                            lw=lw, 
+                                            azim=azim, 
+                                            elev=elev,
+                                            roll=roll,
+                                            )
         if filename is not None:
-            self.fig.savefig(filename, format="pdf")
+            self.fig.savefig(filename, format='pdf')
         plt.show()
 
     @staticmethod
@@ -378,25 +360,22 @@ class Plot:
                 idata.append(data[x][y])
         return idata
 
-    def _generic_array_plot(
-        self,
-        x,
-        y,
-        zlist,
-        colours_list=None,
-        filled_list=None,
-        upper_lim=None,
-        lower_lim=None,
-        lw=0.3,
-        azim=-90,
-        elev=20,
-        figsize=[5, 5],
-        show_zticks=False,
-        labels=None,
-        xlabel=None,
-        ylabel=None,
-        filename=None,
-    ):
+    def _generic_array_plot(self, x, y, zlist, 
+                colours_list=None, 
+                filled_list=None, 
+                upper_lim=None,
+                lower_lim=None,
+                lw=0.3, 
+                azim=-90, 
+                elev=20,
+                roll=0,
+                figsize=[5,5],
+                show_zticks=False, 
+                labels=None, 
+                xlabel=None,
+                ylabel=None,
+                filename=None,
+        ):
         """
 
         Generic function for plotting arrayed data on a set of 3D axes. x and y
@@ -406,44 +385,46 @@ class Plot:
 
         """
 
+        
+
+
         if colours_list is None:
-            colours_list = [["k"] * len(y)] * len(zlist)
+            colours_list = [['k']*len(y)]*len(zlist)
 
         if filled_list is None:
-            filled_list = [False] * len(zlist)
+            filled_list = [False]*len(zlist)
+
 
         fig = plt.figure(figsize=figsize)
-        ax = fig.add_subplot(111, projection="3d", azim=azim, elev=elev)
+        ax = fig.add_subplot(111, projection='3d', azim=azim, elev=elev, roll=roll)
 
         for data_n in range(len(zlist)):
             data = zlist[data_n]
-            bh = abs(data.min())
+            bh = abs(data.min()) 
             filled = filled_list[data_n]
             cl = colours_list[data_n]
             if not filled:
-                # spectra are plotted in reverse for zorder
+                #spectra are plotted in reverse for zorder
                 for n in range(len(data))[::-1]:
                     datum = data[n]
                     clr = cl[n]
-                    ax.plot(x, len(datum) * [y[n]], datum, color=clr, lw=lw)
+                    ax.plot(x, len(datum)*[y[n]], datum, color=clr, lw=lw)
             if filled:
                 verts = []
-                plot_data = data + bh
+                plot_data = data+bh 
                 for datum in plot_data:
                     datum[0], datum[-1] = 0, 0
                     verts.append(list(zip(x, datum)))
-
-                fclr, eclr = ["w"] * len(data), ["k"] * len(data)
+                 
+                fclr, eclr = ['w']*len(data), ['k']*len(data)
                 fclr = cl
-                poly = PolyCollection(
-                    verts,
+                poly = PolyCollection(verts, 
                     facecolors=fclr,
                     edgecolors=eclr,
-                    linewidths=[lw] * len(verts),
-                )
-                ax.add_collection3d(poly, zs=y, zdir="y")
-
-        ax.set_zlim([0, 1.1 * max(numpy.array(zlist).flat)])
+                    linewidths=[lw]*len(verts))
+                ax.add_collection3d(poly, zs=y, zdir='y')
+    
+        ax.set_zlim([0, 1.1*max(numpy.array(zlist).flat)])
         ax.invert_xaxis()
         if upper_lim is None:
             upper_lim = x[0]
@@ -456,6 +437,7 @@ class Plot:
         if not show_zticks:
             ax.set_zticklabels([])
         return fig
+        
 
     @classmethod
     def _is_iter(cls, i):
@@ -481,54 +463,48 @@ class Plot:
             return True
         return False
 
-
 class Phaser:
     """Interactive phase-correction widget"""
-
     def __init__(self, fid):
-        if not Plot._is_flat_iter(fid.data):
-            raise ValueError("data must be flat iterable.")
+        if not Plot._is_flat_iter(fid.data): 
+            raise ValueError('data must be flat iterable.')
         if fid.data is [] or fid.data is None:
-            raise ValueError("data must exist.")
+            raise ValueError('data must exist.')
         self.fid = fid
         self.fig = plt.figure(figsize=[9, 6])
         self.phases = numpy.array([0.0, 0.0])
         self.cum_phases = numpy.array([0.0, 0.0])
         self.y = 0.0
         self.ax = self.fig.add_subplot(111)
-        self.ax.plot(self.fid.data, color="k", linewidth=1.0)
-        self.ax.hlines(0, 0, len(self.fid.data) - 1)
+        self.ax.plot(self.fid.data, color='k', linewidth=1.0)
+        self.ax.hlines(0, 0, len(self.fid.data)-1)
         self.ax.set_xlim([0, len(self.fid.data)])
-        xtcks = numpy.linspace(0, 1, 11) * len(self.fid.data)
-        xtcks[-1] = xtcks[-1] - 1
+        xtcks = numpy.linspace(0,1,11)*len(self.fid.data)
+        xtcks[-1] = xtcks[-1]-1
         self.ax.set_xticks(xtcks)
-        self.ax.set_xlabel("PPM (%.2f MHz)" % (self.fid._params["reffrq"]))
+        self.ax.set_xlabel('PPM (%.2f MHz)'%(self.fid._params['reffrq']))
         self.ax.set_xticklabels([numpy.round(self.fid._ppm[int(i)], 1) for i in xtcks])
-        ylims = numpy.array([-1.6, 1.6]) * max(abs(numpy.array(self.ax.get_ylim())))
+        ylims = numpy.array([-1.6, 1.6])*max(abs(numpy.array(self.ax.get_ylim())))
         self.ax.set_ylim(ylims)
         self.ax.grid()
         self.visible = True
         self.canvas = self.ax.figure.canvas
-        self.canvas.mpl_connect("motion_notify_event", self.onmove)
-        self.canvas.mpl_connect("button_press_event", self.press)
-        self.canvas.mpl_connect("button_release_event", self.release)
+        self.canvas.mpl_connect('motion_notify_event', self.onmove)
+        self.canvas.mpl_connect('button_press_event', self.press)
+        self.canvas.mpl_connect('button_release_event', self.release)
         self.pressv = None
         self.buttonDown = False
         self.prev = (0, 0)
-        self.ax.text(
-            0.05 * self.ax.get_xlim()[1],
-            0.7 * self.ax.get_ylim()[1],
-            "phasing\nleft - zero-order\nright - first order",
-        )
-        cursor = Cursor(self.ax, useblit=True, color="k", linewidth=0.5)
+        self.ax.text(0.05 *self.ax.get_xlim()[1],0.7 *self.ax.get_ylim()[1],'phasing\nleft - zero-order\nright - first order')
+        cursor = Cursor(self.ax, useblit=True, color='k', linewidth=0.5)
         cursor.horizOn = False
         self.fig.subplots_adjust(bottom=0.13)
-        self.text1 = self.fig.text(0.12, 0.02, " ", fontsize="large")
+        self.text1 = self.fig.text(0.12, 0.02, ' ', fontsize='large')
         plt.show()
 
     def press(self, event):
         tb = plt.get_current_fig_manager().toolbar
-        if tb.mode == "":
+        if tb.mode == '':
             x, y = event.xdata, event.ydata
             if event.inaxes is not None:
                 self.buttonDown = True
@@ -536,9 +512,7 @@ class Phaser:
                 self.y = y
 
     def release(self, event):
-        self.text1.set_text(
-            "cumulative    p0: {0:.1f}    p1: {1:.1f}".format(*self.cum_phases)
-        )
+        self.text1.set_text('cumulative    p0: {0:.1f}    p1: {1:.1f}'.format(*self.cum_phases))
         self.buttonDown = False
         return False
 
@@ -547,27 +521,26 @@ class Phaser:
             return
         x = event.xdata
         y = event.ydata
-        dy = y - self.y
+        dy = y-self.y
         self.y = y
         if self.button == 1:
-            self.phases[0] = 50 * dy / self.ax.get_ylim()[1]
+            self.phases[0] = 50*dy/self.ax.get_ylim()[1]
             self.phases[1] = 0.0
         if self.button == 3:
-            self.phases[1] = 50 * dy / self.ax.get_ylim()[1]
+            self.phases[1] = 50*dy/self.ax.get_ylim()[1]
             self.phases[0] = 0.0
         self.fid.ps(p0=self.phases[0], p1=self.phases[1])
         self.cum_phases += self.phases
-        self.ax.lines[0].set_data(
-            numpy.array([numpy.arange(len(self.fid.data)), self.fid.data])
-        )
+        self.ax.lines[0].set_data(numpy.array([numpy.arange(len(self.fid.data)), self.fid.data]))
         self.canvas.draw()  # _idle()
         return False
 
 
 class BaseSelectorMixin:
+
     def __init__(self):
         super().__init__()
-
+       
     def press(self, event):
         pass
 
@@ -583,19 +556,17 @@ class BaseSelectorMixin:
     def change_visible(self):
         pass
 
-
 class PolySelectorMixin(BaseSelectorMixin):
+
     def __init__(self):
         super().__init__()
-
         class Psm:
             pass
-
         self.psm = Psm()
         self.psm.btn_add = 1
         self.psm.btn_del = 1
         self.psm.btn_cls = 3
-        self.psm.key_mod = "control"
+        self.psm.key_mod = 'control'
         self.psm.xs = []
         self.psm.ys = []
         self.psm._xs = []
@@ -612,12 +583,12 @@ class PolySelectorMixin(BaseSelectorMixin):
         self.psm._yline = None
         self.psm.lw = 1
         self.blocking = False
-        if not hasattr(self, "show_tracedata"):
+        if not hasattr(self, 'show_tracedata'):
             self.show_tracedata = False
 
     def redraw(self):
         super().redraw()
-        if hasattr(self, "psm"):
+        if hasattr(self, 'psm'):
             for i in self.psm._visual_lines:
                 self.ax.draw_artist(i)
             if self.psm.line is not None:
@@ -627,21 +598,20 @@ class PolySelectorMixin(BaseSelectorMixin):
 
     def change_visible(self):
         super().change_visible()
-        if hasattr(self, "psm"):
+        if hasattr(self, 'psm'):
             for i in self.psm._visual_lines:
                 i.set_visible(not i.get_visible())
             if self.psm.line is not None:
                 self.psm.line.set_visible(not self.psm.line.get_visible())
 
-    def makepoly(
-        self,
+    def makepoly(self,
         xs=None,
         ys=None,
         lw=1,
-        colour="r",
-        ms="+",
-        ls="-",
-    ):
+        colour='r',
+        ms='+',
+        ls='-',
+        ):
         if xs is not None and ys is not None:
             return self.ax.plot(
                 xs,
@@ -650,111 +620,99 @@ class PolySelectorMixin(BaseSelectorMixin):
                 color=colour,
                 marker=ms,
                 ls=ls,
-            )
-
+                )
+ 
     def press(self, event):
         super().press(event)
-        if self.check_mode() != "":
+        if self.check_mode() != '':
             return
         if event.xdata is None or event.ydata is None:
             return
         if event.button == self.psm.btn_add and event.key != self.psm.key_mod:
-            self.psm.xs.append(event.xdata)
-            self.psm.ys.append(event.ydata)
-            if self.show_tracedata:
-                self.psm._xs, self.psm._ys = self.get_line_ydata(
-                    self.psm.xs, self.psm.ys
-                )
-            if self.psm.line is None:
-                (self.psm.line,) = self.makepoly(
-                    self.psm.xs,
-                    self.psm.ys,
-                    lw=self.psm.lw,
-                )
-                self.blocking = True
+                self.psm.xs.append(event.xdata)
+                self.psm.ys.append(event.ydata)
                 if self.show_tracedata:
-                    (self.psm._yline,) = self.makepoly(
-                        self.psm._xs,
-                        self.psm._ys,
+                    self.psm._xs, self.psm._ys = self.get_line_ydata(self.psm.xs, self.psm.ys)
+                if self.psm.line is None:
+                    self.psm.line, = self.makepoly(
+                        self.psm.xs, 
+                        self.psm.ys, 
                         lw=self.psm.lw,
-                        ms="+",
-                        ls="-",
-                        colour="r",
-                    )
-            else:
-                self.psm.line.set_data(self.psm.xs, self.psm.ys)
-                if self.show_tracedata:
-                    self.psm._yline.set_data(self.psm._xs, self.psm._ys)
+                        )
+                    self.blocking = True
+                    if self.show_tracedata:
+                        self.psm._yline, = self.makepoly(
+                            self.psm._xs,
+                            self.psm._ys,
+                            lw=self.psm.lw,
+                            ms='+',
+                            ls='-',
+                            colour='r',
+                            )
+                else:
+                    self.psm.line.set_data(self.psm.xs, self.psm.ys)
+                    if self.show_tracedata:
+                        self.psm._yline.set_data(self.psm._xs, self.psm._ys)
         elif event.button == self.psm.btn_del and event.key == self.psm.key_mod:
             if len(self.psm._visual_lines) > 0:
                 x = event.xdata
                 y = event.ydata
-                # trace_dist = [[i[0]-x, i[1]-y] for i in self.psm.lines]
-                trace_dist = [[i[0] - x] for i in self.psm.lines]
-                # delete_trace = numpy.argmin([min(numpy.sqrt(i[0]**2+i[1]**2))
-                delete_trace = numpy.argmin(
-                    [min(numpy.sqrt(i[0] ** 2)) for i in trace_dist]
-                )
+                #trace_dist = [[i[0]-x, i[1]-y] for i in self.psm.lines]
+                trace_dist = [[i[0]-x] for i in self.psm.lines]
+                #delete_trace = numpy.argmin([min(numpy.sqrt(i[0]**2+i[1]**2))                 
+                delete_trace = numpy.argmin([min(numpy.sqrt(i[0]**2)) for i in trace_dist])
                 self.psm.lines.pop(delete_trace)
                 self.psm.data_lines.pop(delete_trace)
                 trace = self.psm._visual_lines.pop(delete_trace)
                 trace.remove()
         elif event.button == self.psm.btn_cls and self.psm.line is not None:
             if len(self.psm.xs) > 1:
-                self.psm._visual_lines.append(
-                    self.makepoly(
-                        self.psm.xs,
-                        self.psm.ys,
+                self.psm._visual_lines.append(self.makepoly(
+                        self.psm.xs, 
+                        self.psm.ys, 
                         lw=self.psm.lw,
-                        colour="b",
-                    )[0]
-                )
+                        colour='b', 
+                        )[0])
                 self.psm.lines.append(numpy.array([self.psm.xs, self.psm.ys]))
                 self.psm.xs, self.psm.ys = [], []
                 self.psm.line.remove()
                 self.psm.line = None
                 self.psm._yline.remove()
                 self.psm._yline = None
-                self.psm.data_lines.append(
-                    self.get_polygon_neighbours_data(self.psm.lines[-1])
-                )
-                self.psm.index_lines.append(
-                    self.get_polygon_neighbours_indices(self.psm.lines[-1])
-                )
+                self.psm.data_lines.append(self.get_polygon_neighbours_data(self.psm.lines[-1]))
+                self.psm.index_lines.append(self.get_polygon_neighbours_indices(self.psm.lines[-1]))
                 self.blocking = False
             else:
                 self.psm.xs, self.psm.ys = [], []
                 self.psm.line = None
-        # self.redraw()
-
+        #self.redraw()
+    
     def onmove(self, event):
         super().onmove(event)
         self.psm._x = event.xdata
         self.psm._y = event.ydata
         if self.psm.line is not None:
-            xs = self.psm.xs + [self.psm._x]
-            ys = self.psm.ys + [self.psm._y]
+            xs = self.psm.xs+[self.psm._x]
+            ys = self.psm.ys+[self.psm._y]
             self.psm.line.set_data(xs, ys)
             if self.show_tracedata:
                 current_x_ydata = self.get_line_ydata(
-                    [self.psm.xs[-1]] + [self.psm._x],
-                    [self.psm.ys[-1]] + [self.psm._y],
-                )
+                    [self.psm.xs[-1]]+[self.psm._x],
+                    [self.psm.ys[-1]]+[self.psm._y],
+                    )
                 self.psm._yline.set_data(
-                    self.psm._xs + current_x_ydata[0],
-                    self.psm._ys + current_x_ydata[1],
-                )
+                    self.psm._xs+current_x_ydata[0], 
+                    self.psm._ys+current_x_ydata[1],
+                    )
 
     def get_line_ydata(self, xs, ys):
         xdata = []
         ydata = []
-        for i in range(len(xs) - 1):
-            current_xy_data = self.get_polygon_neighbours_data(
-                [
-                    xs[i : i + 2],
-                    ys[i : i + 2],
-                ]
-            )
+        for i in range(len(xs)-1):
+            current_xy_data = self.get_polygon_neighbours_data([
+                xs[i:i+2],
+                ys[i:i+2],
+                ])
             xdata += current_xy_data[0]
             ydata += current_xy_data[1]
         return xdata, ydata
@@ -766,17 +724,12 @@ class PolySelectorMixin(BaseSelectorMixin):
         """
         line_xs = []
         line_ys = []
-        for i in range(len(line[0]) - 1):
-            x1, y1, x2, y2 = (
-                line[0][i],
-                line[1][i],
-                line[0][i + 1],
-                line[1][i + 1],
-            )
+        for i in range(len(line[0])-1):
+            x1, y1, x2, y2 = line[0][i], line[1][i], line[0][i+1], line[1][i+1]
             x, y, x_index, y_index = self.get_neighbours([x1, x2], [y1, y2])
             if x is not None and y is not None:
-                line_xs = line_xs + list(x)
-                line_ys = line_ys + list(y)
+                line_xs = line_xs+list(x)
+                line_ys = line_ys+list(y)
         return [line_xs, line_ys]
 
     def get_polygon_neighbours_indices(self, line):
@@ -786,19 +739,14 @@ class PolySelectorMixin(BaseSelectorMixin):
         """
         line_xs = []
         line_ys = []
-        for i in range(len(line[0]) - 1):
-            x1, y1, x2, y2 = (
-                line[0][i],
-                line[1][i],
-                line[0][i + 1],
-                line[1][i + 1],
-            )
+        for i in range(len(line[0])-1):
+            x1, y1, x2, y2 = line[0][i], line[1][i], line[0][i+1], line[1][i+1]
             x, y, x_index, y_index = self.get_neighbours([x1, x2], [y1, y2])
             if x_index is not None and y_index is not None:
-                line_xs = line_xs + list(x_index)
-                line_ys = line_ys + list(y_index)
+                line_xs = line_xs+list(x_index)
+                line_ys = line_ys+list(y_index)
         return [line_xs, line_ys]
-
+            
     def get_neighbours(self, xs, ys):
         """
         For a pair of coordinates (xs = [x1, x2], ys = [y1, y2]), return the
@@ -810,7 +758,7 @@ class PolySelectorMixin(BaseSelectorMixin):
         if True not in ymask:
             return None, None, None, None
         y_lo = ymask.index(True)
-        y_hi = len(ymask) - ymask[::-1].index(True)
+        y_hi = len(ymask)-ymask[::-1].index(True)
         x_neighbours = []
         y_neighbours = []
         y_indices = [i for i in range(y_lo, y_hi)]
@@ -818,13 +766,13 @@ class PolySelectorMixin(BaseSelectorMixin):
             y_indices = y_indices[::-1]
         x_indices = []
         for i in y_indices:
-            x = [self.ppm[0], self.ppm[-1], xs[0], xs[1]]
-            y = [self.y_indices[i], self.y_indices[i], ys[0], ys[1]]
+            x = [self.ppm[0], self.ppm[-1], xs[0], xs[1]]    
+            y = [self.y_indices[i], self.y_indices[i], ys[0], ys[1]]    
             x, y = self.get_intersection(x, y)
-            x = numpy.argmin(abs(self.ppm[::-1] - x))
+            x = numpy.argmin(abs(self.ppm[::-1]-x))
             x_indices.append(x)
             x_neighbours.append(self.ppm[::-1][x])
-            y_neighbours.append(self.data[i][x] + self.y_indices[i])
+            y_neighbours.append(self.data[i][x]+self.y_indices[i])
         return x_neighbours, y_neighbours, x_indices, y_indices
 
     @staticmethod
@@ -836,54 +784,46 @@ class PolySelectorMixin(BaseSelectorMixin):
         and [x4, y4] represent the other. See
         https://en.wikipedia.org/wiki/Line%E2%80%93line_intersection#Given_two_points_on_each_line
         """
-        px = (
-            (x[0] * y[1] - y[0] * x[1]) * (x[2] - x[3])
-            - (x[0] - x[1]) * (x[2] * y[3] - y[2] * x[3])
-        ) / ((x[0] - x[1]) * (y[2] - y[3]) - (y[0] - y[1]) * (x[2] - x[3]))
-        py = (
-            (x[0] * y[1] - y[0] * x[1]) * (y[2] - y[3])
-            - (y[0] - y[1]) * (x[2] * y[3] - y[2] * x[3])
-        ) / ((x[0] - x[1]) * (y[2] - y[3]) - (y[0] - y[1]) * (x[2] - x[3]))
+        px = (((x[0]*y[1]-y[0]*x[1])*(x[2]-x[3])-(x[0]-x[1])*(x[2]*y[3]-y[2]*x[3]))/((x[0]-x[1])*(y[2]-y[3])-(y[0]-y[1])*(x[2]-x[3])))
+        py = (((x[0]*y[1]-y[0]*x[1])*(y[2]-y[3])-(y[0]-y[1])*(x[2]*y[3]-y[2]*x[3]))/((x[0]-x[1])*(y[2]-y[3])-(y[0]-y[1])*(x[2]-x[3])))
         return px, py
 
-
 class LineSelectorMixin(BaseSelectorMixin):
+
     def __init__(self):
         super().__init__()
-
         class Lsm:
             pass
-
         self.lsm = Lsm()
         self.lsm.btn_add = 1
         self.lsm.btn_del = 1
-        self.lsm.key_mod = "control"
+        self.lsm.key_mod = 'control'
         self.lsm.peaklines = {}
         self.lsm.peaks = []
         for x in self.peaks:
             self.lsm.peaks.append(x)
             self.lsm.peaklines[x] = self.makeline(x)
-            # self.ax.draw_artist(self.lsm.peaklines[x])
+            #self.ax.draw_artist(self.lsm.peaklines[x])
         self.lsm.peaks = sorted(self.lsm.peaks)[::-1]
-
+                
     def makeline(self, x):
         return self.ax.plot(
-            [x, x],
+            [x, x], 
             self.ylims,
-            color="#CC0000",
+            color='#CC0000', 
             lw=1,
-            # animated=True
-        )[0]
+            #animated=True
+            )[0]
 
     def redraw(self):
         super().redraw()
-        if hasattr(self, "lsm"):
+        if hasattr(self, 'lsm'):
             for i, j in self.lsm.peaklines.items():
                 self.ax.draw_artist(j)
 
     def change_visible(self):
         super().change_visible()
-        if hasattr(self, "lsm"):
+        if hasattr(self, 'lsm'):
             for i, j in self.lsm.peaklines.items():
                 j.set_visible(True)
                 j.set_visible(not j.get_visible())
@@ -892,33 +832,30 @@ class LineSelectorMixin(BaseSelectorMixin):
         super().press(event)
         x = numpy.round(event.xdata, 2)
         # left
-        if (
-            event.button == self.lsm.btn_add
-            and event.key != self.lsm.key_mod
-            and (x >= self.xlims[1])
-            and (x <= self.xlims[0])
-        ):
+        if event.button == self.lsm.btn_add and \
+                event.key != self.lsm.key_mod and \
+                (x >= self.xlims[1]) and (x <= self.xlims[0]):
             with self.out:
-                print("peak {}".format(x))
+                print('peak {}'.format(x))
             if x not in self.lsm.peaks:
                 self.lsm.peaks.append(x)
                 self.lsm.peaklines[x] = self.makeline(x)
                 self.lsm.peaks = sorted(self.lsm.peaks)[::-1]
-                # self.ax.draw_artist(self.lsm.peaklines[x])
-        # Ctrl+left
+                #self.ax.draw_artist(self.lsm.peaklines[x])
+        #Ctrl+left
         elif event.button == self.lsm.btn_del and event.key == self.lsm.key_mod:
-            # find and delete nearest peakline
+            #find and delete nearest peakline
             if len(self.lsm.peaks) > 0:
-                delete_peak = numpy.argmin([abs(i - x) for i in self.lsm.peaks])
+                delete_peak = numpy.argmin([abs(i-x) for i in self.lsm.peaks])
                 old_peak = self.lsm.peaks.pop(delete_peak)
-                try:
+                try: 
                     peakline = self.lsm.peaklines.pop(old_peak)
                     peakline.remove()
-                except Exception:
+                except:
                     with self.out:
-                        print("Could not remove peakline")
+                        print('Could not remove peakline')
             self.canvas.draw()
-        # self.redraw()
+        #self.redraw()
 
     def release(self, event):
         super().release(event)
@@ -928,62 +865,59 @@ class LineSelectorMixin(BaseSelectorMixin):
 
 
 class SpanSelectorMixin(BaseSelectorMixin):
+
     def __init__(self):
         super().__init__()
-
         class Ssm:
             pass
-
         self.ssm = Ssm()
         self.ssm.btn_add = 3
         self.ssm.btn_del = 3
-        self.ssm.key_mod = "control"
+        self.ssm.key_mod = 'control'
         self.ssm.minspan = 0
         self.ssm.rect = None
         self.ssm.rangespans = []
-        self.ssm.rectprops = dict(facecolor="0.5", alpha=0.2)
+        self.ssm.rectprops = dict(facecolor='0.5', alpha=0.2)
         self.ssm.ranges = self.ranges
         for rng in self.ssm.ranges:
-            self.ssm.rangespans.append(self.makespan(rng[1], rng[0] - rng[1]))
+            self.ssm.rangespans.append(self.makespan(rng[1], rng[0]-rng[1]))
         self.redraw()
-        trans = blended_transform_factory(self.ax.transData, self.ax.transAxes)
+        trans = blended_transform_factory(
+            self.ax.transData,
+            self.ax.transAxes)
         w, h = 0, 1
-        self.ssm.rect = Rectangle(
-            [0, 0],
-            w,
-            h,
-            transform=trans,
-            visible=False,
-            animated=True,
-            **self.ssm.rectprops,
-        )
+        self.ssm.rect = Rectangle([0, 0], w, h,
+                              transform=trans,
+                              visible=False,
+                              animated=True,
+                              **self.ssm.rectprops
+                              )
         self.ax.add_patch(self.ssm.rect)
 
     def makespan(self, left, width):
-        trans = blended_transform_factory(self.ax.transData, self.ax.transAxes)
+        trans = blended_transform_factory(
+            self.ax.transData,
+            self.ax.transAxes)
         bottom, top = self.ylims
-        height = top - bottom
-        rect = Rectangle(
-            [left, bottom],
-            width,
-            height,
-            transform=trans,
-            visible=True,
-            # animated=True,
-            **self.ssm.rectprops,
-        )
+        height = top-bottom
+        rect = Rectangle([left, bottom], width, height,
+                              transform=trans,
+                              visible=True,
+                              #animated=True,
+                              **self.ssm.rectprops
+                              )
         self.ax.add_patch(rect)
         return rect
 
     def redraw(self):
         super().redraw()
-        if hasattr(self, "ssm"):
+        if hasattr(self, 'ssm'):
             for i in self.ssm.rangespans:
                 self.ax.draw_artist(i)
 
     def change_visible(self):
         super().change_visible()
-        if hasattr(self, "ssm"):
+        if hasattr(self, 'ssm'):
             for i in self.ssm.rangespans:
                 i.set_visible(not i.get_visible())
 
@@ -995,16 +929,13 @@ class SpanSelectorMixin(BaseSelectorMixin):
             self.buttonDown = True
             self.pressv = event.xdata
         elif event.button == self.ssm.btn_add and event.key == self.ssm.key_mod:
-            # find and delete range
+            #find and delete range
             if len(self.ssm.ranges) > 0:
                 x = event.xdata
                 rng = 0
                 while rng < len(self.ssm.ranges):
-                    if (
-                        x >= (self.ssm.ranges[rng])[1]
-                        and x <= (self.ssm.ranges[rng])[0]
-                    ):
-                        self.ssm.ranges.pop(rng)
+                    if x >= (self.ssm.ranges[rng])[1] and x <= (self.ssm.ranges[rng])[0]:
+                        self.ssm.ranges.pop(rng) 
                         rangespan = self.ssm.rangespans.pop(rng)
                         rangespan.remove()
                         break
@@ -1021,7 +952,7 @@ class SpanSelectorMixin(BaseSelectorMixin):
         span = vmax - vmin
         self.pressv = None
         spantest = False
-        # if len(self.ssm.ranges) > 0:
+        #if len(self.ssm.ranges) > 0:
         #    for i in self.ssm.ranges:
         #        if (vmin >= i[1]) and (vmin <= i[0]):
         #            spantest = True
@@ -1031,8 +962,9 @@ class SpanSelectorMixin(BaseSelectorMixin):
             self.ssm.ranges.append([numpy.round(vmin, 2), numpy.round(vmax, 2)])
             self.ssm.rangespans.append(self.makespan(vmin, span))
             with self.out:
-                print("range {} -> {}".format(vmax, vmin))
+                print('range {} -> {}'.format(vmax, vmin))
         self.ssm.ranges = [numpy.sort(i)[::-1] for i in self.ssm.ranges]
+
 
     def onmove(self, event):
         super().onmove(event)
@@ -1043,46 +975,40 @@ class SpanSelectorMixin(BaseSelectorMixin):
             v = x
             minv, maxv = v, self.pressv
             if minv > maxv:
-                minv, maxv = maxv, minv
+                    minv, maxv = maxv, minv
             vmin = self.pressv
             vmax = event.xdata  # or self.prev[0]
             if vmin > vmax:
-                vmin, vmax = vmax, vmin
+                    vmin, vmax = vmax, vmin
             self.ssm.rect.set_visible(self.visible)
             self.ssm.rect.set_xy([minv, self.ssm.rect.xy[1]])
-            self.ssm.rect.set_width(maxv - minv)
+            self.ssm.rect.set_width(maxv-minv)
             self.ax.draw_artist(self.ssm.rect)
 
-
 class PeakSelectorMixin(BaseSelectorMixin):
+
     def __init__(self):
         super().__init__()
-
         class Psm:
             pass
-
         self.psm = Psm()
         self.psm.btn_add = 1
         self.psm.peak = None
         self.psm.newx = None
-
+                
     def makeline(self, x):
         return self.ax.plot(
-            [x, x],
+            [x, x], 
             self.ylims,
-            color="#CC0000",
+            color='#CC0000', 
             lw=1,
-        )[0]
+            )[0]
 
     def press(self, event):
         super().press(event)
         x = numpy.round(event.xdata, 2)
         # left
-        if (
-            event.button == self.psm.btn_add
-            and (x >= self.xlims[1])
-            and (x <= self.xlims[0])
-        ):
+        if event.button == self.psm.btn_add and (x >= self.xlims[1]) and (x <= self.xlims[0]):
             self.psm.peak = x
             self.makeline(x)
             self.process()
@@ -1092,60 +1018,55 @@ class PeakSelectorMixin(BaseSelectorMixin):
 
     def onmove(self, event):
         super().onmove(event)
-
+        
     def process(self):
         pass
-
-
+    
 class AssignMixin(BaseSelectorMixin):
+
     def __init__(self):
         super().__init__()
-
         class Am:
             pass
-
         self.am = Am()
         self.am.btn_assign = 3
-        self.am.key_mod1 = "ctrl+alt"
-        self.am.key_mod2 = "alt+control"
+        self.am.key_mod1 = 'ctrl+alt'
+        self.am.key_mod2 = 'alt+control'
 
     def press(self, event):
         super().press(event)
-        if event.button == self.am.btn_assign and (
-            event.key == self.am.key_mod1 or event.key == self.am.key_mod2
-        ):
+        if event.button == self.am.btn_assign and (event.key == self.am.key_mod1 \
+                                        or event.key == self.am.key_mod2):
             with self.out:
-                print("assigned peaks and ranges")
-            self.assign()
+                print('assigned peaks and ranges')
+            self.assign() 
 
     def assign(self):
         pass
-
-
-class DataSelector:
+        
+class DataSelector():
     """
     Interactive selector widget. can inherit from various mixins for functionality:
         Line selection: :class:`~nmrpy.plotting.LineSelectorMixin`
         Span selection: :class:`~nmrpy.plotting.SpanSelectorMixin`
         Poly selection: :class:`~nmrpy.plotting.PolySelectorMixin`
-
+        
     This class is not intended to be used without inheriting at least one mixin.
     """
 
-    def __init__(
-        self,
-        data,
-        params,
-        extra_data=None,
-        extra_data_colour="k",
-        peaks=None,
-        ranges=None,
-        title=None,
-        voff=0.001,
-        label=None,
-    ):
+    def __init__(self, 
+                data, 
+                params, 
+                extra_data=None,
+                extra_data_colour='k',
+                peaks=None, 
+                ranges=None, 
+                title=None, 
+                voff=0.001, 
+                label=None,
+                ):
         if not Plot._is_iter(data):
-            raise AttributeError("data must be iterable.")
+            raise AttributeError('data must be iterable.')
         self.data = numpy.array(data)
         self.extra_data = extra_data
         self.extra_data_colour = extra_data_colour
@@ -1168,19 +1089,19 @@ class DataSelector:
         self.pressv = None
         self.buttonDown = False
         self.prev = (0, 0)
-        self.blocking = False
-        # self.canvas.restore_region(self.background)
-        super().__init__()  # calling parent init
-        # self.canvas.blit(self.ax.bbox)
+        self.blocking = False        
+        #self.canvas.restore_region(self.background)
+        super().__init__() #calling parent init
+        #self.canvas.blit(self.ax.bbox) 
 
-        self.cidmotion = self.canvas.mpl_connect("motion_notify_event", self.onmove)
-        self.cidpress = self.canvas.mpl_connect("button_press_event", self.press)
-        self.cidrelease = self.canvas.mpl_connect("button_release_event", self.release)
-        self.ciddraw = self.canvas.mpl_connect("draw_event", self.on_draw)
-        # cursor = Cursor(self.ax, useblit=True, color='k', linewidth=0.5)
-        # cursor.horizOn = False
+        self.cidmotion = self.canvas.mpl_connect('motion_notify_event', self.onmove)
+        self.cidpress = self.canvas.mpl_connect('button_press_event', self.press)
+        self.cidrelease = self.canvas.mpl_connect('button_release_event', self.release)
+        self.ciddraw = self.canvas.mpl_connect('draw_event', self.on_draw)
+        #cursor = Cursor(self.ax, useblit=True, color='k', linewidth=0.5)
+        #cursor.horizOn = False
         # self.canvas.draw()
-        # self.redraw()
+        #self.redraw()
         # plt.show()
 
     def disconnect(self):
@@ -1192,9 +1113,9 @@ class DataSelector:
     def _isnotebook(self):
         try:
             shell = get_ipython().__class__.__name__
-            if shell == "ZMQInteractiveShell":
+            if shell == 'ZMQInteractiveShell':
                 return True  # Jupyter notebook or qtconsole
-            elif shell == "TerminalInteractiveShell":
+            elif shell == 'TerminalInteractiveShell':
                 return False  # Terminal running IPython
             else:
                 return False  # Other type (?)
@@ -1207,21 +1128,16 @@ class DataSelector:
         self.ax = self.fig.add_subplot(111)
         if len(self.data.shape) == 1:
             self.ppm = numpy.mgrid[
-                self.params["sw_left"]
-                - self.params["sw"] : self.params["sw_left"] : complex(
-                    self.data.shape[0]
-                )
+                self.params['sw_left']
+                - self.params['sw'] : self.params['sw_left'] : complex(self.data.shape[0])
             ]
             # extra_data
             if self.extra_data is not None:
                 self.ax.plot(
-                    self.ppm[::-1],
-                    self.extra_data,
-                    color=self.extra_data_colour,
-                    lw=1,
+                    self.ppm[::-1], self.extra_data, color=self.extra_data_colour, lw=1
                 )
             # data
-            self.ax.plot(self.ppm[::-1], self.data, color="k", lw=1)
+            self.ax.plot(self.ppm[::-1], self.data, color='k', lw=1)
         elif len(self.data.shape) == 2:
             cl = dict(
                 zip(
@@ -1230,18 +1146,14 @@ class DataSelector:
                 )
             )
             self.ppm = numpy.mgrid[
-                self.params["sw_left"]
-                - self.params["sw"] : self.params["sw_left"] : complex(
-                    self.data.shape[1]
-                )
+                self.params['sw_left']
+                - self.params['sw'] : self.params['sw_left'] : complex(self.data.shape[1])
             ]
             self.y_indices = numpy.arange(len(self.data)) * self.voff * self.data.max()
             # this is reversed for zorder
             # extra_data
             if self.extra_data is not None:
-                for i, j in zip(
-                    range(len(self.extra_data))[::-1], self.extra_data[::-1]
-                ):
+                for i, j in zip(range(len(self.extra_data))[::-1], self.extra_data[::-1]):
                     self.ax.plot(
                         self.ppm[::-1],
                         j + self.y_indices[i],
@@ -1251,7 +1163,7 @@ class DataSelector:
             # data
             for i, j in zip(range(len(self.data))[::-1], self.data[::-1]):
                 self.ax.plot(self.ppm[::-1], j + self.y_indices[i], color=cl[i], lw=1)
-        self.ax.set_xlabel("ppm")
+        self.ax.set_xlabel('ppm')
         self.ylims = numpy.array(self.ax.get_ylim())
         # numpy.array([self.ax.get_ylim()[0], self.data.max() + abs(self.ax.get_ylim()[0])])
         # self.ax.set_ylim(self.ylims)#self.ax.get_ylim()[0], self.data.max()*1.1])
@@ -1259,11 +1171,7 @@ class DataSelector:
         self.xlims = [self.ppm[-1], self.ppm[0]]
         self.ax.set_xlim(self.xlims)
         self.fig.suptitle(self.title, size=20)
-        self.ax.text(
-            0.95 * self.ax.get_xlim()[0],
-            0.7 * self.ax.get_ylim()[1],
-            self.label,
-        )
+        self.ax.text(0.95 * self.ax.get_xlim()[0], 0.7 * self.ax.get_ylim()[1], self.label)
         self.ax.set_ylim(self.ylims)
         self.canvas = self.ax.figure.canvas
         # self.canvas.draw()
@@ -1291,7 +1199,7 @@ class DataSelector:
 
     def press(self, event):
         tb = plt.get_current_fig_manager().toolbar
-        if tb.mode == "" and event.xdata is not None:
+        if tb.mode == '' and event.xdata is not None:
             x = numpy.round(event.xdata, 2)
             self.canvas.restore_region(self.background)
             try:
@@ -1299,7 +1207,7 @@ class DataSelector:
             except Exception as e:
                 logging.error(traceback.format_exc())
             self.redraw()
-            self.canvas.blit(self.ax.bbox)
+            self.canvas.blit(self.ax.bbox) 
 
     def release(self, event):
         if self.pressv is None or not self.buttonDown:
@@ -1311,7 +1219,7 @@ class DataSelector:
         except Exception as e:
             logging.error(traceback.format_exc())
         self.redraw()
-        self.canvas.blit(self.ax.bbox)
+        self.canvas.blit(self.ax.bbox) 
 
     def onmove(self, event):
         if event.inaxes is None:
@@ -1324,56 +1232,493 @@ class DataSelector:
         except Exception as e:
             logging.error(traceback.format_exc())
         self.redraw()
-        self.canvas.blit(self.ax.bbox)
+        self.canvas.blit(self.ax.bbox) 
 
     def make_invisible(self):
         try:
-            super().make_invisible()
+             super().make_invisible()
         except Exception as e:
             logging.error(traceback.format_exc())
 
     def make_visible(self):
         try:
-            super().make_visible()
+             super().make_visible()
         except Exception as e:
             logging.error(traceback.format_exc())
 
     def redraw(self):
         try:
-            super().redraw()
+             super().redraw()
         except Exception as e:
             logging.error(traceback.format_exc())
-
+        
     def change_visible(self):
         try:
-            super().change_visible()
+             super().change_visible()
         except Exception as e:
             logging.error(traceback.format_exc())
-
 
 class IntegralDataSelector(DataSelector, PolySelectorMixin, AssignMixin):
     show_tracedata = True
 
-
-class PeakTraceDataSelector(
-    DataSelector, PolySelectorMixin, SpanSelectorMixin, AssignMixin
-):
+class PeakTraceDataSelector(DataSelector, PolySelectorMixin, SpanSelectorMixin, AssignMixin):
     show_tracedata = True
 
-
-class LineSpanDataSelector(
-    DataSelector, LineSelectorMixin, SpanSelectorMixin, AssignMixin
-):
+class LineSpanDataSelector(DataSelector, LineSelectorMixin, SpanSelectorMixin, AssignMixin):
     pass
-
 
 class PeakDataSelector(DataSelector, PeakSelectorMixin):
     pass
-
-
+        
 class SpanDataSelector(DataSelector, SpanSelectorMixin, AssignMixin):
     pass
 
+class DataTraceSelector:
+    """
+    Interactive data-selection widget with traces and ranges. Traces are saved
+    as self.data_traces (WRT data) and self.index_traces (WRT index).    
+    """
+    def __init__(self, fid_array,
+            extra_data=None,
+            extra_data_colour='b',
+            voff=1e-3,
+            lw=1,
+            label=None,
+            ):
+        self.fid_array = fid_array
+        if fid_array.data is [] or fid_array.data is None:
+            raise ValueError('data must exist.')
+        data = fid_array.data
+        params = fid_array._params
+        sw_left = params['sw_left']
+        sw = params['sw']
+
+        ppm = numpy.linspace(sw_left-sw, sw_left, data.shape[1])[::-1]
+       
+        self.integral_selector = IntegralDataSelector(
+                extra_data,
+                params,
+                extra_data=data, 
+                extra_data_colour=extra_data_colour,
+                peaks=None, 
+                ranges=None, 
+                title='Integral trace selector', 
+                voff=voff,
+                label=label)
+        self.integral_selector.assign = self.assign
+        
+    def assign(self):
+        data_traces = self.integral_selector.psm.data_lines
+        index_traces = self.integral_selector.psm.index_lines
+        
+        self.fid_array._data_traces = [dict(zip(i[1], i[0])) for i in data_traces]
+        self.fid_array._index_traces = [dict(zip(i[1], i[0])) for i in index_traces]
+
+        decon_peaks = []
+        for i in self.fid_array._deconvoluted_peaks:
+            if len(i):
+                decon_peaks.append(i.transpose()[0])
+            else:
+                decon_peaks.append(None)
+
+        trace_dict = {}
+        for t in range(len(self.fid_array._index_traces)):
+            trace = self.fid_array._index_traces[t]
+            integrals = {}
+            for fid, indx in trace.items():
+                try:
+                    integrals[fid] = numpy.argmin(abs(decon_peaks[fid]-indx))
+                except:
+                    integrals[fid] = None
+            trace_dict[t] = integrals
+        last_fid = (len(self.fid_array.get_fids())-1)
+        for i in trace_dict:
+            tmin = min(trace_dict[i])
+            tminval = trace_dict[i][tmin]
+            if tmin > 0:
+                for j in range(0, tmin):
+                    trace_dict[i][j] = tminval
+            tmax = max(trace_dict[i])
+            tmaxval = trace_dict[i][tmax]
+            if tmax < last_fid:
+                for j in range(tmax, last_fid+1):
+                    trace_dict[i][j] = tmaxval
+        self.fid_array.integral_traces = trace_dict
+        plt.close(self.integral_selector.fig)
+
+class DataTraceRangeSelector:
+    """
+    Interactive data-selection widget with traces and ranges. Traces are saved
+    as self.data_traces (WRT data) and self.index_traces (WRT index). Spans are
+    saves as self.spans.
+    """
+    def __init__(self, fid_array,
+            peaks=None,
+            ranges=None,
+            voff=1e-3,
+            lw=1,
+            label=None,
+            ):
+        self.fid_array = fid_array
+        if fid_array.data is [] or fid_array.data is None:
+            raise ValueError('data must exist.')
+        data = fid_array.data
+        params = fid_array._params
+        sw_left = params['sw_left']
+        sw = params['sw']
+
+        ppm = numpy.linspace(sw_left-sw, sw_left, data.shape[1])[::-1]
+       
+        self.peak_selector = PeakTraceDataSelector(
+                data, 
+                params,
+                peaks=peaks, 
+                ranges=ranges, 
+                title='Peak and range trace selector', 
+                voff=voff,
+                label=label)
+        self.peak_selector.assign = self.assign
+
+    def assign(self):
+        data_traces = self.peak_selector.psm.data_lines
+        index_traces = self.peak_selector.psm.index_lines
+        spans = self.peak_selector.ssm.ranges
+        
+        traces = [[i[0], j[1]] for i, j in zip(data_traces,  index_traces)]
+
+        self.fid_array.traces = traces
+        self.fid_array._trace_mask = self.fid_array._generate_trace_mask(traces)
+
+        self.fid_array._set_all_peaks_ranges_from_traces_and_spans(
+                traces, spans)
+        plt.close(self.peak_selector.fig)
+
+class DataPeakSelector:
+    """
+    Interactive data-selection widget with lines and ranges for a single Fid.
+    Lines and spans are saved as self.peaks, self.ranges.
+    """
+    def __init__(self, fid,
+            peaks=None,
+            ranges=None,
+            voff=1e-3,
+            lw=1,
+            label=None,
+            title=None,
+            ):
+        self.fid = fid
+        if fid.data is [] or fid.data is None:
+            raise ValueError('data must exist.')
+        data = fid.data
+        params = fid._params
+        sw_left = params['sw_left']
+        sw = params['sw']
+        ppm = numpy.linspace(sw_left-sw, sw_left, len(data))[::-1]
+
+        if fid.peaks is not None:
+            peaks = list(fid.peaks)
+        if fid.ranges is not None:
+            ranges = list(fid.ranges)   
+       
+        self.peak_selector = LineSpanDataSelector(
+                data,
+                params,
+                peaks=peaks, 
+                ranges=ranges, 
+                title=title, 
+                voff=voff,
+                label=label)
+        self.peak_selector.assign = self.assign
+        
+    def assign(self):
+        if len(self.peak_selector.ssm.ranges) > 0 and len(self.peak_selector.lsm.peaks) > 0:
+            self.fid.ranges = self.peak_selector.ssm.ranges
+            peaks = []
+            for peak in self.peak_selector.lsm.peaks:
+                for rng in self.peak_selector.ssm.ranges:
+                    if peak >= rng[1] and peak <= rng[0]:
+                        peaks.append(peak)
+            self.fid.peaks = peaks
+        else:
+            self.fid.peaks = None
+            self.fid.ranges = None
+        plt.close(self.peak_selector.fig)
+
+class DataPeakRangeSelector:
+    """Interactive data-selection widget with lines and ranges. Lines and spans are saved as self.peaks, self.ranges."""
+    def __init__(self, fid_array,
+            peaks=None,
+            ranges=None,
+            y_indices=None,
+            aoti=True,
+            voff=1e-3,
+            lw=1,
+            label=None,
+            ):
+        self.fid_array = fid_array
+        self.fids = fid_array.get_fids()
+        self.assign_only_to_index = aoti
+        self.fid_number = y_indices
+        if self.fid_number is not None:
+            if not nmrpy.data_objects.Fid._is_iter(self.fid_number):
+                self.fid_number = [self.fid_number]
+        else:
+            self.fid_number = range(len(self.fids))
+        if fid_array.data is [] or fid_array.data is None:
+            raise ValueError('data must exist.')
+        data = fid_array.data
+        if y_indices is not None:
+            data = fid_array.data[numpy.array(self.fid_number)]
+        params = fid_array._params
+        sw_left = params['sw_left']
+        sw = params['sw']
+
+        ppm = numpy.linspace(sw_left-sw, sw_left, data.shape[1])[::-1]
+       
+        self.peak_selector = LineSpanDataSelector(
+                data,
+                params,
+                peaks=peaks, 
+                ranges=ranges, 
+                title='Peak and range selector', 
+                voff=voff,
+                label=label)
+        self.peak_selector.assign = self.assign
+        
+    def assign(self):
+        self.peaks = self.peak_selector.lsm.peaks
+        self.ranges = self.peak_selector.ssm.ranges
+        
+        if len(self.ranges) > 0 and len(self.peaks) > 0:
+            ranges = self.ranges
+            peaks = []
+            for peak in self.peaks:
+                for rng in ranges:
+                    if peak >= rng[1] and peak <= rng[0]:
+                        peaks.append(peak)
+        else:
+            peaks = None
+            ranges = None
+
+        if self.assign_only_to_index:
+            for fid in [self.fids[i] for i in self.fid_number]:
+                fid.peaks = peaks
+                fid.ranges = ranges
+        else:       
+            for fid in self.fids:
+                fid.peaks = peaks
+                fid.ranges = ranges
+        plt.close(self.peak_selector.fig)
+  
+class Calibrator:
+    """
+    Interactive data-selection widget for calibrating PPM of a spectrum.
+    """
+    def __init__(self, fid,
+            lw=1,
+            label=None,
+            title=None,
+            ):
+        self.fid = fid
+        if fid.data is [] or fid.data is None:
+            raise ValueError('data must exist.')
+        if not fid._flags['ft']:
+            raise ValueError('Only Fourier-transformed data can be calibrated.')
+
+        data = fid.data
+        params = fid._params
+        sw_left = params['sw_left']
+        self.sw_left = sw_left
+        sw = params['sw']
+        ppm = numpy.linspace(sw_left-sw, sw_left, len(data))[::-1]
+
+        self.peak_selector = PeakDataSelector(
+                data,
+                params,
+                title=title, 
+                label=label)
+        self.peak_selector.process = self.process
+        
+        self.textinput = FloatText(value=0.0, description='New PPM:',
+            disabled=False, continuous_update=False)
+        self.button = Button(description='Apply!', disabled=False, button_style='')
+        self.button.on_click(self._applycalibration)
+
+    def process(self):
+        self.peak = self.peak_selector.psm.peak
+        self.peak_selector.out.clear_output()
+        with self.peak_selector.out:
+            print('current peak ppm:    {}'.format(self.peak))
+            display(HBox([self.textinput, self.button]))
+
+    def _applycalibration(self, event):
+        newx = self.textinput.value
+        offset = newx - self.peak
+        self.fid._params['sw_left'] = self.sw_left + offset
+
+        with self.peak_selector.out:
+            print('calibration done.')
+        self.button.disabled = True
+        plt.close(self.peak_selector.fig)
+
+class RangeCalibrator:
+    """
+    Interactive data-selection widget for calibrating PPM of an
+    array of spectra.
+    """
+    def __init__(self, fid_array,
+            y_indices=None,
+            aoti=True,
+            voff=1e-3,
+            lw=1,
+            label=None,
+            ):
+        self.fid_array = fid_array
+        self.fids = fid_array.get_fids()
+        self.assign_only_to_index = aoti
+        self.fid_number = y_indices
+        if self.fid_number is not None:
+            if not nmrpy.data_objects.Fid._is_iter(self.fid_number):
+                self.fid_number = [self.fid_number]
+        else:
+            self.fid_number = range(len(self.fids))
+        if fid_array.data is [] or fid_array.data is None:
+            raise ValueError('data must exist.')
+        if any (not fid._flags['ft'] for fid in self.fids):
+            raise ValueError('Only Fourier-transformed data can be calibrated.')
+        data = fid_array.data
+        if y_indices is not None:
+            data = fid_array.data[numpy.array(self.fid_number)]
+        params = fid_array._params
+        sw_left = params['sw_left']
+        self.sw_left = sw_left
+        sw = params['sw']
+        ppm = numpy.linspace(sw_left-sw, sw_left, data.shape[1])[::-1]
+
+        self.peak_selector = PeakDataSelector(
+                data,
+                params,
+                title='FidArray calibration',
+                voff = voff,
+                label=label)
+        self.peak_selector.process = self.process
+        
+        self.textinput = FloatText(value=0.0, description='New PPM:',
+            disabled=False, continuous_update=False)
+        self.button = Button(description='Apply!', disabled=False, button_style='')
+        self.button.on_click(self._applycalibration)
+        
+    def process(self):
+        self.peak = self.peak_selector.psm.peak
+        self.peak_selector.out.clear_output()
+        with self.peak_selector.out:
+            print('current peak ppm:    {}'.format(self.peak))
+            display(HBox([self.textinput, self.button]))
+
+    def _applycalibration(self, event):
+        newx = self.textinput.value
+        offset = newx - self.peak
+        self.fid_array._params['sw_left'] = self.sw_left + offset
+
+        if self.assign_only_to_index:
+            for fid in [self.fids[i] for i in self.fid_number]:
+                fid._params['sw_left'] = self.sw_left + offset
+        else:
+            for fid in self.fids:
+                fid._params['sw_left'] = self.sw_left + offset
+
+        with self.peak_selector.out:
+            print('calibration done.')
+        self.button.disabled = True
+        plt.close(self.peak_selector.fig)
+
+class FidArrayRangeSelector:
+    """Interactive data-selection widget with ranges. Spans are saved as self.ranges."""
+    def __init__(self, 
+            fid_array,
+            ranges=None,
+            y_indices=None,
+            voff=1e-3,
+            lw=1,
+            title=None,
+            label=None,
+            ):
+        self.fid_array = fid_array
+        self.fids = fid_array.get_fids()
+        data = fid_array.data
+        params = fid_array._params
+        if data is [] or data is None:
+            raise ValueError('data must exist.')
+        if y_indices is not None:
+            data = data[numpy.array(y_indices)]
+        sw_left = params['sw_left']
+        sw = params['sw']
+
+        ppm = numpy.linspace(sw_left-sw, sw_left, data.shape[1])[::-1]
+       
+        self.span_selector = SpanDataSelector(
+                data,
+                params,
+                ranges=ranges, 
+                title=title,
+                voff=voff,
+                label=label)
+        self.span_selector.assign = self.assign
+
+    def assign(self):
+        self.ranges = self.span_selector.ssm.ranges
+        for fid in self.fid_array.get_fids():
+            bl_ppm = []
+            for rng in self.ranges:
+                peak_ind = (fid._ppm > rng[1]) * (fid._ppm < rng[0])
+                cur_peaks = fid._ppm[peak_ind]
+                bl_ppm.append(cur_peaks)
+            bl_ppm = numpy.array([j for i in bl_ppm for j in i])
+            fid._bl_ppm = bl_ppm.copy()
+        plt.close(self.span_selector.fig)
+
+class FidRangeSelector:
+    """Interactive data-selection widget with ranges. Spans are saved as self.ranges."""
+    def __init__(self, 
+            fid,
+            title=None,
+            ranges=None,
+            y_indices=None,
+            voff=1e-3,
+            lw=1,
+            label=None,
+            ):
+        self.fid=fid
+        data = fid.data
+        params = fid._params
+        if data is [] or data is None:
+            raise ValueError('data must exist.')
+        if y_indices is not None:
+            data = data[numpy.array(y_indices)]
+        sw_left = params['sw_left']
+        sw = params['sw']
+
+        self.ppm = numpy.linspace(sw_left-sw, sw_left, len(data))[::-1]
+       
+        self.span_selector = SpanDataSelector(
+                data,
+                params,
+                ranges=ranges, 
+                title=title,
+                voff=voff,
+                label=label)
+        self.span_selector.assign = self.assign
+
+    def assign(self):
+        self.ranges = self.span_selector.ssm.ranges
+        bl_ppm = []
+        for rng in self.ranges:
+            peak_ind = (self.ppm > rng[1]) * (self.ppm < rng[0])
+            cur_peaks = self.ppm[peak_ind]
+            bl_ppm.append(cur_peaks)
+        bl_ppm = numpy.array([j for i in bl_ppm for j in i])
+        self.fid._bl_ppm = bl_ppm.copy()
+        plt.close(self.span_selector.fig)
 
 class PeakAssigner:
     """Interactive widget for assigning species to peaks in a FID."""
@@ -1382,15 +1727,10 @@ class PeakAssigner:
         """
         Initialize peak assigner widget.
 
-        Parameters
-        ----------
-        fid : Fid
-            The FID object to assign peaks for
-        species_source : Union[List[str], EnzymeMLDocument], optional
-            Either a list of species names or an EnzymeML document.
-            If None, will try to use fid.enzymeml_document
-        title : str, optional
-            Title for the widget
+        Args:
+            fid (Fid): The FID object to assign peaks for
+            species_list (list): A list of species names
+            title (str): The title of the widget
         """
         self.fid = fid
         self.title = title
@@ -1400,8 +1740,8 @@ class PeakAssigner:
         self._setup_species_source(species_list)
 
         # Validate and initialize
-        self._validate_fid(self.fid)
-        self._setup_fid(self.fid)
+        self.fid._setup_peak_objects()
+        self.fid.species = numpy.empty(len(fid.peaks), dtype=object)
         self.available_peaks = [str(peak) for peak in self.fid.peaks]
 
         # Create and layout widgets
@@ -1411,17 +1751,28 @@ class PeakAssigner:
 
     def _setup_species_source(self, species_source):
         # Configure species source and create list of available species
+
         # Check for default case first
         if species_source is None:
-            if not hasattr(self.fid, "enzymeml_species"):
+            if not hasattr(self.fid, 'enzymeml_species'):
                 raise ValueError(
-                    "No species list provided and FID has no enzymeml_species"
+                    'No species list provided and FID has no enzymeml_species'
                 )
-            self.available_species = self.fid.enzymeml_species
+            self.available_species = []
+            for species in self.fid.enzymeml_species:
+                if isinstance(species, Protein):
+                    continue
+                else:
+                    self.available_species.append(species.id)
             return
         # Check for EnzymeML document
-        elif isinstance(species_source, EnzymeMLDocument):
-            self.available_species = get_species_from_enzymeml(species_source)
+        elif EnzymeMLDocument is not None and isinstance(species_source, EnzymeMLDocument):
+            self.available_species = get_species_from_enzymeml(
+                species_source,
+                proteins=False,
+                complexes=True,
+                small_molecules=True
+            )
             return
         # Check for list of strings
         elif isinstance(species_source, list):
@@ -1430,77 +1781,32 @@ class PeakAssigner:
         # If we get here, the input was invalid
         else:
             raise ValueError(
-                "species_list must be a list of species names, "
-                "an EnzymeML document, or None if FID has enzymeml_species"
+                'species_list must be a list of species names, '
+                'an EnzymeML document, or None if FID has enzymeml_species'
             )
-
-    def _validate_fid(self, fid):
-        # Validates FID has peaks and ranges and len(peaks) == len(ranges)
-        if fid.peaks is None or len(fid.peaks) == 0:
-            raise RuntimeError(
-                "`fid.peaks` is required but still empty. "
-                "Please assign them manually or with the `peakpicker` method."
-            )
-        if fid.ranges is None or len(fid.ranges) == 0:
-            raise RuntimeError(
-                "`fid.ranges` is required but still empty. "
-                "Please assign them manually or with the `rangepicker` method."
-            )
-        if len(fid.peaks) != len(fid.ranges):
-            raise RuntimeError(
-                "`fid.peaks` and `fid.ranges` must have the same length, as "
-                "each peak must have a range assigned to it."
-            )
-
-    def _setup_fid(self, fid):
-        # Initialize species array and creates or updates Peak objects
-        # in data model if species from EnyzmeML are used.
-
-        # Initialize empty species array
-        fid.species = numpy.empty(len(fid.peaks), dtype=object)
-
-        # Create or update Peak objects in data model
-        for i, (peak_val, range_val) in enumerate(zip(fid.peaks, fid.ranges)):
-            if i < len(fid.fid_object.peaks):
-                # Peak already exists, update it
-                fid.fid_object.peaks[i].peak_position = float(peak_val)
-                fid.fid_object.peaks[i].peak_range = {
-                    "start": float(range_val[0]),
-                    "end": float(range_val[1]),
-                }
-            else:
-                # Peak does not yet exist, create it
-                fid.fid_object.add_to_peaks(
-                    peak_index=i,
-                    peak_position=float(peak_val),
-                    peak_range={
-                        "start": float(range_val[0]),
-                        "end": float(range_val[1]),
-                    },
-                )
 
     def _create_widgets(self):
         # Create all widget components
         self.title_label = Label(value=self.title)
         self.peak_dropdown = Dropdown(
             options=self.available_peaks,
-            description="Select a peak:",
-            layout={"width": "max-content"},
-            style={"description_width": "initial"},
+            description='Select a peak:',
+            layout={'width': 'max-content'},
+            style={'description_width': 'initial'},
         )
         self.species_dropdown = Dropdown(
             options=[
                 format_species_string(species) for species in self.available_species
             ],
-            description="Select a species:",
-            layout={"width": "max-content"},
-            style={"description_width": "initial"},
+            description='Select a species:',
+            layout={'width': 'max-content'},
+            style={'description_width': 'initial'},
         )
         self.save_button = Button(
-            description="Save selection",
-            icon="file-arrow-down",
+            description='Save selection',
+            icon='file-arrow-down',
         )
-        self.reset_button = Button(description="Reset selection", disabled=True)
+        self.reset_button = Button(description='Reset selection', disabled=True)
         self.selection_output = Output()
 
     def _setup_callbacks(self):
@@ -1555,10 +1861,10 @@ class PeakAssigner:
         # Handle reset button click
         with self.selection_output:
             self.selection_output.clear_output(wait=True)
-            print("\nCleared selections!")
+            print('\nCleared selections!')
 
             # Reset state
-            self.fid._flags["assigned"] = False
+            self.fid._flags['assigned'] = False
             self.fid.species = numpy.empty(len(self.fid.peaks), dtype=object)
             for peak_object in self.fid.fid_object.peaks:
                 peak_object.species_id = None
@@ -1577,15 +1883,15 @@ class PeakAssigner:
         for peak in self.fid.fid_object.peaks:
             if peak.peak_position not in peak_position:
                 continue
-            peak.species_id = species_id.split(" ")[0]
+            peak.species_id = species_id.split(' ')[0]
             self.fid.species[peak.peak_index] = peak.species_id
-        self.fid._flags["assigned"] = True
+        self.fid._flags['assigned'] = True
 
     def _display_selections(self):
         # Display current selections
-        print("\nSaved selections:")
+        print('\nSaved selections:')
         for key, value in self.selected_values.items():
-            print(f"{key}: {value}")
+            print(f'{key}: {value}')
 
 
 class PeakRangeAssigner:
@@ -1594,6 +1900,14 @@ class PeakRangeAssigner:
     """
 
     def __init__(self, fid_array, species_list=None, index_list=None):
+        """
+        Initialize peak assigner widget.
+
+        Args:
+            fid_array (FidArray): The FidArray object to assign peaks for
+            species_list (list): A list of species names
+            index_list (list): A list of indices of FIDs to assign peaks for
+        """
         self.fid_array = fid_array
         self.selected_fid = None
         self.selected_values = {}
@@ -1604,8 +1918,8 @@ class PeakRangeAssigner:
         # Validate and initialize
         self.fids = self._build_fids(index_list)
         for fid in self.fids:
-            self._validate_fid(fid)
-            self._setup_fid(fid)
+            fid._setup_peak_objects()
+            fid.species = numpy.empty(len(fid.peaks), dtype=object)
 
         # Create and layout widgets
         self._create_widgets()
@@ -1617,17 +1931,25 @@ class PeakRangeAssigner:
 
         # Check for default case first
         if species_source is None:
-            if not hasattr(self.fid_array, "enzymeml_document"):
+            if not hasattr(self.fid_array, 'enzymeml_document'):
                 raise ValueError(
-                    "No species list provided and FIDArray has no enzymeml_document"
+                    'No species list provided and FIDArray has no enzymeml_document'
                 )
             self.available_species = get_species_from_enzymeml(
-                self.fid_array.enzymeml_document
+                self.fid_array.enzymeml_document,
+                proteins=False,
+                complexes=True,
+                small_molecules=True
             )
             return
         # Check for EnzymeML document
-        elif isinstance(species_source, EnzymeMLDocument):
-            self.available_species = get_species_from_enzymeml(species_source)
+        elif EnzymeMLDocument is not None and isinstance(species_source, EnzymeMLDocument):
+            self.available_species = get_species_from_enzymeml(
+                species_source,
+                proteins=False,
+                complexes=True,
+                small_molecules=True
+            )
             return
         # Check for list of strings
         elif isinstance(species_source, list):
@@ -1636,8 +1958,8 @@ class PeakRangeAssigner:
         # If we get here, the input was invalid
         else:
             raise ValueError(
-                "species_list must be a list of species names, an EnzymeML "
-                "document, or None if FIDArray has enzymeml_document"
+                'species_list must be a list of species names, an EnzymeML '
+                'document, or None if FIDArray has enzymeml_document'
             )
 
     def _build_fids(self, index_list):
@@ -1654,15 +1976,15 @@ class PeakRangeAssigner:
         for i in index_list:
             if i >= total_fids:
                 raise IndexError(
-                    f"Index {i} is out of bounds (there are {total_fids} FIDs)."
+                    f'Index {i} is out of bounds (there are {total_fids} FIDs).'
                 )
 
         # 2) Determine how many digits for the ID
         n_digits = len(str(total_fids - 1))  # e.g., 2 if up to 99, 3 if up to 999
         if n_digits == 1:
-            fid_format = "fid{}"
+            fid_format = 'fid{}'
         else:
-            fid_format = f"fid{{:0{n_digits}d}}"
+            fid_format = f'fid{{:0{n_digits}d}}'
 
         # 3) Build the list of FIDs
         fids = []
@@ -1672,78 +1994,33 @@ class PeakRangeAssigner:
 
         return fids
 
-    def _validate_fid(self, fid):
-        # Validate that FID has peaks and ranges and that their
-        # lengths are the same
-        if fid.peaks is None or len(fid.peaks) == 0:
-            raise RuntimeError(
-                "`fid.peaks` is required but still empty. "
-                "Please assign them manually or with the `peakpicker` method."
-            )
-        if fid.ranges is None or len(fid.ranges) == 0:
-            raise RuntimeError(
-                "`fid.ranges` is required but still empty. "
-                "Please assign them manually or with the `rangepicker` method."
-            )
-        if len(fid.peaks) != len(fid.ranges):
-            raise RuntimeError(
-                "`fid.peaks` and `fid.ranges` must have the same length, as "
-                "each peak must have a range assigned to it."
-            )
-
-    def _setup_fid(self, fid):
-        # Initialize species array and create or update Peak objects in
-        # data model
-
-        # Initialize empty species array
-        fid.species = numpy.empty(len(fid.peaks), dtype=object)
-        # Create or update Peak objects in data model
-        for i, (peak_val, range_val) in enumerate(zip(fid.peaks, fid.ranges)):
-            if i < len(fid.fid_object.peaks):
-                # Peak already exists, update it
-                fid.fid_object.peaks[i].peak_position = float(peak_val)
-                fid.fid_object.peaks[i].peak_range = {
-                    "start": float(range_val[0]),
-                    "end": float(range_val[1]),
-                }
-            else:
-                # Peak does not yet exist, create it
-                fid.fid_object.add_to_peaks(
-                    peak_index=i,
-                    peak_position=float(peak_val),
-                    peak_range={
-                        "start": float(range_val[0]),
-                        "end": float(range_val[1]),
-                    },
-                )
-
     def _create_widgets(self):
         # Create all widget components
-        self.title_label = Label(value="Assign peaks for all FIDs")
+        self.title_label = Label(value='Assign peaks for all FIDs')
         self.combobox = Combobox(
             options=[fid.id for fid in self.fids],
-            description="Select FID to base entire array on:",
-            layout={"width": "max-content"},
-            style={"description_width": "initial"},
+            description='Select FID to base entire array on:',
+            layout={'width': 'max-content'},
+            style={'description_width': 'initial'},
         )
         self.peak_dropdown = Dropdown(
             options=[],
-            description="Select a peak:",
-            layout={"width": "max-content"},
-            style={"description_width": "initial"},
+            description='Select a peak:',
+            layout={'width': 'max-content'},
+            style={'description_width': 'initial'},
             disabled=True,
         )
         self.species_dropdown = Dropdown(
             options=[],
-            description="Select a species:",
-            layout={"width": "max-content"},
-            style={"description_width": "initial"},
+            description='Select a species:',
+            layout={'width': 'max-content'},
+            style={'description_width': 'initial'},
             disabled=True,
         )
         self.save_button = Button(
-            description="Save selection", icon="file-arrow-down", disabled=True
+            description='Save selection', icon='file-arrow-down', disabled=True
         )
-        self.reset_button = Button(description="Reset selection", disabled=True)
+        self.reset_button = Button(description='Reset selection', disabled=True)
         self.selection_output = Output()
 
     def _setup_callbacks(self):
@@ -1771,8 +2048,8 @@ class PeakRangeAssigner:
 
     def _handle_combobox_change(self, event):
         # Enable the peak dropdown when a FID is selected
-        if event["type"] == "change" and event["name"] == "value":
-            selected_option = event["new"]
+        if event['type'] == 'change' and event['name'] == 'value':
+            selected_option = event['new']
             if selected_option in self.combobox.options:
                 self.peak_dropdown.disabled = False
                 self.selected_fid = self.fid_array.get_fid(selected_option)
@@ -1784,7 +2061,7 @@ class PeakRangeAssigner:
     def _handle_peak_change(self, event):
         # Format the species options for disply and enable the species
         # dropdown when a peak is selected
-        if event["type"] == "change" and event["name"] == "value":
+        if event['type'] == 'change' and event['name'] == 'value':
             self.species_dropdown.disabled = False
             self.species_dropdown.options = [
                 format_species_string(species) for species in self.available_species
@@ -1794,7 +2071,7 @@ class PeakRangeAssigner:
 
     def _handle_species_change(self, event):
         # Enable the save button when a species is selected
-        if event["type"] == "change" and event["name"] == "value":
+        if event['type'] == 'change' and event['name'] == 'value':
             self.save_button.disabled = False
 
     def _handle_save(self, b):
@@ -1831,10 +2108,10 @@ class PeakRangeAssigner:
         # Reset the widget state
         with self.selection_output:
             self.selection_output.clear_output(wait=True)
-            print("\nCleared selections!")
+            print('\nCleared selections!')
             # Reset FIDs' state
             for fid in self.fids:
-                fid._flags["assigned"] = False
+                fid._flags['assigned'] = False
                 fid.species = numpy.empty(len(fid.peaks), dtype=object)
                 for peak_object in fid.fid_object.peaks:
                     peak_object.species_id = None
@@ -1852,520 +2129,775 @@ class PeakRangeAssigner:
         for peak in fid.fid_object.peaks:
             if peak.peak_position not in peak_position:
                 continue
-            peak.species_id = species_id.split(" ")[0]
+            peak.species_id = species_id.split(' ')[0]
             fid.species[peak.peak_index] = peak.species_id
-        fid._flags["assigned"] = True
+        fid._flags['assigned'] = True
 
     def _display_selections(self):
         # Display current selections
-        print("\nSaved selections:")
+        print('\nSaved selections:')
         for key, value in self.selected_values.items():
-            print(f"{key}: {value}")
-
-
-class DataTraceSelector:
-    """
-    Interactive data-selection widget with traces and ranges. Traces are saved
-    as self.data_traces (WRT data) and self.index_traces (WRT index).
-    """
-
-    def __init__(
-        self,
-        fid_array,
-        extra_data=None,
-        extra_data_colour="b",
-        voff=1e-3,
-        lw=1,
-        label=None,
-    ):
-        self.fid_array = fid_array
-        if fid_array.data is [] or fid_array.data is None:
-            raise ValueError("data must exist.")
-        data = fid_array.data
-        params = fid_array._params
-        sw_left = params["sw_left"]
-        sw = params["sw"]
-
-        ppm = numpy.linspace(sw_left - sw, sw_left, data.shape[1])[::-1]
-
-        self.integral_selector = IntegralDataSelector(
-            extra_data,
-            params,
-            extra_data=data,
-            extra_data_colour=extra_data_colour,
-            peaks=None,
-            ranges=None,
-            title="Integral trace selector",
-            voff=voff,
-            label=label,
-        )
-        self.integral_selector.assign = self.assign
-
-    def assign(self):
-        data_traces = self.integral_selector.psm.data_lines
-        index_traces = self.integral_selector.psm.index_lines
-
-        self.fid_array._data_traces = [dict(zip(i[1], i[0])) for i in data_traces]
-        self.fid_array._index_traces = [dict(zip(i[1], i[0])) for i in index_traces]
-
-        decon_peaks = []
-        for i in self.fid_array._deconvoluted_peaks:
-            if len(i):
-                decon_peaks.append(i.transpose()[0])
-            else:
-                decon_peaks.append(None)
-
-        trace_dict = {}
-        for t in range(len(self.fid_array._index_traces)):
-            trace = self.fid_array._index_traces[t]
-            integrals = {}
-            for fid, indx in trace.items():
-                try:
-                    integrals[fid] = numpy.argmin(abs(decon_peaks[fid] - indx))
-                except Exception:
-                    integrals[fid] = None
-            trace_dict[t] = integrals
-        last_fid = len(self.fid_array.get_fids()) - 1
-        for i in trace_dict:
-            tmin = min(trace_dict[i])
-            tminval = trace_dict[i][tmin]
-            if tmin > 0:
-                for j in range(0, tmin):
-                    trace_dict[i][j] = tminval
-            tmax = max(trace_dict[i])
-            tmaxval = trace_dict[i][tmax]
-            if tmax < last_fid:
-                for j in range(tmax, last_fid + 1):
-                    trace_dict[i][j] = tmaxval
-        self.fid_array.integral_traces = trace_dict
-        plt.close(self.integral_selector.fig)
-
-
-class DataTraceRangeSelector:
-    """
-    Interactive data-selection widget with traces and ranges. Traces are saved
-    as self.data_traces (WRT data) and self.index_traces (WRT index). Spans are
-    saves as self.spans.
-    """
-
-    def __init__(
-        self,
-        fid_array,
-        peaks=None,
-        ranges=None,
-        voff=1e-3,
-        lw=1,
-        label=None,
-    ):
-        self.fid_array = fid_array
-        if fid_array.data is [] or fid_array.data is None:
-            raise ValueError("data must exist.")
-        data = fid_array.data
-        params = fid_array._params
-        sw_left = params["sw_left"]
-        sw = params["sw"]
-
-        ppm = numpy.linspace(sw_left - sw, sw_left, data.shape[1])[::-1]
-
-        self.peak_selector = PeakTraceDataSelector(
-            data,
-            params,
-            peaks=peaks,
-            ranges=ranges,
-            title="Peak and range trace selector",
-            voff=voff,
-            label=label,
-        )
-        self.peak_selector.assign = self.assign
-
-    def assign(self):
-        data_traces = self.peak_selector.psm.data_lines
-        index_traces = self.peak_selector.psm.index_lines
-        spans = self.peak_selector.ssm.ranges
-
-        traces = [[i[0], j[1]] for i, j in zip(data_traces, index_traces)]
-
-        self.fid_array.traces = traces
-        self.fid_array._trace_mask = self.fid_array._generate_trace_mask(traces)
-
-        self.fid_array._set_all_peaks_ranges_from_traces_and_spans(traces, spans)
-        plt.close(self.peak_selector.fig)
-
-
-class DataPeakSelector:
-    """
-    Interactive data-selection widget with lines and ranges for a single Fid.
-    Lines and spans are saved as self.peaks, self.ranges.
-    """
-
-    def __init__(
-        self,
-        fid,
-        peaks=None,
-        ranges=None,
-        voff=1e-3,
-        lw=1,
-        label=None,
-        title=None,
-    ):
-        self.fid = fid
-        if fid.data is [] or fid.data is None:
-            raise ValueError("data must exist.")
-        data = fid.data
-        params = fid._params
-        sw_left = params["sw_left"]
-        sw = params["sw"]
-        ppm = numpy.linspace(sw_left - sw, sw_left, len(data))[::-1]
-
-        if fid.peaks is not None:
-            peaks = list(fid.peaks)
-        if fid.ranges is not None:
-            ranges = list(fid.ranges)
-
-        self.peak_selector = LineSpanDataSelector(
-            data,
-            params,
-            peaks=peaks,
-            ranges=ranges,
-            title=title,
-            voff=voff,
-            label=label,
-        )
-        self.peak_selector.assign = self.assign
-
-    def assign(self):
-        if (
-            len(self.peak_selector.ssm.ranges) > 0
-            and len(self.peak_selector.lsm.peaks) > 0
-        ):
-            self.fid.ranges = self.peak_selector.ssm.ranges
-            peaks = []
-            for peak in self.peak_selector.lsm.peaks:
-                for rng in self.peak_selector.ssm.ranges:
-                    if peak >= rng[1] and peak <= rng[0]:
-                        peaks.append(peak)
-            self.fid.peaks = peaks
-        else:
-            self.fid.peaks = None
-            self.fid.ranges = None
-        plt.close(self.peak_selector.fig)
-
-
-class DataPeakRangeSelector:
-    """Interactive data-selection widget with lines and ranges. Lines and spans are saved as self.peaks, self.ranges."""
-
-    def __init__(
-        self,
-        fid_array,
-        peaks=None,
-        ranges=None,
-        y_indices=None,
-        aoti=True,
-        voff=1e-3,
-        lw=1,
-        label=None,
-    ):
-        self.fid_array = fid_array
-        self.fids = fid_array.get_fids()
-        self.assign_only_to_index = aoti
-        self.fid_number = y_indices
-        if self.fid_number is not None:
-            if not nmrpy.data_objects.Fid._is_iter(self.fid_number):
-                self.fid_number = [self.fid_number]
-        else:
-            self.fid_number = range(len(self.fids))
-        if fid_array.data is [] or fid_array.data is None:
-            raise ValueError("data must exist.")
-        data = fid_array.data
-        if y_indices is not None:
-            data = fid_array.data[numpy.array(self.fid_number)]
-        params = fid_array._params
-        sw_left = params["sw_left"]
-        sw = params["sw"]
-
-        ppm = numpy.linspace(sw_left - sw, sw_left, data.shape[1])[::-1]
-
-        self.peak_selector = LineSpanDataSelector(
-            data,
-            params,
-            peaks=peaks,
-            ranges=ranges,
-            title="Peak and range selector",
-            voff=voff,
-            label=label,
-        )
-        self.peak_selector.assign = self.assign
-
-    def assign(self):
-        self.peaks = self.peak_selector.lsm.peaks
-        self.ranges = self.peak_selector.ssm.ranges
-
-        if len(self.ranges) > 0 and len(self.peaks) > 0:
-            ranges = self.ranges
-            peaks = []
-            for peak in self.peaks:
-                for rng in ranges:
-                    if peak >= rng[1] and peak <= rng[0]:
-                        peaks.append(peak)
-        else:
-            peaks = None
-            ranges = None
-
-        if self.assign_only_to_index:
-            for fid in [self.fids[i] for i in self.fid_number]:
-                fid.peaks = peaks
-                fid.ranges = ranges
-        else:
-            for fid in self.fids:
-                fid.peaks = peaks
-                fid.ranges = ranges
-        plt.close(self.peak_selector.fig)
-
-
-class Calibrator:
-    """
-    Interactive data-selection widget for calibrating PPM of a spectrum.
-    """
-
-    def __init__(
-        self,
-        fid,
-        lw=1,
-        label=None,
-        title=None,
-    ):
-        self.fid = fid
-        if fid.data is [] or fid.data is None:
-            raise ValueError("data must exist.")
-        if not fid._flags["ft"]:
-            raise ValueError("Only Fourier-transformed data can be calibrated.")
-
-        data = fid.data
-        params = fid._params
-        sw_left = params["sw_left"]
-        self.sw_left = sw_left
-        sw = params["sw"]
-        ppm = numpy.linspace(sw_left - sw, sw_left, len(data))[::-1]
-
-        self.peak_selector = PeakDataSelector(data, params, title=title, label=label)
-        self.peak_selector.process = self.process
-
-        self.textinput = FloatText(
-            value=0.0,
-            description="New PPM:",
-            disabled=False,
-            continuous_update=False,
-        )
-
-    def _wait_for_change(self, widget, value):
-        future = asyncio.Future()
-
-        def getvalue(change):
-            # make the new value available
-            future.set_result(change.new)
-            widget.unobserve(getvalue, value)
-
-        widget.observe(getvalue, value)
-        return future
-
-    def process(self):
-        peak = self.peak_selector.psm.peak
-        self.peak_selector.out.clear_output()
-        with self.peak_selector.out:
-            print("current peak ppm:    {}".format(peak))
-            display(self.textinput)
-
-        async def f():
-            newx = await self._wait_for_change(self.textinput, "value")
-            offset = newx - peak
-            self.fid._params["sw_left"] = self.sw_left + offset
-            with self.peak_selector.out:
-                print("calibration done.")
-            plt.close(self.peak_selector.fig)
-
-        asyncio.ensure_future(f())
-
-
-class RangeCalibrator:
-    """
-    Interactive data-selection widget for calibrating PPM of an
-    array of spectra.
-    """
-
-    def __init__(
-        self,
-        fid_array,
-        y_indices=None,
-        aoti=True,
-        voff=1e-3,
-        lw=1,
-        label=None,
-    ):
-        self.fid_array = fid_array
-        self.fids = fid_array.get_fids()
-        self.assign_only_to_index = aoti
-        self.fid_number = y_indices
-        if self.fid_number is not None:
-            if not nmrpy.data_objects.Fid._is_iter(self.fid_number):
-                self.fid_number = [self.fid_number]
-        else:
-            self.fid_number = range(len(self.fids))
-        if fid_array.data is [] or fid_array.data is None:
-            raise ValueError("data must exist.")
-        if any(not fid._flags["ft"] for fid in self.fids):
-            raise ValueError("Only Fourier-transformed data can be calibrated.")
-        data = fid_array.data
-        if y_indices is not None:
-            data = fid_array.data[numpy.array(self.fid_number)]
-        params = fid_array._params
-        sw_left = params["sw_left"]
-        self.sw_left = sw_left
-        sw = params["sw"]
-        ppm = numpy.linspace(sw_left - sw, sw_left, data.shape[1])[::-1]
-
-        self.peak_selector = PeakDataSelector(
-            data, params, title="FidArray calibration", voff=voff, label=label
-        )
-        self.peak_selector.process = self.process
-
-        self.textinput = FloatText(
-            value=0.0,
-            description="New PPM:",
-            disabled=False,
-            continuous_update=False,
-        )
-
-    def _wait_for_change(self, widget, value):
-        future = asyncio.Future()
-
-        def getvalue(change):
-            # make the new value available
-            future.set_result(change.new)
-            widget.unobserve(getvalue, value)
-
-        widget.observe(getvalue, value)
-        return future
-
-    def process(self):
-        peak = self.peak_selector.psm.peak
-        self.peak_selector.out.clear_output()
-        with self.peak_selector.out:
-            print("current peak ppm:    {}".format(peak))
-            display(self.textinput)
-
-        async def f():
-            newx = await self._wait_for_change(self.textinput, "value")
-            offset = newx - peak
-            self._applycalibration(offset)
-            with self.peak_selector.out:
-                print("calibration done.")
-            plt.close(self.peak_selector.fig)
-
-        asyncio.ensure_future(f())
-
-    def _applycalibration(self, offset):
-        self.fid_array._params["sw_left"] = self.sw_left + offset
-
-        if self.assign_only_to_index:
-            for fid in [self.fids[i] for i in self.fid_number]:
-                fid._params["sw_left"] = self.sw_left + offset
-        else:
-            for fid in self.fids:
-                fid._params["sw_left"] = self.sw_left + offset
-
-
-class FidArrayRangeSelector:
-    """Interactive data-selection widget with ranges. Spans are saved as self.ranges."""
-
-    def __init__(
-        self,
-        fid_array,
-        ranges=None,
-        y_indices=None,
-        voff=1e-3,
-        lw=1,
-        title=None,
-        label=None,
-    ):
-        self.fid_array = fid_array
-        self.fids = fid_array.get_fids()
-        data = fid_array.data
-        params = fid_array._params
-        if data is [] or data is None:
-            raise ValueError("data must exist.")
-        if y_indices is not None:
-            data = data[numpy.array(y_indices)]
-        sw_left = params["sw_left"]
-        sw = params["sw"]
-
-        ppm = numpy.linspace(sw_left - sw, sw_left, data.shape[1])[::-1]
-
-        self.span_selector = SpanDataSelector(
-            data, params, ranges=ranges, title=title, voff=voff, label=label
-        )
-        self.span_selector.assign = self.assign
-
-    def assign(self):
-        self.ranges = self.span_selector.ssm.ranges
-        for fid in self.fid_array.get_fids():
-            bl_ppm = []
-            for rng in self.ranges:
-                peak_ind = (fid._ppm > rng[1]) * (fid._ppm < rng[0])
-                cur_peaks = fid._ppm[peak_ind]
-                bl_ppm.append(cur_peaks)
-            bl_ppm = numpy.array([j for i in bl_ppm for j in i])
-            fid._bl_ppm = bl_ppm
-        plt.close(self.span_selector.fig)
-
-
-class FidRangeSelector:
-    """Interactive data-selection widget with ranges. Spans are saved as self.ranges."""
-
-    def __init__(
-        self,
-        fid,
-        title=None,
-        ranges=None,
-        y_indices=None,
-        voff=1e-3,
-        lw=1,
-        label=None,
-    ):
-        self.fid = fid
-        data = fid.data
-        params = fid._params
-        if data is [] or data is None:
-            raise ValueError("data must exist.")
-        if y_indices is not None:
-            data = data[numpy.array(y_indices)]
-        sw_left = params["sw_left"]
-        sw = params["sw"]
-
-        self.ppm = numpy.linspace(sw_left - sw, sw_left, len(data))[::-1]
-
-        self.span_selector = SpanDataSelector(
-            data, params, ranges=ranges, title=title, voff=voff, label=label
-        )
-        self.span_selector.assign = self.assign
-
-    def assign(self):
-        self.ranges = self.span_selector.ssm.ranges
-        bl_ppm = []
-        for rng in self.ranges:
-            peak_ind = (self.ppm > rng[1]) * (self.ppm < rng[0])
-            cur_peaks = self.ppm[peak_ind]
-            bl_ppm.append(cur_peaks)
-        bl_ppm = numpy.array([j for i in bl_ppm for j in i])
-        self.fid._bl_ppm = bl_ppm
-        plt.close(self.span_selector.fig)
-
+            print(f'{key}: {value}')
 
 class ConcentrationCalculator:
+    """
+    Widget for calculating concentrations.
+    """
     def __init__(self):
         raise NotImplementedError(
-            "Widget for calculating concentrations is currently under heavy construction. Please calculate and assign concentrations manually."
+            'Widget for calculating concentrations is currently under heavy construction. Please calculate and assign concentrations manually.'
         )
 
+class T0Adder:
+    """
+    Widget for adding t0 to a measurement with optional t1 zero-shift
+    and time offset.
+    """
 
-if __name__ == "__main__":
+    def __init__(
+        self,
+        fid_array,
+        measurement_id: Optional[str] = None,
+        use_t1: bool = True,
+        t0_values: Optional[Mapping[str, float]] = None,
+        offset_enabled: bool = False,
+        offset_value: float = 0.0,
+    ):
+        # Logic state
+        self.logic = T0Logic(fid_array.enzymeml_document, measurement_id)
+        self.use_t1 = bool(use_t1)
+        self.offset_enabled = bool(offset_enabled)
+        self.offset_value = float(offset_value) if offset_enabled else 0.0
+        self.t0_values: dict[str, float] = dict(t0_values or {})
+
+        # Widget state
+        self.t0_tabs: dict[str, T0Tab] = {}
+        self._build_widgets()
+        self._wire_callbacks()
+        self._refresh_tabs()
+        display(self.container)
+
+        # Initial state
+        if self.use_t1:
+            self.logic.zero_shift_times()
+        else:
+            for sid, val in self.t0_values.items():
+                self.logic.set_t0_value(sid, val)
+
+        if self.offset_enabled:
+            self.logic.apply_offset(self.offset_value)
+
+        self.logic.update_initials()
+
+    def _build_widgets(self):
+        self.title_html = HTML(value='<b>Add t0 to EnzymeML Measurement</b>')
+
+        self.measurement_dropdown = Dropdown(
+            options=[m.id for m in self.logic.doc.measurements],
+            value=self.logic.measurement.id,
+            description='Select a measurement:',
+            layout={'width': 'max-content'},
+            style={'description_width': 'initial'},
+        )
+
+        self.use_t1_checkbox = Checkbox(
+            value=self.use_t1,
+            description=f'Use t1 values from {self.logic.measurement.id}?',
+            indent=False,
+        )
+
+        self.offset_checkbox = Checkbox(
+            value=self.offset_enabled,
+            description='Apply offset to time axis?',
+            indent=False,
+        )
+
+        self.offset_textbox = BoundedFloatText(
+            value=self.offset_value,
+            min=0.0,
+            max=1000.0,
+            step=0.01,
+            description=f'Offset in {self.logic.get_time_unit_name()}:',
+            layout={'width': 'max-content'},
+            style={'description_width': 'initial'},
+            disabled=not self.offset_enabled,
+        )
+
+        self.general_tab = VBox(
+            [
+                self.measurement_dropdown,
+                self.use_t1_checkbox,
+                self.offset_checkbox,
+                self.offset_textbox,
+            ]
+        )
+
+        self.tab = Tab(children=[self.general_tab])
+        self.tab.set_title(0, 'General')
+
+        self.container = VBox([self.title_html, self.tab])
+
+    def _wire_callbacks(self):
+        self.measurement_dropdown.observe(self._on_measurement_change, names='value')
+        self.use_t1_checkbox.observe(self._on_use_t1_change, names='value')
+        self.offset_checkbox.observe(self._on_offset_toggle, names='value')
+        self.offset_textbox.observe(self._on_offset_value_change, names='value')
+
+    def _refresh_tabs(self):
+        self.t0_tabs.clear()
+
+        species_ids = self.logic.nonconstant_species_ids()
+        new_children = [self.general_tab]
+        titles = ['General']
+
+        for sid in species_ids:
+            start_val = float(self.t0_values.get(sid, 0.0))
+            header = HTML(value=f'<b>Set t0 for {sid}</b>')
+            t0_box = BoundedFloatText(
+                value=start_val,
+                min=0.0,
+                max=1000.0,
+                step=0.01,
+                description=f't0 data in {self.logic.get_data_unit_name(sid)}:',
+                layout={'width': 'max-content'},
+                style={'description_width': 'initial'},
+                disabled=self.use_t1,
+            )
+            tab = T0Tab(sid, sid, header, t0_box)
+            t0_box.observe(lambda ev, sp=sid: self._on_t0_value_change(ev, sp), names='value')
+
+            self.t0_tabs[sid] = tab
+            new_children.append(tab.as_vbox())
+            titles.append(sid)
+
+        self.tab.children = tuple(new_children)
+        for i, title in enumerate(titles):
+            self.tab.set_title(i, title)
+
+    def _on_measurement_change(self, change):
+        if change['type'] != 'change':
+            return
+        
+        self.logic = T0Logic(self.logic.doc, change['new'])
+
+        self.use_t1_checkbox.description = f'Use t1 values from {self.logic.measurement.id}?'
+        self.offset_textbox.description = f'Offset in {self.logic.get_time_unit_name()}:'
+
+        self._refresh_tabs()
+
+        if self.use_t1:
+            self.logic.zero_shift_times()
+        else:
+            for sid, val in self.t0_values.items():
+                self.logic.set_t0_value(sid, val)
+
+        if self.offset_enabled:
+            self.logic.apply_offset(self.offset_value)
+
+        self.logic.update_initials()
+
+    def _on_use_t1_change(self, change):
+        if change['type'] != 'change':
+            return
+        
+        self.use_t1 = bool(change['new'])
+
+        for tab in self.t0_tabs.values():
+            tab.t0_data_textbox.disabled = self.use_t1
+            if self.use_t1:
+                tab.t0_data_textbox.value = 0.0
+
+        if self.use_t1:
+            self.logic.zero_shift_times()
+        self.logic.update_initials()
+
+    def _on_offset_toggle(self, change):
+        if change['type'] != 'change':
+            return
+        
+        self.offset_enabled = bool(change['new'])
+        self.offset_textbox.disabled = not self.offset_enabled
+
+        if not self.offset_enabled:
+            self.logic.apply_offset(0.0)
+        else:
+            self.logic.apply_offset(float(self.offset_textbox.value or 0.0))
+        self.logic.update_initials()
+
+    def _on_offset_value_change(self, change):
+        if change['type'] != 'change':
+            return
+        if not self.offset_enabled:
+            return
+        
+        self.offset_value = float(change['new'] or 0.0)
+
+        self.logic.apply_offset(self.offset_value)
+        self.logic.update_initials()
+
+    def _on_t0_value_change(self, change, species_id: str):
+        if change['type'] != 'change':
+            return
+        if self.use_t1:
+            return
+        
+        value = float(change['new'] or 0.0)
+        self.t0_values[species_id] = value
+
+        self.logic.set_t0_value(species_id, value)
+        self.logic.update_initials()
+
+class MeasurementCreator:
+    """
+    Widget for creating a new measurement.
+    """
+    def __init__(self, fid_array):
+        self.fid_array = fid_array
+        self.measurements = self.fid_array.enzymeml_document.measurements.copy()
+        self.template_measurement = None
+        self.new_measurement = None
+        self.initialized = False
+
+        self.c_units = ['mol/l', 'mmol/l', 'umol/l', 'nmol/l', 'mol', 'mmol', 'umol', 'nmol']
+        self.m_units = ['g', 'mg', 'ug']
+        self.v_units = ['l', 'ml', 'ul', 'nl']
+        self.t_units = ['s', 'min', 'h', 'd']
+        self.T_units = ['K', 'C']
+
+        self._initial_name = None
+        self._initial_id = None
+        self._current_temp_unit = 'K'
+        self._missing_prepared_conditions = []
+
+        self.create_widgets()
+        self.setup_callbacks()
+        self.initialize_measurement()
+        self.layout_widgets()
+
+    def create_widgets(self):
+        # Create all widget components
+        self.spacer = HTML(value='&nbsp;')
+
+        self.title_html = HTML(value='<b>Create new EnzymeML Measurement</b>')
+
+        self.name_textbox = Text(
+            value='',
+            description='Enter name of new measurement:',
+            layout={'width': 'max-content'},
+            style={'description_width': 'initial'},
+        )
+
+        self.id_checkbox = Checkbox(
+            value=False,
+            description='Assign a custom ID?',
+            indent=False,
+        )
+        self.id_textbox = Text(
+            value='',
+            description='Enter custom ID:',
+            layout={'width': 'max-content'},
+            style={'description_width': 'initial'},
+            disabled=True,
+        )
+            
+        self.template_checkbox = Checkbox(
+            value=False,
+            description='Use a template measurement?',
+            indent=False,
+        )
+        self.template_dropdown = Dropdown(
+            options=[],
+            description='Select a template measurement:',
+            layout={'width': 'max-content'},
+            style={'description_width': 'initial'},
+            disabled=True,
+        )
+
+        self.ph_checkbox = Checkbox(
+            value=True,
+            description='Keep pH?',
+            indent=False,
+            disabled=True,
+        )
+        self.ph_textbox = BoundedFloatText(
+            value=7.0,
+            min=0.0,
+            max=14.0,
+            step=0.1,
+            description='Select new pH:',
+            layout={'width': 'max-content'},
+            style={'description_width': 'initial'},
+        )
+
+        self.temperature_checkbox = Checkbox(
+            value=True,
+            description='Keep temperature?',
+            indent=False,
+            disabled=True,
+        )
+        self.temperature_textbox = BoundedFloatText(
+            value=298.15,
+            min=0.0,
+            max=1000.0,
+            step=0.1,
+            description='Select new temperature:',
+            layout={'width': 'max-content'},
+            style={'description_width': 'initial'},
+        )
+        self.temperature_unit_combobox = Combobox(
+            options=self.T_units,
+            value='K',
+            description='Select temperature unit:',
+            ensure_option=False,
+            placeholder='Select or type unit',
+            layout={'width': 'max-content'},
+            style={'description_width': 'initial'},
+        )
+
+        self.prepared_checkbox = Checkbox(
+            value=False,
+            description='Keep prepared conditions?',
+            indent=False,
+            disabled=True,
+        )
+        self.prepared_tabs = self._create_prepared_tabs()
+
+        self.warning_html = HTML(value='')
+
+        self.general_tab = VBox(
+            [
+                self.name_textbox,
+                self.spacer,
+                self.id_checkbox,
+                self.id_textbox,
+                self.spacer,
+                self.template_checkbox,
+                self.template_dropdown,
+                self.spacer,
+                self.ph_checkbox,
+                self.ph_textbox,
+                self.spacer,
+                self.temperature_checkbox,
+                self.temperature_textbox,
+                self.temperature_unit_combobox,
+                self.spacer,
+                self.prepared_checkbox,
+                self.spacer,
+                self.spacer,
+                self.warning_html,
+            ]
+        )
+
+    def _create_prepared_tabs(self):
+        prepared_tabs = {}
+        if self.template_measurement:
+            selected_measurement = self.template_measurement.model_copy(deep=True)
+        else:
+            selected_measurement = self.measurements[-1].model_copy(deep=True)
+        for species_datum in selected_measurement.species_data:
+            for species in get_species_from_enzymeml(self.fid_array.enzymeml_document):
+                if species.id == species_datum.species_id:
+                    enzymeml_species = species
+                    break
+            
+            prepared_condition_tab = PreparedConditionTab(
+                species_id = enzymeml_species.id,
+                title = str(enzymeml_species.id),
+                header = HTML(value=f'<b>Set prepared conditions for {format_species_string(enzymeml_species)}</b>'),
+                textbox = BoundedFloatText(
+                    value=0.0,
+                    min=0.0,
+                    max=1000.0,
+                    step=0.01,
+                    description='Prepared condition:',
+                    layout={'width': 'max-content'},
+                    style={'description_width': 'initial'},
+                ),
+                data_type_dropdown = Dropdown(
+                    options=[(data_type.name.capitalize().replace('_', ' '), data_type) for data_type in pyenzyme.DataTypes],
+                    description='Data type of prepared condition:',
+                    value=pyenzyme.DataTypes.CONCENTRATION,
+                    layout={'width': 'max-content'},
+                    style={'description_width': 'initial'},
+                ),
+                data_unit_combobox = Combobox(
+                    options=self.c_units,
+                    description='Unit of prepared condition:',
+                    value='mM',
+                    ensure_option=False,
+                    placeholder='Select or type unit',
+                    layout={'width': 'max-content'},
+                    style={'description_width': 'initial'},
+                ),
+                time_unit_combobox = Combobox(
+                    options=self.t_units,
+                    description='Unit of time course:',
+                    value='s',
+                    ensure_option=False,
+                    placeholder='Select or type unit',
+                    layout={'width': 'max-content'},
+                    style={'description_width': 'initial'},
+                )
+            )
+            prepared_tabs[prepared_condition_tab.species_id] = prepared_condition_tab
+        return prepared_tabs
+
+    def setup_callbacks(self):
+        # Set up all widget callbacks
+        self.name_textbox.observe(self._handle_name_change)
+
+        self.id_checkbox.observe(self._handle_id_check)
+        self.id_textbox.observe(self._handle_id_change)
+
+        self.template_checkbox.observe(self._handle_template_check)
+        self.template_dropdown.observe(self._handle_template_change)
+
+        self.ph_checkbox.observe(self._handle_ph_check)
+        self.ph_textbox.observe(self._handle_ph_change)
+
+        self.temperature_checkbox.observe(self._handle_temperature_check)
+        self.temperature_textbox.observe(self._handle_temperature_change)
+        self.temperature_unit_combobox.observe(self._handle_temperature_unit_change)
+
+        self.prepared_checkbox.observe(self._handle_prepared_check)
+        for prepared_tab in self.prepared_tabs.values():
+            prepared_tab.textbox.observe(lambda event, prepared_tab=prepared_tab: self._handle_prepared_condition_change(event, prepared_tab))
+            prepared_tab.data_type_dropdown.observe(lambda event, prepared_tab=prepared_tab: self._handle_data_type_change(event, prepared_tab))
+            prepared_tab.data_unit_combobox.observe(lambda event, prepared_tab=prepared_tab: self._handle_data_unit_change(event, prepared_tab))
+            prepared_tab.time_unit_combobox.observe(lambda event, prepared_tab=prepared_tab: self._handle_time_unit_change(event, prepared_tab))
+
+        # Every edit made in this widget changes the new measurement, which
+        # is already part of the document: record it after the handlers ran.
+        edit_widgets = [
+            self.name_textbox, self.id_checkbox, self.id_textbox,
+            self.template_checkbox, self.template_dropdown,
+            self.ph_checkbox, self.ph_textbox,
+            self.temperature_checkbox, self.temperature_textbox, self.temperature_unit_combobox,
+            self.prepared_checkbox,
+        ]
+        for prepared_tab in self.prepared_tabs.values():
+            edit_widgets += [
+                prepared_tab.textbox, prepared_tab.data_type_dropdown,
+                prepared_tab.data_unit_combobox, prepared_tab.time_unit_combobox,
+            ]
+        for widget in edit_widgets:
+            widget.observe(self._touch_document, names='value')
+
+    def _touch_document(self, event):
+        touch_enzymeml_document(self.fid_array.enzymeml_document)
+
+    def initialize_measurement(self):
+        # Initialize the new measurement
+        if self.initialized:
+            self.fid_array.enzymeml_document.measurements.pop()
+
+        self.new_measurement = create_enzymeml_measurement(
+            self.fid_array.enzymeml_document,
+            template_measurement=self.template_measurement,
+        )
+        self.new_measurement.ph = self.ph_textbox.value
+        self.new_measurement.temperature = self.temperature_textbox.value
+        self.new_measurement.temperature_unit = self.temperature_unit_combobox.value
+        self._initial_name = self.new_measurement.name
+        self._initial_id = self.new_measurement.id
+        self.fid_array.enzymeml_document.measurements.append(self.new_measurement)
+        touch_enzymeml_document(self.fid_array.enzymeml_document)
+        self._initialize_missing_prepared_conditions()
+        self.initialized = True
+
+    def clear_species_data(self, measurement):
+        # Clear the template species data
+        measurement.ph = None
+        measurement.temperature = None
+        measurement.temperature_unit = None
+        for species_datum in measurement.species_data:
+            del species_datum.prepared
+            del species_datum.data_type
+            del species_datum.data_unit
+            del species_datum.time_unit
+     
+    def layout_widgets(self):
+        # Create widget layout and display
+        tab_children = [self.general_tab]
+        tab_children.extend(prepared_tab.as_vbox() for prepared_tab in self.prepared_tabs.values())
+        tab_titles = ['General']
+        tab_titles.extend(prepared_tab.title for prepared_tab in self.prepared_tabs.values())
+        self.tab = Tab(
+            children=tab_children,
+            titles=tab_titles,
+        )
+        self.container = VBox(
+            [
+                self.title_html,
+                self.tab,
+            ]
+        )
+        display(self.container)
+
+    def _initialize_missing_prepared_conditions(self):
+        self._missing_prepared_conditions = []
+        for species in get_species_from_enzymeml(self.fid_array.enzymeml_document):
+            enzymeml_species = species
+            self._missing_prepared_conditions.append(format_species_string(enzymeml_species))
+        self.warning_html.value = f'<b>WARNING:</b> Prepared conditions for {', '.join(self._missing_prepared_conditions)} are still missing!'
+
+    def _handle_name_change(self, event):
+        # Enable the name_textbox when the name_checkbox is checked
+        if event['type'] == 'change' and event['name'] == 'value':
+            if event['new']:
+                self.new_measurement.name = self.name_textbox.value
+            else:
+                self.new_measurement.name = self._initial_name
+
+    def _handle_id_check(self, event):
+        # Enable the id_textbox when the id_checkbox is checked
+        if event['type'] == 'change' and event['name'] == 'value':
+            if event['new']:
+                self.id_textbox.disabled = False
+            else:
+                self.id_textbox.disabled = True
+                self.id_textbox.value = ''
+                self.new_measurement.id = self._initial_id
+
+    def _handle_id_change(self, event):
+        # Enable the id_textbox when the id_checkbox is checked
+        if event['type'] == 'change' and event['name'] == 'value':
+            if event['new']:
+                self.new_measurement.id = self.id_textbox.value
+            else:
+                self.new_measurement.id = self._initial_id
+
+    def _handle_template_check(self, event):
+        # Enable the template dropdown when the template checkbox is
+        # checked
+        if event['type'] == 'change' and event['name'] == 'value':
+            if event['new']:               
+                self.template_dropdown.options = [
+                    (format_measurement_string(measurement), measurement.id)
+                    for measurement in self.measurements
+                ]
+                self.template_dropdown.value = self.template_dropdown.options[0][1]
+                self.template_dropdown.disabled = False
+                self.ph_checkbox.disabled = False
+                self.ph_textbox.disabled = True
+                self.temperature_checkbox.disabled = False
+                self.temperature_textbox.disabled = True
+                self.temperature_unit_combobox.disabled = True
+                self.prepared_checkbox.disabled = False
+            else:
+                self.template_dropdown.options = []
+                self.template_dropdown.disabled = True
+                self.ph_checkbox.disabled = True
+                self.ph_textbox.disabled = False
+                self.temperature_checkbox.disabled = True
+                self.temperature_textbox.disabled = False
+                self.temperature_unit_combobox.disabled = False
+                self.prepared_checkbox.disabled = True
+                self.template_measurement = None
+                current_name = self.new_measurement.name
+                current_id = self.new_measurement.id
+                self.initialize_measurement()
+                self.new_measurement.name = current_name
+                self.new_measurement.id = current_id
+    
+    def _handle_template_change(self, event):
+        # Populate template_measurement attribute with measurement of
+        # selected ID if template_checkbox is checked.
+        if event['type'] == 'change' and event['name'] == 'value':
+            selected_option = event['new']
+            for measurement in self.measurements:
+                if measurement.id == selected_option:
+                    self.template_measurement = measurement.model_copy(deep=True)
+                    if self.new_measurement:
+                        # Preserve current name and ID settings
+                        current_name = self.new_measurement.name
+                        current_id = self.new_measurement.id
+
+                        # Create new measurement from template
+                        new_measurement = self.template_measurement.model_copy(deep=True)
+                        self.clear_species_data(new_measurement)
+                        
+                        # Update measurement with preserved values
+                        new_measurement.name = current_name
+                        new_measurement.id = current_id
+                        
+                        # Update both references to point to the same object
+                        self.fid_array.enzymeml_document.measurements[-1] = new_measurement
+                        self.new_measurement = self.fid_array.enzymeml_document.measurements[-1]
+                    break
+
+    def _handle_ph_check(self, event):
+        # Enable the ph_checkbox when the template checkbox is checked
+        if event['type'] == 'change' and event['name'] == 'value':
+            if event['new']:
+                self.ph_textbox.disabled = True
+                self.new_measurement.ph = self.template_measurement.ph
+            else:
+                self.ph_textbox.disabled = False
+                self.new_measurement.ph = self.ph_textbox.value
+
+    def _handle_ph_change(self, event):
+        # Enable the ph_textbox when the ph_checkbox is checked
+        if event['type'] == 'change' and event['name'] == 'value':
+            if event['new']:
+                self.new_measurement.ph = self.ph_textbox.value
+
+    def _handle_temperature_check(self, event):
+        # Enable the temperature_checkbox when the template checkbox is
+        # checked
+        if event['type'] == 'change' and event['name'] == 'value':
+            if event['new']:
+                self.temperature_textbox.disabled = True
+                self.temperature_unit_combobox.disabled = True
+                self.new_measurement.temperature = self.template_measurement.temperature
+                self.new_measurement.temperature_unit = self.template_measurement.temperature_unit
+            else:
+                self.temperature_textbox.disabled = False
+                self.temperature_unit_combobox.disabled = False
+                self.new_measurement.temperature = self.temperature_textbox.value
+                self.new_measurement.temperature_unit = self.temperature_unit_combobox.value
+    
+    def _handle_temperature_change(self, event):
+        # Enable the temperature_textbox when the temperature_checkbox is
+        # checked
+        if event['type'] == 'change' and event['name'] == 'value':
+            if event['new']:
+                self.new_measurement.temperature = self.temperature_textbox.value
+                self.new_measurement.temperature_unit = self.temperature_unit_combobox.value
+
+    def _handle_temperature_unit_change(self, event):
+        # Enable the temperature_unit_dropdown when the template
+        # checkbox is checked. T_max of 2500 ˚C (2773.15 K) has been
+        # chosen according to Hodkinson P., Modern Methods in Solid-
+        # state NMR: A Practitioner's Guide (2018), pp. 262, as the
+        # highest temperature yet reported for NMR experiments.
+        if event['type'] == 'change' and event['name'] == 'value':
+            if event['new']:
+                current_value = self.temperature_textbox.value
+                new_unit = self.temperature_unit_combobox.value
+                old_unit = self._current_temp_unit
+
+                if old_unit == new_unit:
+                    return  # No conversion needed
+
+                if new_unit == 'K':
+                    # Converting from °C to K
+                    converted_value = current_value + 273.15
+                    self.temperature_textbox.min = 0.0
+                    self.temperature_textbox.max = 2773.15
+                    self.temperature_textbox.value = converted_value
+                    self.new_measurement.temperature = converted_value
+                    self.new_measurement.temperature_unit = new_unit
+
+                elif new_unit == 'C':
+                    # Converting from K to °C
+                    converted_value = current_value - 273.15
+                    self.temperature_textbox.min = -273.15
+                    self.temperature_textbox.max = 2500.0
+                    self.temperature_textbox.value = converted_value
+                    self.new_measurement.temperature = converted_value
+                    self.new_measurement.temperature_unit = new_unit
+
+                else:
+                    print(
+                        f'Invalid temperature unit. Valid units are K and C, '
+                        f'got {new_unit} instead.'
+                    )
+                    
+                self._current_temp_unit = new_unit
+
+    def _handle_prepared_check(self, event):
+        # Enable the prepared_checkbox when the template checkbox is
+        # checked
+        if event['type'] == 'change' and event['name'] == 'value':
+            if event['new']:
+                for new_datum, template_datum, prepared_tab in zip(self.new_measurement.species_data, self.template_measurement.species_data, self.prepared_tabs.values()):
+                    prepared_tab.textbox.value = template_datum.prepared
+                    prepared_tab.data_type_dropdown.options = [(template_datum.data_type.name.capitalize().replace('_', ' '), template_datum.data_type)]
+                    prepared_tab.data_type_dropdown.value = template_datum.data_type
+                    prepared_tab.data_unit_combobox.options = [template_datum.data_unit.name]
+                    prepared_tab.data_unit_combobox.value = template_datum.data_unit.name
+                    prepared_tab.time_unit_combobox.options = [template_datum.time_unit.name]
+                    prepared_tab.time_unit_combobox.value = template_datum.time_unit.name
+                    new_datum.prepared = template_datum.prepared
+                    new_datum.data_type = template_datum.data_type
+                    new_datum.data_unit = template_datum.data_unit.name
+                    new_datum.time_unit = template_datum.time_unit.name
+            else:
+                for new_datum, prepared_tab in zip(self.new_measurement.species_data, self.prepared_tabs.values()):
+                    prepared_tab.textbox.value = 0.0
+                    prepared_tab.data_type_dropdown.options = [(data_type.name.capitalize().replace('_', ' '), data_type) for data_type in pyenzyme.DataTypes]
+                    prepared_tab.data_type_dropdown.value = pyenzyme.DataTypes.CONCENTRATION
+                    prepared_tab.data_unit_combobox.options = self.c_units
+                    prepared_tab.data_unit_combobox.value = 'mM'
+                    prepared_tab.time_unit_combobox.options = self.t_units
+                    prepared_tab.time_unit_combobox.value = 's'
+                    new_datum.prepared = None
+                    new_datum.data_type = None
+                    new_datum.data_unit = None
+                    new_datum.time_unit = None
+                self._initialize_missing_prepared_conditions()
+
+    def _handle_prepared_condition_change(self, event, prepared_tab):
+        # Enable the prepared_checkbox when the template checkbox is
+        # checked
+        if event['type'] == 'change' and event['name'] == 'value':
+            if event['new']:
+                if not self.new_measurement.species_data:
+                    self.new_measurement.add_to_species_data(
+                            species_id=prepared_tab.species_id,
+                            prepared=event['new'],
+                            data_type=prepared_tab.data_type_dropdown.value,
+                            data_unit=prepared_tab.data_unit_combobox.value,
+                            time_unit=prepared_tab.time_unit_combobox.value
+                        )
+                for species_datum in self.new_measurement.species_data:
+                    if species_datum.species_id == prepared_tab.species_id:
+                        species_datum.prepared = event['new']
+                    for species in get_species_from_enzymeml(self.fid_array.enzymeml_document):
+                        if species.id == species_datum.species_id:
+                            enzymeml_species = species
+                            if format_species_string(enzymeml_species) in self._missing_prepared_conditions:
+                                self._missing_prepared_conditions.remove(format_species_string(enzymeml_species))
+                            break
+                    if len(self._missing_prepared_conditions) == 0:
+                        self.warning_html.value = 'All prepared conditions have been set!'
+                    else:
+                        self.warning_html.value = f'<b>WARNING:</b> Prepared conditions for {', '.join(self._missing_prepared_conditions)} are still missing!'
+
+    def _handle_data_type_change(self, event, prepared_tab):
+        # Enable the data_type_dropdown when the data_type_checkbox is
+        # checked
+        if event['type'] == 'change' and event['name'] == 'value':
+            if event['new']:
+                for species_datum in self.new_measurement.species_data:
+                    if species_datum.species_id == prepared_tab.species_id:
+                        species_datum.data_type = event['new']
+
+    def _handle_data_unit_change(self, event, prepared_tab):
+        # Enable the data_unit_combobox when the data_unit_checkbox is
+        # checked
+        if event['type'] == 'change' and event['name'] == 'value':
+            if event['new']:
+                for species_datum in self.new_measurement.species_data:
+                    if species_datum.species_id == prepared_tab.species_id:
+                        try:
+                            species_datum.data_unit = event['new']
+                        except Exception:
+                            print(f'Invalid data unit: {event['new']}')
+
+    def _handle_time_unit_change(self, event, prepared_tab):
+        # Enable the time_unit_combobox when the time_unit_checkbox is
+        # checked
+        if event['type'] == 'change' and event['name'] == 'value':
+            if event['new']:
+                for species_datum in self.new_measurement.species_data:
+                    if species_datum.species_id == prepared_tab.species_id:
+                        try:
+                            species_datum.time_unit = event['new']
+                        except Exception:
+                            print(f'Invalid time unit: {event['new']}')
+
+
+if __name__ == '__main__':
     pass

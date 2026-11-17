@@ -12,28 +12,28 @@ jobs:
     name: Build Anaconda package
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v7
       - name: Setup conda
         uses: s-weigand/setup-conda@v1
         with:
           update-conda: false
-          python-version: 3.9
+          python-version: 3.13
           conda-channels: jmrohwer, conda-forge
       
       - name: Prepare conda environment
         run: |
-          conda install mamba conda-build conda-verify anaconda-client
+          conda install conda-build anaconda-client
           mkdir build_output
           
       - name: Build packages
-        run: mamba build --no-anaconda-upload --output-folder ./build_output ./packaging/conda
+        run: conda build --no-anaconda-upload --output-folder ./build_output ./packaging/conda
       
-      - uses: actions/upload-artifact@v2
+      - uses: actions/upload-artifact@v7
         with:
           name: build_outputs
-          path: ./build_output/*/nmrpy*.tar.bz2
+          path: ./build_output/*/nmrpy*.conda
 
       - name: Upload to anaconda.org
         # to publish when a GitHub Release is created:
         if: github.event_name == 'release' && github.event.action == 'released'
-        run: anaconda -t ${{ secrets.ANACONDA_JMROHWER_TOKEN }} upload -u jmrohwer ./build_output/*/nmrpy*.tar.bz2
+        run: anaconda -t ${{ secrets.ANACONDA_JMROHWER_TOKEN }} upload -u jmrohwer ./build_output/*/nmrpy*.conda
