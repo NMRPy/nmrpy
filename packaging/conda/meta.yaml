@@ -50,7 +50,7 @@ test:
     - nmrpy
     - nmrpy.tests
   commands:
-    - python -s -c "import nmrpy; nmrpy.test('noplot')"
+    - python -s -c "import nmrpy; nmrpy.test('nodatamodels')"
 
 about:
   home: "https://github.com/NMRPy/nmrpy"
