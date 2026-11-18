@@ -13,7 +13,7 @@ data exchange formats like JSON. Most users can complete standard workflows with
 interacting with model internals directly, while advanced users can engage with
 the model when needed.
 
-NMRPy has optional hooks for working with EnzymeML documents, which are an XML-based
+NMRPy has optional hooks for working with `EnzymeML <https://enzymeml.org>`_ documents, which are an XML-based
 data exchange format for enzyme kinetics data. These hooks allow users to link species
 information from EnzymeML with picked peaks in the spectra, and thus use them
 conveniently in concentration calculations. EnzymeML-related capabilities are optional,
@@ -22,7 +22,8 @@ do not need these features.
 
 A particular use case is the bulk processing and integration/deconvolution of 
 arrayed NMR spectra obtained for enzyme reaction time-courses, with a view to 
-determining enzyme-kinetic parameters for building systems-biology models [1,2].
+determining enzyme-kinetic parameters for building systems-biology models [1,2]. The data are
+captured according to a FAIR workflow as exemplified by two experimental scenarios [3].
 
 References
 ==========
@@ -39,3 +40,9 @@ References
    systems biology: Using Python as 'glue'.
    *Processes* 7:460.
    DOI: `10.3390/pr7070460 <https://doi.org/10.3390/pr7070460>`_
+
+3. Giess, T.; Matenchi, K.; Wimmer, E. J.; Range, J.; Estes, D. P.; Rohwer, J. M. & Pleiss, J. (2026)
+   FAIR NMR: Acquisition, processing, and modeling of time-resolved
+   NMR data according to the FAIR principles.
+   *Anal. Chem.*
+   DOI: `10.1021/acs.analchem.6c02376 <https://doi.org/10.1021/acs.analchem.6c02376>`_

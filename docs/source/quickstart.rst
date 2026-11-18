@@ -468,7 +468,7 @@ The :class:`~nmrpy.data_objects.FidArray` can be reloaded using
 Working with EnzymeML
 =====================
 
-To utilise the EnzymeML-related capabilities of NMRPy, the optional EnzymeML
+To utilise the `EnzymeML <https://enzymeml.org>`_-related capabilities of NMRPy, the optional EnzymeML
 dependencies need to be installed. This can be achieved by installing NMRPy
 with the `enzymeml` extra: ::
 
