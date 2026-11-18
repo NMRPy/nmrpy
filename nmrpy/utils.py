@@ -385,10 +385,11 @@ def create_enzymeml_measurement(
 
     Args:
         enzymeml_document (EnzymeMLDocument): An EnzymeML document.
-        **kwargs: Keyword arguments:
-            template_measurement (bool): Whether to use a template measurement.
-            template_id (str | None): The ID of the template measurement to
-              use. Defaults to the first measurement in the EnzymeML document.
+
+    Keyword Args:
+        template_measurement (bool): Whether to use a template measurement.
+        template_id (str | None): The ID of the template measurement to
+            use. Defaults to the first measurement in the EnzymeML document.
 
     Raises:
         ValueError: If the provided template ID is not found in the EnzymeML
@@ -443,28 +444,29 @@ def fill_enzymeml_measurement(
     Args:
         enzymeml_document (EnzymeMLDocument): An EnzymeML document.
         measurement (Measurement): The EnzymeML Measurement object to fill.
-        **kwargs: Keyword arguments:
-            template_measurement (bool): Whether to use a template measurement.
-            template_id (str | None): The ID of the template measurement to
-              use. Defaults to the first measurement in the EnzymeML document.
-            keep_ph (bool): Whether to keep the pH of the template measurement.
-            keep_temperature (bool): Whether to keep the temperature of the
-              template measurement.
-            keep_prepared (bool): Whether to keep the prepared concentrations of
-              the template measurement.
-            id (str): The ID of the measurement.
-            name (str): The name of the measurement.
-            ph (float): The pH of the measurement.
-            temperature (float): The temperature of the measurement.
-            temperature_unit (str): The unit of the temperature of the
-              measurement.
-            prepared (dict): A dictionary with species IDs (as they are defined
-              in the EnzymeML document) as keys and prepared values as values.
-            data_type (str): The type of data to be stored in the measurement.
-            data_unit (str): The unit of the data to be stored in the
-              measurement.
-            time_unit (str): The unit of the time to be stored in the
-              measurement.
+
+    Keyword Args:
+        template_measurement (bool): Whether to use a template measurement.
+        template_id (str | None): The ID of the template measurement to
+            use. Defaults to the first measurement in the EnzymeML document.
+        keep_ph (bool): Whether to keep the pH of the template measurement.
+        keep_temperature (bool): Whether to keep the temperature of the
+            template measurement.
+        keep_prepared (bool): Whether to keep the prepared concentrations of
+            the template measurement.
+        id (str): The ID of the measurement.
+        name (str): The name of the measurement.
+        ph (float): The pH of the measurement.
+        temperature (float): The temperature of the measurement.
+        temperature_unit (str): The unit of the temperature of the
+            measurement.
+        prepared (dict): A dictionary with species IDs (as they are defined
+            in the EnzymeML document) as keys and prepared values as values.
+        data_type (str): The type of data to be stored in the measurement.
+        data_unit (str): The unit of the data to be stored in the
+            measurement.
+        time_unit (str): The unit of the time to be stored in the
+            measurement.
 
     Raises:
         ValueError: If no value for `ph`, `temperature`, or `prepared` is
