@@ -1,6 +1,23 @@
 Changelog
 =========
 
+v1.0.0 (2026-11-19)
+-------------------
+
+New
+~~~
+- Add NMR data model, integration with EnzymeML, and peak assignment
+  features (#13). [Dr. Torsten Giess, JM Rohwer]
+- Add importer for Magritek Spinsolve files. [Johann Rohwer, Torsten Giess]
+- Add `verbose` option to `Fid.phase_correct()` and
+  `FidArray.phase_correct_fids()` (#9). [JM Rohwer, Patrick Jiang]
+
+Fix
+~~~
+- Update documentation and clean up Sphinx docs build warnings (#24).
+  [Dr. Torsten Giess, JM Rohwer]
+- Fix deconvolution parameters (#22) [Johann Rohwer]
+
 v0.2.8 (2022-09-29)
 -------------------
 
