@@ -42,6 +42,10 @@ enzymeml = [
     "pyenzyme>=2.3.0",
     "sympy"
 ]
+docs = [
+    "sphinx",
+    "sphinx-rtd-theme"
+]
 
 [project.urls]
 Homepage = "https://github.com/NMRPy/nmrpy"
