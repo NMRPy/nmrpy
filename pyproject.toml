@@ -23,7 +23,6 @@ classifiers = [
   "Operating System :: POSIX :: Linux",
   "Operating System :: MacOS",
   "Programming Language :: Python",
-  "Programming Language :: Markdown",
   "Topic :: Scientific/Engineering :: Chemistry",
 ]
 dependencies = [
