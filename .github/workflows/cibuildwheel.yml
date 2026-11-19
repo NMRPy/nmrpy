@@ -27,7 +27,7 @@ jobs:
         run: |
           W=$(ls dist/nmrpy*.whl)
           pip install ${W}
-          python -s -c "import nmrpy; nmrpy.test('noplot')"
+          python -s -c "import nmrpy; nmrpy.test('nodatamodels')"
           pip install ${W}"[enzymeml]"
           python -s -c "import nmrpy; nmrpy.test('datamodels'); nmrpy.test('utils')"
 
@@ -37,11 +37,13 @@ jobs:
           name: wheel_and_tarball
           path: dist/*
 
-  upload_pypi:
+  publish_pypi:
     needs: build_wheel_and_sdist
     runs-on: ubuntu-latest
     # to publish when a GitHub Release is created:
     if: github.event_name == 'release' && github.event.action == 'released'
+    permissions:
+      id-token: write
     steps:
       - uses: actions/download-artifact@v8
         with:
@@ -49,7 +51,5 @@ jobs:
           path: dist
 
       - uses: pypa/gh-action-pypi-publish@v1.14.3
-        with:
-          user: __token__
-          password: ${{ secrets.PYPI_TOKEN }}
+#        with:
 #          repository_url: https://test.pypi.org/legacy/
