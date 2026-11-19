@@ -20,7 +20,6 @@
 
 import os
 import sys
-import sphinx_rtd_theme
 sys.path.insert(0, os.path.abspath('../..'))
 #sys.path.append('/home/Apps/nmrpy3')
 
@@ -40,6 +39,7 @@ extensions = [
     'sphinx.ext.coverage',
     'sphinx.ext.mathjax',
     'sphinx.ext.viewcode',
+    'sphinx.ext.napoleon',
 #    'sphinx.ext.githubpages',
 ]
 
@@ -61,8 +61,8 @@ master_doc = 'index'
 
 # General information about the project.
 project = 'NMRPy'
-copyright = '2016-2022, Johann Eicher & Johann Rohwer'
-author = 'Johann Eicher, Johann Rohwer'
+copyright = '2016-2026, Johann Eicher, Johann Rohwer & Torsten Giess'
+author = 'Johann Eicher, Johann Rohwer, Torsten Giess'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -78,7 +78,7 @@ release = '1.0.0'
 #
 # This is also used if you do content translation via gettext catalogs.
 # Usually you set "language" from the command line for these cases.
-language = None
+language = 'en'
 
 # There are two options for replacing |today|: either, you set today to some
 # non-false value, then it is used:
@@ -132,7 +132,6 @@ todo_include_todos = True
 # a list of builtin themes.
 #
 html_theme = 'sphinx_rtd_theme'
-html_theme_path = [sphinx_rtd_theme.get_html_theme_path()]
 
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the

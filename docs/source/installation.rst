@@ -18,7 +18,7 @@ installation can take place. These should be
 taken care of automatically during installation. An abbreviated list of
 requirements follows:
 
-- A Python 3.x installation (Python 3.6 or higher is recommended)
+- A Python 3.x installation (Python 3.12 or higher is recommended)
 - The full SciPy Stack (see http://scipy.org/install.html).
 - Jupyter Notebook (https://jupyter.org/)
 - Matplotlib (https://matplotlib.org) with the ``ipympl`` backend
@@ -56,12 +56,12 @@ Virtual environments
 Virtual environments are a great way to keep package dependencies separate from
 your system files. It is highly recommended to install NMRPy into a separate 
 environment, which first must be created (here we create an environment 
-called ``nmr``). It is recommended to use a Python version >=3.6 (here we use 
-Python 3.7). After creation, activate the environment:
+called ``nmr``). It is recommended to use a Python version >=3.12 (here we use
+Python 3.12). After creation, activate the environment:
 
 .. code:: bash
     
-    (base) $ conda create -n nmr python=3.7
+    (base) $ conda create -n nmr python=3.12
     (base) $ conda activate nmr
 
 Then install NMRPy:
@@ -144,11 +144,11 @@ On Windows in a Python command prompt:
     > pip install virtualenvwrapper-win
     
 Make a new virtual environment for working with NMRPy (e.g. ``nmr``), and 
-specify that it use Python 3 (we used Python 3.7):
+specify that it use Python 3 (we used Python 3.12):
 
 .. code:: bash
 
-    $ mkvirtualenv -p python3.7 nmr
+    $ mkvirtualenv -p python3.12 nmr
 
 The new virtual environment will be activated automatically, and this will be
 indicated in the shell prompt, e.g.:
@@ -171,7 +171,7 @@ into your virtual environment using ``pip``.
 Optional EnzymeML dependencies
 ==============================
 
-EnzymeML integration features are optional and are not required for standard
+`EnzymeML <https://enzymeml.org>`_ integration features are optional and are not required for standard
 NMRPy workflows. If you want to use EnzymeML-specific functionality, install
 the optional extra dependencies with:
 
@@ -202,6 +202,10 @@ Only a specific subset of tests can be run by providing an additional argument:
     'fidutils'      - Fid utilities tests
     'fidarrayutils' - FidArray utilities tests
     'plotutils'     - plotting utilities tests
+    'utils'         - utils module tests
+    'datamodels'    - data model tests
+    'noplot'        - all tests except plotting utilities (scripted usage)
+    'nodatamodels'  - all tests except data model tests
 
 When testing the plotting utilities, a number of ``matplotlib`` plots will 
 appear. This tests that the peak and range selection widgets are working 
