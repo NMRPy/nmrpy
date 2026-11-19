@@ -11,15 +11,22 @@ jobs:
     runs-on: ubuntu-latest
     name: Build Anaconda package
 
+    # setup-miniconda needs a login shell so that conda is initialised
+    defaults:
+      run:
+        shell: bash -el {0}
+
     steps:
       - uses: actions/checkout@v7
+
       - name: Setup conda
-        uses: s-weigand/setup-conda@v1
+        uses: conda-incubator/setup-miniconda@v4
         with:
-          update-conda: false
-          python-version: 3.13
-          conda-channels: jmrohwer, conda-forge
-      
+          miniforge-version: latest
+          channels: jmrohwer,conda-forge
+          conda-remove-defaults: "true"
+          activate-environment: ""
+
       - name: Prepare conda environment
         run: |
           conda install conda-build anaconda-client
@@ -35,5 +42,5 @@ jobs:
 
       - name: Upload to anaconda.org
         # to publish when a GitHub Release is created:
-        if: github.event_name == 'release' && github.event.action == 'released'
+#        if: github.event_name == 'release' && github.event.action == 'released'
         run: anaconda -t ${{ secrets.ANACONDA_JMROHWER_TOKEN }} upload -u jmrohwer ./build_output/*/nmrpy*.conda
