@@ -68,14 +68,10 @@ Then install NMRPy:
 
 .. code:: bash
     
-    (nmr) $ conda install -c jmrohwer nmrpy
-    
-Or, if you have not added the additional channels system-wide:
+    (nmr) $ conda install conda-pypi::nmrpy
 
-.. code:: bash
+Note that ``conda>=26.10`` is required for this, check with ``conda -V`` and update if needed.
     
-    (nmr) $ conda install -c bioconda -c conda-forge -c jmrohwer nmrpy
-
 
 Direct ``pip``-based install
 ============================
@@ -181,6 +177,17 @@ the optional extra dependencies with:
 
 This extra installs ``pyenzyme`` and ``sympy`` in addition to the core
 dependencies.
+
+Anaconda
+--------
+
+Anaconda does not ship ``pyenzyme``, so if you want to use the EnzymeML support, you need to
+install the extras after installing NMRPy, using pip for ``pyenzyme``:
+
+.. code:: bash
+
+    (nmr) $ conda install sympy
+    (nmr) $ pip install "pyenzyme>=2.3.0"
 
 Testing the installation
 ========================
