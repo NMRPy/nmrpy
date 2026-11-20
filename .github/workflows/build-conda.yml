@@ -2,9 +2,6 @@ name: CI build Anaconda
 
 on:
   workflow_dispatch:
-  release:
-    types:
-      - released
 
 jobs:
   build:
