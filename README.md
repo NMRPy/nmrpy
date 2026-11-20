@@ -39,11 +39,18 @@ it does not interfere with other installed packages and modules.
 For installation with pip:    
 `pip install nmrpy`
 
-For installation with conda:    
-`conda install -c bioconda -c conda-forge -c jmrohwer nmrpy`
-
 For EnzymeML support, install with the `enzymeml` extra:    
 `pip install nmrpy[enzymeml]`
+
+For installation with conda:    
+`conda install conda-pypi::nmrpy`    
+(this requires `conda>=26.10`, check with `conda -V` and update if needed)    
+`pyenzyme` is not available on Anaconda, so if you want to use the EnzymeML support, you need to 
+install the extras after installing NMRPy, and using pip for `pyenzyme`:
+```bash
+conda install sympy
+pip install "pyenzyme>=2.3.0"
+```
 
 Detailed installation instructions are available at
 https://nmrpy.readthedocs.io/en/latest/installation.html
