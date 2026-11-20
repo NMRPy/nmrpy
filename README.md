@@ -1,6 +1,6 @@
 [![CI build wheels](https://github.com/NMRPy/nmrpy/actions/workflows/cibuildwheel.yml/badge.svg)](https://github.com/NMRPy/nmrpy/actions/workflows/cibuildwheel.yml)
 [![CI build Anaconda](https://github.com/NMRPy/nmrpy/actions/workflows/build-conda.yml/badge.svg)](https://github.com/NMRPy/nmrpy/actions/workflows/build-conda.yml)
-[![Documentation Status](https://readthedocs.org/projects/nmrpy/badge/?version=latest)](https://nmrpy.readthedocs.io/en/latest/?badge=latest)
+[![Documentation Status](https://app.readthedocs.org/projects/nmrpy/badge/?version=latest)](https://nmrpy.readthedocs.io/en/latest/?badge=latest)
 
 # NMRPy
 
